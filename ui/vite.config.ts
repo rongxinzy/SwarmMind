@@ -12,10 +12,13 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      "/api": {
-        target: "http://localhost:8000",
-        changeOrigin: true,
-      },
+      "/pending": "http://localhost:8000",
+      "/approve": "http://localhost:8000",
+      "/reject": "http://localhost:8000",
+      "/status": "http://localhost:8000",
+      "/strategy": "http://localhost:8000",
+      "/dispatch": "http://localhost:8000",
+      "/health": "http://localhost:8000",
     },
   },
 })
