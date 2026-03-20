@@ -8,8 +8,8 @@ SwarmMind is an **operating system for AI agent teams** — agents collaborate v
 
 - **Repo**: https://github.com/rongxinzy/SwarmMind
 - **Status**: Phase 1 — building minimal working system
-- **Frontend**: shadcn/ui (React + Tailwind CSS)
-- **Backend**: Python (FastAPI or Flask TBD)
+- **Frontend**: shadcn/ui (React 18 + Tailwind CSS + Vite)
+- **Backend**: Python (FastAPI)
 - **Storage**: SQLite (Phase 1)
 
 ## Architecture
@@ -38,65 +38,72 @@ Human Supervisor
                           └─────────────────┘
 ```
 
-## Code Structure (Phase 1)
+## Code Structure
 
 ```
 swarmmind/
 ├── CLAUDE.md              ← 你在这里
-├── README.md
-├── README_zh.md
+├── README.md               ← 英文 README (badges, tables, hero)
+├── README_zh.md           ← 中文 README
 ├── requirements.txt
 ├── swarmmind/
 │   ├── __init__.py
-│   ├── db.py              # SQLite schema, init, health check
-│   ├── models.py          # Pydantic/dataclass models
-│   ├── context_broker.py  # dispatch(), route, strategy table
-│   ├── shared_memory.py    # KV store with 409 conflict retry
+│   ├── __version__ = "0.1.0"
+│   ├── config.py           ✅ Settings (LLM, DB, timeouts)
+│   ├── db.py               ✅ SQLite schema + health check + seed
+│   ├── models.py           ✅ Pydantic models (all 6 tables)
+│   ├── context_broker.py   ✅ dispatch(), keyword routing, strategy table
+│   ├── shared_memory.py    ✅ KV store, last-write-wins, 409 retry
+│   ├── renderer.py         ✅ LLM Status Renderer (prose only)
 │   ├── agents/
 │   │   ├── __init__.py
-│   │   ├── base.py        # BaseAgent class
-│   │   ├── finance.py     # Finance Q&A agent
-│   │   └── code_review.py # Code review agent
-│   ├── api/
-│   │   ├── __init__.py
-│   │   └── supervisor.py  # Supervisor REST API (FastAPI)
-│   ├── renderer.py         # LLM Status Renderer
-│   └── config.py           # Settings, LLM config, DB path
-├── ui/                    # Supervisor web UI (shadcn/ui)
-│   ├── package.json
-│   ├── src/
-│   │   ├── App.tsx
-│   │   ├── main.tsx
-│   │   └── components/
-│   └── tailwind.config.js
+│   │   ├── base.py         ✅ BaseAgent with LLM call + error handling
+│   │   ├── finance.py      ✅ FinanceAgent
+│   │   └── code_review.py  ✅ CodeReviewAgent
+│   └── api/
+│       ├── __init__.py
+│       └── supervisor.py   ✅ FastAPI supervisor REST API
+├── ui/                    ✅ Supervisor web UI
+│   ├── package.json        ✅ Vite + React 18 + Tailwind + shadcn deps
+│   ├── vite.config.ts
+│   ├── tailwind.config.js  ✅ shadcn/ui theme variables
+│   ├── postcss.config.js
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── index.html
+│   └── src/
+│       ├── main.tsx
+│       ├── App.tsx         ✅ Full supervisor UI (proposals + strategy + status)
+│       ├── index.css       ✅ Tailwind + shadcn CSS variables
+│       └── lib/
+│           └── utils.ts    ✅ cn() utility
 └── tests/
-    ├── test_dispatch.py
-    ├── test_agents.py
-    ├── test_shared_memory.py
-    └── test_api.py
+    ├── __init__.py
+    ├── test_dispatch.py     ✅ dispatch, routing, strategy table tests
+    └── test_shared_memory.py ✅ KV store tests
 ```
 
 ## Phase 1 Implementation Checklist
 
-- [x] README (English + Chinese)
-- [ ] SQLite schema + health check (db.py)
-- [ ] Models (models.py)
-- [ ] SharedMemory with 409 retry (shared_memory.py)
-- [ ] ContextBroker + dispatch() + keyword routing (context_broker.py)
-- [ ] Finance Agent (agents/finance.py)
-- [ ] Code Review Agent (agents/code_review.py)
-- [ ] Supervisor API (api/supervisor.py)
-  - GET  /pending
+- [x] README (English + Chinese, badges, tables)
+- [x] CLAUDE.md
+- [x] SQLite schema + health check (db.py)
+- [x] Models (models.py)
+- [x] SharedMemory with 409 retry (shared_memory.py)
+- [x] ContextBroker + dispatch() + keyword routing (context_broker.py)
+- [x] Finance Agent (agents/finance.py)
+- [x] Code Review Agent (agents/code_review.py)
+- [x] Supervisor API (api/supervisor.py)
+  - GET  /pending (paginated ✅)
   - POST /approve/{id}
   - POST /reject/{id}
   - GET  /status?goal=...
   - GET  /strategy
-  - POST /strategy/approve/{change_id}
-- [ ] LLM Status Renderer (renderer.py)
-- [ ] Supervisor UI (ui/) — **shadcn/ui**
-- [ ] Strategy table logic
-- [ ] Action proposal timeout (5 min)
-- [ ] Core tests
+  - POST /dispatch
+- [x] LLM Status Renderer (renderer.py)
+- [x] Supervisor UI (ui/) — **shadcn/ui**
+- [ ] Core tests (dispatch + shared_memory — written, need to run)
+- [ ] Action proposal timeout background scanner (running in API ✅)
 
 ## Key Design Decisions
 
@@ -111,22 +118,30 @@ swarmmind/
 
 Set via environment variables:
 ```bash
-OPENAI_API_KEY=sk-...
+export OPENAI_API_KEY=sk-...
 # or
-ANTHROPIC_API_KEY=sk-ant-...
+export ANTHROPIC_API_KEY=sk-ant-...
+export LLM_PROVIDER=anthropic
 ```
 
-## Database
+## Running
 
-SQLite at `./swarmmind.db` (configurable via `SWARMMIND_DB_PATH`).
+```bash
+# Backend
+pip install -r requirements.txt
+python -m swarmmind.db  # init DB (or just start API — it auto-inits)
+python -m swarmmind.api.supervisor
 
-## Important Notes
+# Frontend (new terminal)
+cd ui && npm install && npm run dev
+```
 
-- **ui/** is a separate React app (shadcn/ui + Tailwind)
-- API runs on port 8000 by default
-- Supervisor UI polls `/pending` every 5 seconds
-- Action proposals time out in 5 minutes if not approved/rejected
-- Strategy table updates require supervisor approval (human-in-the-loop)
+## Supervisor UI
+
+- Polls `/pending` every 5 seconds
+- Three tabs: Pending Proposals / Strategy Table / Status Renderer
+- Approve/Reject buttons per proposal
+- LLM Status Renderer: type a goal → get prose summary from shared context
 
 ## Context Broker Routing Rules (Phase 1)
 
@@ -134,7 +149,20 @@ SQLite at `./swarmmind.db` (configurable via `SWARMMIND_DB_PATH`).
 |----------------|-----------|
 | "finance", "financial", "Q3", "quarterly", "revenue" | Finance Agent |
 | "code", "review", "PR", "git", "python", "bug" | Code Review Agent |
-| (no match) | Returns error, logs situation_tag="unknown" |
+| (no match) | Returns `no_route` status |
+
+## Error Handling (Phase 1)
+
+- **JSONDecodeError** → creates rejected proposal with error description
+- **EmptyLLMResponse** → creates rejected proposal with error description
+- **StrategyTableMiss** → creates rejected proposal, logs unknown situation
+- **DB conflict (409)** → retries 3x with 100ms backoff, then raises `SharedMemoryConflict`
+
+## Running Tests
+
+```bash
+pytest tests/ -v
+```
 
 ## Related Docs
 

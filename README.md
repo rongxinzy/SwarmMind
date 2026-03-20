@@ -1,14 +1,9 @@
-# SwarmMind
-
-<!-- Hero Tagline -->
+<!-- Hero Tagline + Language Switcher -->
 <p align="center">
   <h1>🤖 SwarmMind</h1>
   <strong>Where intelligent work emerges from collaboration.</strong><br>
   <em>AI agent teams as primary actors — humans as referees.</em>
-</p>
-
-<!-- Language Switcher (top center) -->
-<p align="center">
+  <br><br>
   <a href="README_zh.md">🇨🇳 中文版</a>
 </p>
 

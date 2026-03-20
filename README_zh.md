@@ -1,14 +1,9 @@
-# SwarmMind · 智能涌现
-
-<!-- Hero Tagline -->
+<!-- Hero Tagline + Language Switcher -->
 <p align="center">
   <h1>🤖 SwarmMind · 智能涌现</h1>
   <strong>智能从协作中涌现。</strong><br>
   <em>AI agent 团队是主体，人类是裁判。</em>
-</p>
-
-<!-- Language Switcher (top center) -->
-<p align="center">
+  <br><br>
   <a href="README.md">🇺🇸 English</a>
 </p>
 
