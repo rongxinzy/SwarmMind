@@ -167,18 +167,19 @@ Jira 把"工作状态"变成数据库里的 record：`ticket.status = "In Progre
 git clone https://github.com/rongxinzy/SwarmMind.git
 cd SwarmMind
 
-# 安装依赖
+# 后端：安装依赖
 pip install -r requirements.txt
 
-# 初始化数据库
-python -m swarmmind.db init
+# 启动 supervisor API（首次运行自动初始化数据库）
+python -m swarmmind.api.supervisor
+# API 运行在 http://localhost:8000
 
-# 启动 supervisor API
-python -m swarmmind.api
-
-# 另一个终端，启动财务 agent
-python -m swarmmind.agents.finance
+# 前端：新终端安装 UI 依赖
+cd ui && npm install && npm run dev
+# UI 运行在 http://localhost:3000
 ```
+
+**使用流程：** 打开 http://localhost:3000 → 提交目标 → 在 Pending 标签页审批/拒绝提案。
 
 ---
 
@@ -186,26 +187,29 @@ python -m swarmmind.agents.finance
 
 | 层级 | 组件 | 职责 |
 |------|------|------|
-| **人类接口** | LLM 状态渲染器 | 按需生成人类可读的视图 |
-| **编排层** | Context Broker | 路由目标，管理策略表 |
-| **Agent 层** | 财务 Agent、代码审查 Agent | 专业领域的行动者 |
-| **记忆层** | 共享上下文（SQLite） | 持久化共享内存，KV 存储 |
-| **监督 API** | Web UI + REST API | 人类监督和审批 |
+| **人类接口** | Supervisor UI (shadcn/ui) + LLM 状态渲染器 | 提交目标、审批/拒绝、查看状态 |
+| **编排层** | Context Broker | 通过策略表路由目标到对的 agent |
+| **Agent 层** | 财务 Agent、代码审查 Agent | 带 LLM 推理的专业领域行动者 |
+| **记忆层** | 共享上下文（SQLite KV） | 持久化共享内存，冲突解决 |
+| **监督 API** | FastAPI REST API | 人类监督和审批端点 |
 
 ---
 
 ## 项目状态
 
-🟡 **Phase 1 — 进行中**
+🟡 **Phase 1 — 核心完成**
 
 构建最小可工作系统：
 - [x] 项目概念与设计
-- [ ] Context Broker 实现
-- [ ] 财务 + 代码审查 Agent
-- [ ] 共享上下文层
-- [ ] Supervisor API
-- [ ] LLM 状态渲染器
-- [ ] 策略表 + 自进化
+- [x] Context Broker 实现
+- [x] 财务 + 代码审查 Agent
+- [x] 共享上下文层（SQLite KV）
+- [x] Supervisor REST API（6 个端点 + 分页）
+- [x] Supervisor UI（React + shadcn/ui，3 个标签页）
+- [x] LLM 状态渲染器
+- [x] 策略表 + 成功率追踪
+- [x] Action proposal 超时机制（5 分钟）
+- [x] 核心测试
 
 ---
 

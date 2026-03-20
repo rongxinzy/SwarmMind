@@ -165,18 +165,19 @@ The open source community will contribute: new agent types, better routing algor
 git clone https://github.com/rongxinzy/SwarmMind.git
 cd SwarmMind
 
-# Install dependencies
+# Backend: install dependencies
 pip install -r requirements.txt
 
-# Initialize database
-python -m swarmmind.db init
+# Start the supervisor API (auto-inits DB on first run)
+python -m swarmmind.api.supervisor
+# API runs at http://localhost:8000
 
-# Start the supervisor API
-python -m swarmmind.api
-
-# In another terminal, start a finance agent
-python -m swarmmind.agents.finance
+# Frontend: install UI dependencies (new terminal)
+cd ui && npm install && npm run dev
+# UI runs at http://localhost:3000
 ```
+
+**Workflow:** Open the UI at http://localhost:3000 → submit a goal → approve/reject proposals in the Pending tab.
 
 ---
 
@@ -184,26 +185,29 @@ python -m swarmmind.agents.finance
 
 | Layer | Component | Responsibility |
 |-------|------------|-----------------|
-| **Human Interface** | LLM Status Renderer | Generates human-readable views on demand |
-| **Orchestration** | Context Broker | Routes goals, manages strategy table |
-| **Agent Layer** | Finance Agent, Code Review Agent | Specialized domain actors |
-| **Memory Layer** | Shared Context (SQLite) | Persistent shared memory, KV store |
-| **Supervisor API** | Web UI + REST API | Human oversight and approval |
+| **Human Interface** | Supervisor UI (shadcn/ui) + LLM Status Renderer | Submit goals, approve/reject, view status |
+| **Orchestration** | Context Broker | Routes goals to agents via strategy table |
+| **Agent Layer** | Finance Agent, Code Review Agent | Specialized domain actors with LLM inference |
+| **Memory Layer** | Shared Context (SQLite KV) | Persistent shared memory, conflict-resolved |
+| **Supervisor API** | FastAPI REST API | Human oversight and approval endpoints |
 
 ---
 
 ## Project Status
 
-🟡 **Phase 1 — In Progress**
+🟡 **Phase 1 — Core Complete**
 
 Building the minimal working system:
 - [x] Project concept & design
-- [ ] Context Broker implementation
-- [ ] Finance + Code Review agents
-- [ ] Shared context layer
-- [ ] Supervisor API
-- [ ] LLM Status Renderer
-- [ ] Strategy table + self-evolution
+- [x] Context Broker implementation
+- [x] Finance + Code Review agents
+- [x] Shared context layer (SQLite KV)
+- [x] Supervisor REST API (6 endpoints + pagination)
+- [x] Supervisor UI (React + shadcn/ui, 3 tabs)
+- [x] LLM Status Renderer
+- [x] Strategy table with success tracking
+- [x] Action proposal timeout (5 min)
+- [x] Core tests
 
 ---
 
