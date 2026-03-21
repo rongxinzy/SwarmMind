@@ -3,6 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 
+interface V0ChatProps {
+  conversationId?: string;
+  onConversationCreated?: (id: string) => void;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
@@ -103,13 +108,43 @@ async function streamChat(
   }
 }
 
-export function V0Chat() {
+export function V0Chat({ conversationId, onConversationCreated }: V0ChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load messages when conversationId changes
+  useEffect(() => {
+    if (conversationId) {
+      setCurrentConversationId(conversationId);
+      loadMessages(conversationId);
+    } else {
+      setMessages([]);
+      setCurrentConversationId(undefined);
+    }
+  }, [conversationId]);
+
+  const loadMessages = async (convId: string) => {
+    try {
+      const res = await fetch(`/conversations/${convId}/messages`);
+      if (res.ok) {
+        const data = await res.json();
+        setMessages(
+          data.items.map((msg: { id: string; role: string; content: string }) => ({
+            id: msg.id,
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          }))
+        );
+      }
+    } catch (e) {
+      console.error("Failed to load messages:", e);
+    }
+  };
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -132,6 +167,98 @@ export function V0Chat() {
     const userMessage: Message = { id: generateId(), role: "user", content: text };
     setMessages((prev) => [...prev, userMessage]);
 
+    // If we have a conversationId (or are using regular chat), handle differently
+    if (currentConversationId) {
+      // Use conversation API (non-streaming)
+      await handleConversationSubmit(text, userMessage.id);
+    } else {
+      // Create a new conversation first
+      try {
+        const createRes = await fetch("/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ goal: text }),
+        });
+        if (createRes.ok) {
+          const newConv = await createRes.json();
+          setCurrentConversationId(newConv.id);
+          onConversationCreated?.(newConv.id);
+          // Now use conversation API
+          await handleConversationSubmitWithId(text, newConv.id, userMessage.id);
+        } else {
+          throw new Error(`HTTP ${createRes.status}`);
+        }
+      } catch (e) {
+        setIsLoading(false);
+        setMessages((prev) => [
+          ...prev,
+          { id: generateId(), role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Unknown error"}` },
+        ]);
+      }
+    }
+  }, [input, isLoading, currentConversationId]);
+
+  const handleConversationSubmit = async (text: string, userMsgId: string) => {
+    try {
+      const res = await fetch(`/conversations/${currentConversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: data.assistant_message.id,
+            role: "assistant" as const,
+            content: data.assistant_message.content,
+          },
+        ]);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        { id: generateId(), role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Unknown error"}` },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConversationSubmitWithId = async (text: string, convId: string, userMsgId: string) => {
+    try {
+      const res = await fetch(`/conversations/${convId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: data.assistant_message.id,
+            role: "assistant" as const,
+            content: data.assistant_message.content,
+          },
+        ]);
+      } else {
+        throw new Error(`HTTP ${res.status}`);
+      }
+    } catch (e) {
+      setMessages((prev) => [
+        ...prev,
+        { id: generateId(), role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Unknown error"}` },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStreamingSubmit = async (text: string, userMsgId: string) => {
     const assistantId = generateId();
     let assistantContent = "";
     let assistantThinking = "";
@@ -174,7 +301,7 @@ export function V0Chat() {
         ]);
       }
     );
-  }, [input, isLoading]);
+  };
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

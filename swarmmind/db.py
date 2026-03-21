@@ -73,6 +73,24 @@ CREATE TABLE IF NOT EXISTS strategy_change_proposals (
     proposed_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (proposed_agent_id) REFERENCES agents(agent_id)
 );
+
+-- Conversation sessions
+CREATE TABLE IF NOT EXISTS conversations (
+    id          TEXT PRIMARY KEY,
+    title       TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Messages within a conversation
+CREATE TABLE IF NOT EXISTS messages (
+    id              TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    role            TEXT NOT NULL,
+    content         TEXT NOT NULL,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES conversations(id)
+);
 """
 
 # Indexes for performance
@@ -80,6 +98,7 @@ INDEXES = """
 CREATE INDEX IF NOT EXISTS idx_action_proposals_status ON action_proposals(status);
 CREATE INDEX IF NOT EXISTS idx_event_log_timestamp ON event_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_working_memory_tags ON working_memory(domain_tags);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
 """
 
 
@@ -119,6 +138,8 @@ def health_check() -> dict:
         "event_log",
         "action_proposals",
         "strategy_change_proposals",
+        "conversations",
+        "messages",
     ]
 
     conn = get_connection()

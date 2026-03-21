@@ -143,8 +143,15 @@ make install   # install all deps (uv sync + pnpm install)
 make dev       # start both backend + frontend via PM2
 make logs      # tail PM2 logs
 make stop      # stop all services
-make status   # show PM2 status
+make status    # show PM2 status
 ```
+
+**⚠️ PM2 Process Management Rules:**
+- **Use `pm2 stop`** to stop processes gracefully — this prevents auto-restart
+- **DO NOT use `kill -9`** on PM2-managed processes — PM2 detects death and auto-restarts, creating a zombie loop
+- Only use `kill -9` as a last resort if `pm2 stop` hangs
+- `pm2 delete` removes a process from PM2's registry (doesn't kill the actual process)
+- `make restart` = `pm2 delete` + `pm2 start` — picks up code changes
 
 **Individual services:**
 ```bash

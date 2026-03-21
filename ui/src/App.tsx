@@ -31,11 +31,33 @@ function PlaceholderView({
 
 export default function App() {
   const [activeView, setActiveView] = useState<SidebarView>("tasks")
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined)
+  const [conversationRefreshTrigger, setConversationRefreshTrigger] = useState(0)
+
+  const handleConversationSelect = (conversationId: string) => {
+    setActiveConversationId(conversationId)
+  }
+
+  const handleViewChange = (view: SidebarView) => {
+    setActiveView(view)
+    if (view !== "tasks") {
+      setActiveConversationId(undefined)
+    }
+  }
 
   const renderContent = () => {
     switch (activeView) {
       case "tasks":
-        return <V0Chat />
+        return (
+          <V0Chat
+            conversationId={activeConversationId}
+            onConversationCreated={(id) => {
+              setActiveConversationId(id)
+              setConversationRefreshTrigger((n) => n + 1)
+            }}
+          />
+        )
+      case "projects":
 
       case "projects":
         return (
@@ -82,8 +104,11 @@ export default function App() {
     <div className="flex min-h-screen bg-background">
       <Sidebar
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={handleViewChange}
         pageTitle={VIEW_LABELS[activeView]}
+        onConversationSelect={handleConversationSelect}
+        activeConversationId={activeConversationId}
+        conversationRefreshTrigger={conversationRefreshTrigger}
       />
 
       <main className="flex-1 flex flex-col md:ml-64">

@@ -24,10 +24,20 @@ export const VIEW_LABELS: Record<SidebarView, string> = {
   library: "Library",
 };
 
+interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
 interface SidebarProps {
   activeView: SidebarView;
   onViewChange: (view: SidebarView) => void;
   pageTitle?: string;
+  onConversationSelect?: (conversationId: string) => void;
+  activeConversationId?: string;
+  conversationRefreshTrigger?: number;
 }
 
 const navItems: { value: SidebarView; label: string; icon: React.ReactNode }[] = [
@@ -91,8 +101,31 @@ function CollapsibleSection({
   );
 }
 
-export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
+export function Sidebar({ activeView, onViewChange, pageTitle, onConversationSelect, activeConversationId, conversationRefreshTrigger }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+  const [conversations, setConversations] = React.useState<Conversation[]>([]);
+
+  React.useEffect(() => {
+    if (activeView === "tasks") {
+      fetchConversations();
+    }
+  }, [activeView, conversationRefreshTrigger]);
+
+  const fetchConversations = async () => {
+    try {
+      const res = await fetch("/conversations");
+      if (res.ok) {
+        const data = await res.json();
+        setConversations(data.items || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch conversations:", e);
+    }
+  };
+
+  const handleConversationClick = (convId: string) => {
+    onConversationSelect?.(convId);
+  };
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
@@ -145,20 +178,24 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
           </CollapsibleSection>
 
           <CollapsibleSection title="Recent" defaultOpen>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-neutral-400 hover:text-white truncate"
-            >
-              Q3 Financial Report
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start text-neutral-400 hover:text-white truncate"
-            >
-              PR Review #234
-            </Button>
+            {conversations.length === 0 ? (
+              <p className="text-xs text-neutral-500 px-3 py-1">No conversations yet</p>
+            ) : (
+              conversations.map((conv) => (
+                <Button
+                  key={conv.id}
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleConversationClick(conv.id)}
+                  className={cn(
+                    "w-full justify-start text-neutral-400 hover:text-white truncate",
+                    activeConversationId === conv.id && "bg-neutral-800 text-white"
+                  )}
+                >
+                  {conv.title}
+                </Button>
+              ))
+            )}
           </CollapsibleSection>
         </div>
       </nav>

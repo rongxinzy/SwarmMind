@@ -114,3 +114,39 @@ class StatusResponse(BaseModel):
 
 class StrategyResponse(BaseModel):
     entries: list[StrategyEntry]
+
+
+# ---- Conversation models ----
+
+class Conversation(BaseModel):
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+
+
+class Message(BaseModel):
+    id: str
+    conversation_id: str
+    role: str  # 'user' | 'assistant'
+    content: str
+    created_at: str
+
+
+class ConversationListResponse(BaseModel):
+    items: list[Conversation]
+    total: int
+
+
+class MessageListResponse(BaseModel):
+    items: list[Message]
+    total: int
+
+
+class SendMessageRequest(BaseModel):
+    content: str
+
+
+class SendMessageResponse(BaseModel):
+    user_message: Message
+    assistant_message: Message

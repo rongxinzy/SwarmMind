@@ -63,3 +63,36 @@ Just natural language that a human supervisor can quickly read to understand sta
             f"Shared context has {len(all_entries)} entries. "
             f"Goal: {goal}"
         )
+
+
+def generate_conversation_title(user_message: str) -> str:
+    """
+    Generate a short, descriptive title for a conversation based on the user's first message.
+    Uses the LLM to summarize the intent in 3-8 words.
+    """
+    prompt = f"""<system>
+You are a conversation title generator. Given a user's first message in a conversation,
+generate a short, descriptive title (3-8 words max) that captures the essence of what they want.
+
+Examples:
+- "Show me the Q3 revenue report" -> "Q3 Revenue Report"
+- "Review this Python code for bugs" -> "Python Code Review"
+- "What's the status of the project?" -> "Project Status Check"
+- "Help me debug this API error" -> "API Debugging Help"
+</system>
+
+User's first message:
+{user_message}
+
+Respond with ONLY the title. No quotes, no explanation. Just the title itself."""
+
+    try:
+        client = LLMClient()
+        title = client.complete(prompt, max_tokens=32)
+        title = title.strip()
+        if len(title) > 50:
+            title = title[:47] + "..."
+        return title
+    except Exception as e:
+        logger.error("Title generation error: %s", e)
+        return user_message[:50] + ("..." if len(user_message) > 50 else "")

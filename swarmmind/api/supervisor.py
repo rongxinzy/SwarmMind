@@ -4,6 +4,7 @@ import logging
 import os
 import threading
 import time
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -23,17 +24,23 @@ from swarmmind.db import get_connection, init_db, seed_default_agents
 from swarmmind.models import (
     ActionProposal,
     ApproveRequest,
+    Conversation,
+    ConversationListResponse,
     DispatchResponse,
     GoalRequest,
+    Message,
+    MessageListResponse,
     PendingResponse,
     ProposalStatus,
     RejectRequest,
+    SendMessageRequest,
+    SendMessageResponse,
     StrategyChangeProposal,
     StrategyEntry,
     StrategyResponse,
     SupervisorDecision,
 )
-from swarmmind.renderer import render_status
+from swarmmind.renderer import generate_conversation_title, render_status
 from swarmmind.llm import LLMClient, LLMError
 
 logger = logging.getLogger(__name__)
@@ -258,6 +265,160 @@ def post_dispatch(body: GoalRequest):
 def health():
     """Health check endpoint."""
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+
+
+# ---- Conversation endpoints ----
+
+@app.get("/conversations")
+def list_conversations():
+    """List all conversations ordered by updated_at descending."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) as total FROM conversations")
+        total = cursor.fetchone()["total"]
+
+        cursor.execute(
+            "SELECT * FROM conversations ORDER BY updated_at DESC"
+        )
+        rows = cursor.fetchall()
+        items = [Conversation(id=row["id"], title=row["title"], created_at=str(row["created_at"]), updated_at=str(row["updated_at"])) for row in rows]
+        return ConversationListResponse(items=items, total=total)
+    finally:
+        conn.close()
+
+
+@app.post("/conversations")
+def create_conversation(body: GoalRequest):
+    """Create a new conversation with the first user message."""
+    conv_id = str(uuid.uuid4())
+    title = generate_conversation_title(body.goal)
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO conversations (id, title) VALUES (?, ?)",
+            (conv_id, title),
+        )
+        conn.commit()
+
+        cursor.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,))
+        row = cursor.fetchone()
+        return Conversation(id=row["id"], title=row["title"], created_at=str(row["created_at"]), updated_at=str(row["updated_at"]))
+    finally:
+        conn.close()
+
+
+@app.get("/conversations/{conversation_id}")
+def get_conversation(conversation_id: str):
+    """Get a single conversation by ID."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,))
+        row = cursor.fetchone()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return Conversation(id=row["id"], title=row["title"], created_at=str(row["created_at"]), updated_at=str(row["updated_at"]))
+    finally:
+        conn.close()
+
+
+@app.get("/conversations/{conversation_id}/messages")
+def get_conversation_messages(conversation_id: str):
+    """Get all messages for a conversation."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
+        if cursor.fetchone() is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        cursor.execute(
+            "SELECT COUNT(*) as total FROM messages WHERE conversation_id = ?",
+            (conversation_id,),
+        )
+        total = cursor.fetchone()["total"]
+
+        cursor.execute(
+            "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
+            (conversation_id,),
+        )
+        rows = cursor.fetchall()
+        items = [Message(id=str(row["id"]), conversation_id=str(row["conversation_id"]), role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"])) for row in rows]
+        return MessageListResponse(items=items, total=total)
+    finally:
+        conn.close()
+
+
+@app.post("/conversations/{conversation_id}/messages")
+def send_message(conversation_id: str, body: SendMessageRequest):
+    """Send a user message and get an AI response."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
+        if cursor.fetchone() is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        user_msg_id = str(uuid.uuid4())
+        cursor.execute(
+            "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
+            (user_msg_id, conversation_id, "user", body.content),
+        )
+
+        cursor.execute(
+            "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (conversation_id,),
+        )
+
+        try:
+            ai_response = render_status(body.content)
+        except Exception as e:
+            logger.error("render_status error: %s", e)
+            ai_response = f"I received your message: {body.content}. How can I help you?"
+
+        assistant_msg_id = str(uuid.uuid4())
+        cursor.execute(
+            "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
+            (assistant_msg_id, conversation_id, "assistant", ai_response),
+        )
+
+        conn.commit()
+
+        cursor.execute("SELECT * FROM messages WHERE id = ?", (user_msg_id,))
+        row = cursor.fetchone()
+        user_msg = Message(id=str(row["id"]), conversation_id=str(row["conversation_id"]), role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"]))
+        cursor.execute("SELECT * FROM messages WHERE id = ?", (assistant_msg_id,))
+        row = cursor.fetchone()
+        assistant_msg = Message(id=str(row["id"]), conversation_id=str(row["conversation_id"]), role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"]))
+
+        return SendMessageResponse(
+            user_message=user_msg,
+            assistant_message=assistant_msg,
+        )
+    finally:
+        conn.close()
+
+
+@app.delete("/conversations/{conversation_id}")
+def delete_conversation(conversation_id: str):
+    """Delete a conversation and all its messages."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
+        if cursor.fetchone() is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+
+        cursor.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
+        cursor.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
+        conn.commit()
+        return {"status": "deleted", "id": conversation_id}
+    finally:
+        conn.close()
 
 
 @app.post("/chat", response_model=ChatResponse)
