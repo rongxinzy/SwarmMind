@@ -9,12 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+import CapsuleTabs from "@/components/ui/capsule-tabs"
 
 const API = "http://127.0.0.1:8000"
 
@@ -378,63 +373,70 @@ export default function App() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="proposals">
-          <TabsList>
-            <TabsTrigger value="proposals">Pending</TabsTrigger>
-            <TabsTrigger value="strategy">Strategy</TabsTrigger>
-            <TabsTrigger value="status">Status</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="proposals">
-            {error && (
-              <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm">
-                {error}
-              </div>
-            )}
-            <PendingList
-              proposals={proposals}
-              onApprove={handleApprove}
-              onReject={handleReject}
-              loading={loading}
-            />
-          </TabsContent>
-
-          <TabsContent value="strategy">
-            <StrategyTable entries={strategy} />
-          </TabsContent>
-
-          <TabsContent value="status">
-            <Card>
-              <CardHeader>
-                <CardTitle>LLM Status Renderer</CardTitle>
-                <CardDescription>
-                  Ask about any goal. The LLM reads shared context and generates a real-time summary.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <form onSubmit={handleStatus} className="flex gap-2">
-                  <Input
-                    placeholder="e.g. What is the status of the Q3 financial report?"
-                    value={statusGoal}
-                    onChange={(e) => setStatusGoal(e.target.value)}
+        <CapsuleTabs
+          items={[
+            {
+              value: "proposals",
+              label: "Pending",
+              content: (
+                <>
+                  {error && (
+                    <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm">
+                      {error}
+                    </div>
+                  )}
+                  <PendingList
+                    proposals={proposals}
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    loading={loading}
                   />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={statusLoading || !statusGoal.trim()}
-                  >
-                    {statusLoading ? "..." : "Render"}
-                  </Button>
-                </form>
-                {statusSummary && (
-                  <div className="rounded-lg border p-4 text-sm bg-muted/30">
-                    {statusSummary}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                </>
+              ),
+            },
+            {
+              value: "strategy",
+              label: "Strategy",
+              content: <StrategyTable entries={strategy} />,
+            },
+            {
+              value: "status",
+              label: "Status",
+              content: (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>LLM Status Renderer</CardTitle>
+                    <CardDescription>
+                      Ask about any goal. The LLM reads shared context and generates a real-time summary.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <form onSubmit={handleStatus} className="flex gap-2">
+                      <Input
+                        placeholder="e.g. What is the status of the Q3 financial report?"
+                        value={statusGoal}
+                        onChange={(e) => setStatusGoal(e.target.value)}
+                      />
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        disabled={statusLoading || !statusGoal.trim()}
+                      >
+                        {statusLoading ? "..." : "Render"}
+                      </Button>
+                    </form>
+                    {statusSummary && (
+                      <div className="rounded-lg border p-4 text-sm bg-muted/30">
+                        {statusSummary}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ),
+            },
+          ]}
+          defaultValue="proposals"
+        />
       </main>
     </div>
   )
