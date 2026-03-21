@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string;
@@ -249,9 +250,11 @@ export function V0Chat() {
                     </div>
                   </details>
                 )}
-                {/* Main content */}
+                {/* Main content - rendered as markdown */}
                 {message.content && (
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                  </div>
                 )}
                 {!message.content && !message.thinking && (
                   <span className="animate-pulse">Thinking...</span>
