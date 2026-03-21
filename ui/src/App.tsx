@@ -40,9 +40,7 @@ export default function App() {
 
   const handleViewChange = (view: SidebarView) => {
     setActiveView(view)
-    if (view !== "tasks") {
-      setActiveConversationId(undefined)
-    }
+    setActiveConversationId(undefined)
   }
 
   const renderContent = () => {
