@@ -290,10 +290,13 @@ async def _stream_chat(request: ChatRequest):
             if "error" in chunk:
                 yield f"3:{json.dumps(chunk['error'])}\n"
                 return
-            if chunk["text"]:
+            if chunk.get("thinking"):
+                # data-stream thinking delta: "1:{text}\n"
+                yield f"1:{json.dumps(chunk['thinking'])}\n"
+            if chunk.get("text"):
                 # data-stream text delta: "0:{text}\n"
                 yield f"0:{json.dumps(chunk['text'])}\n"
-            if chunk["finish"]:
+            if chunk.get("finish"):
                 # data-stream message finish: "d:{finishReason, usage}\n"
                 yield f"d:{json.dumps({'finishReason': chunk['finish'], 'usage': {}})}\n"
     except Exception as e:

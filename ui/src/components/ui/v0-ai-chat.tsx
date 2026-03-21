@@ -6,6 +6,7 @@ interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  thinking?: string;
 }
 
 const EXAMPLE_PROMPTS = [
@@ -21,7 +22,8 @@ function generateId() {
 
 async function streamChat(
   message: string,
-  onChunk: (text: string) => void,
+  onText: (text: string) => void,
+  onThinking: (thinking: string) => void,
   onDone: () => void,
   onError: (err: string) => void
 ) {
@@ -56,10 +58,18 @@ async function streamChat(
 
       for (const line of lines) {
         if (!line.trim()) continue;
+        // "0:" = text delta, "1:" = thinking delta
         if (line.startsWith("0:")) {
           try {
             const text = JSON.parse(line.substring(2));
-            onChunk(text);
+            onText(text);
+          } catch {
+            // ignore parse errors
+          }
+        } else if (line.startsWith("1:")) {
+          try {
+            const thinking = JSON.parse(line.substring(2));
+            onThinking(thinking);
           } catch {
             // ignore parse errors
           }
@@ -67,12 +77,22 @@ async function streamChat(
       }
     }
 
-    if (buffer.trim() && buffer.startsWith("0:")) {
-      try {
-        const text = JSON.parse(buffer.substring(2));
-        onChunk(text);
-      } catch {
-        // ignore
+    // Process remaining buffer
+    if (buffer.trim()) {
+      if (buffer.startsWith("0:")) {
+        try {
+          const text = JSON.parse(buffer.substring(2));
+          onText(text);
+        } catch {
+          // ignore
+        }
+      } else if (buffer.startsWith("1:")) {
+        try {
+          const thinking = JSON.parse(buffer.substring(2));
+          onThinking(thinking);
+        } catch {
+          // ignore
+        }
       }
     }
 
@@ -113,6 +133,7 @@ export function V0Chat() {
 
     const assistantId = generateId();
     let assistantContent = "";
+    let assistantThinking = "";
 
     await streamChat(
       text,
@@ -126,6 +147,18 @@ export function V0Chat() {
             );
           }
           return [...prev, { id: assistantId, role: "assistant", content: text }];
+        });
+      },
+      (thinking) => {
+        assistantThinking += thinking;
+        setMessages((prev) => {
+          const exists = prev.find((m) => m.id === assistantId);
+          if (exists) {
+            return prev.map((m) =>
+              m.id === assistantId ? { ...m, thinking: assistantThinking } : m
+            );
+          }
+          return [...prev, { id: assistantId, role: "assistant", content: "", thinking }];
         });
       },
       () => {
@@ -199,27 +232,34 @@ export function V0Chat() {
                 : "flex justify-start"
             }
           >
-            <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap ${
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-foreground"
-              }`}
-            >
-              {message.content}
-            </div>
+            {message.role === "user" ? (
+              <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap bg-primary text-primary-foreground">
+                {message.content}
+              </div>
+            ) : (
+              <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-muted text-foreground">
+                {/* Thinking section - collapsible */}
+                {message.thinking && (
+                  <details className="mb-2">
+                    <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
+                      Thinking...
+                    </summary>
+                    <div className="mt-2 text-xs text-muted-foreground/70 whitespace-pre-wrap font-mono border-l-2 border-muted-foreground/20 pl-3">
+                      {message.thinking}
+                    </div>
+                  </details>
+                )}
+                {/* Main content */}
+                {message.content && (
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                )}
+                {!message.content && !message.thinking && (
+                  <span className="animate-pulse">Thinking...</span>
+                )}
+              </div>
+            )}
           </div>
         ))}
-
-        {isLoading &&
-          messages.length > 0 &&
-          messages[messages.length - 1]?.role === "user" && (
-            <div className="flex justify-start">
-              <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-muted text-foreground">
-                <span className="animate-pulse">Thinking...</span>
-              </div>
-            </div>
-          )}
 
         <div ref={messagesEndRef} />
       </div>
