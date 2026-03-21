@@ -223,11 +223,8 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
       {/* Desktop Sidebar */}
       <div className="hidden md:flex flex-col fixed top-0 left-0 h-full w-64 bg-neutral-950 border-r border-neutral-800">
         {/* Desktop Header */}
-        <div className="flex items-center gap-2 p-4 border-b border-neutral-800">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground text-sm font-bold">
-            S
-          </div>
-          <span className="text-white font-semibold">SwarmMind</span>
+        <div className="p-4 border-b border-neutral-800">
+          <span className="text-white font-semibold text-base">SwarmMind</span>
         </div>
         {sidebarContent}
       </div>
