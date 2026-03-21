@@ -94,7 +94,10 @@ The core OS insight: **multiple independent entities don't need to know each oth
 
 ## Supervisor UI
 
-The human supervisor interface for interacting with the AI agent team:
+The human supervisor interface for interacting with the AI agent team — sidebar navigation with a chat-first experience:
+
+- **Tasks** (default) — Chat with the agent team. Messages route to specialized agents based on context keywords. Unmatched queries fall back to the LLM Status Renderer.
+- **Projects / Search / Agents / Library** — Reserved for Phase 2.
 
 ![SwarmMind Supervisor UI](ui/public/screenshot.png)
 
@@ -224,7 +227,7 @@ SSE-powered live streaming of agent reasoning to the browser. Humans can inject 
 | 2 | **Shared Context Layer** | All agents read/write one memory |
 | 3 | **Context Broker** | Routes goals to the right agent |
 | 4 | **LLM Status Renderer** | On-demand status summaries (prose/table/Gantt) |
-| 5 | **Human Supervisor Interface** | Observe, approve, or reject every action |
+| 5 | **Human Supervisor Interface** | Chat-based UI — submit goals, view agent responses |
 | 6 | **Strategy Table** | Records routing rules, tracks success rate |
 
 ---
@@ -251,7 +254,7 @@ cd ui && npm install && npm run dev
 # UI runs at http://localhost:3000
 ```
 
-**Workflow:** Open the UI at http://localhost:3000 → submit a goal → approve/reject proposals in the Pending tab.
+**Workflow:** Open the UI at http://localhost:3000 → select a conversation or start a new one → type a question. Messages are routed to Finance or Code Review agents when keywords match, or answered directly by the LLM.
 
 ---
 
