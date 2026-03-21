@@ -150,13 +150,15 @@ make status    # show PM2 status
 - **Use `pm2 stop`** to stop processes gracefully — this prevents auto-restart
 - **DO NOT use `kill -9`** on PM2-managed processes — PM2 detects death and auto-restarts, creating a zombie loop
 - Only use `kill -9` as a last resort if `pm2 stop` hangs
-- `pm2 delete` removes a process from PM2's registry (doesn't kill the actual process)
-- `make restart` = `pm2 delete` + `pm2 start` — picks up code changes
+- `make restart` uses `pm2 restart` (not delete+start) — avoids "address already in use" errors from port release timing
 
-**Individual services:**
+**Individual services (local dev):**
 ```bash
-make backend   # backend only (uv + FastAPI on :8000)
-make frontend  # frontend only (pnpm + Vite on :3000)
+make restart-api   # restart backend only (pick up code changes)
+make restart-ui    # restart frontend only
+make restart       # restart both
+make backend       # start backend only (first time)
+make frontend      # start frontend only (first time)
 ```
 
 **Manual (without PM2):**

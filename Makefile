@@ -33,10 +33,15 @@ backend: ## Run backend only via PM2
 # IMPORTANT: Use `pm2 stop` to stop processes gracefully. DO NOT use `kill -9` on PM2 processes.
 # `kill -9` kills the process but PM2 will auto-restart it, creating a zombie loop.
 # Only use `kill -9` as a last resort if PM2 stop fails.
-restart: ## Restart both services (delete + start to pick up code changes)
-	pm2 delete $(PM2_NAME_API) $(PM2_NAME_UI) 2>/dev/null; \
-	pm2 start "uv run python -m swarmmind.api.supervisor" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR); \
-	pm2 start "pnpm run dev" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
+restart: ## Restart both services (restart to pick up code changes)
+	pm2 restart $(PM2_NAME_API) 2>/dev/null || pm2 start "uv run python -m swarmmind.api.supervisor" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR); \
+	pm2 restart $(PM2_NAME_UI) 2>/dev/null || pm2 start "pnpm run dev" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
+
+restart-api: ## Restart backend only
+	pm2 restart $(PM2_NAME_API) 2>/dev/null || pm2 start "uv run python -m swarmmind.api.supervisor" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR)
+
+restart-ui: ## Restart frontend only
+	pm2 restart $(PM2_NAME_UI) 2>/dev/null || pm2 start "pnpm run dev" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
 
 stop: ## Stop both services gracefully (use this, NOT kill -9)
 	pm2 stop $(PM2_NAME_API) $(PM2_NAME_UI)
