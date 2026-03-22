@@ -70,6 +70,46 @@ class TestDispatch:
         assert result.status == "no_route"
 
 
+class TestDispatchMemoryContext:
+    def test_dispatch_returns_memory_ctx_with_session_id(self):
+        from swarmmind.context_broker import dispatch
+
+        result = dispatch(
+            "Generate the Q3 financial summary",
+            user_id="alice",
+            session_id="session-123",
+            project_id="proj-abc",
+        )
+
+        assert result.memory_ctx is not None
+        assert result.memory_ctx.user_id == "alice"
+        assert result.memory_ctx.session_id == "session-123"
+        assert result.memory_ctx.project_id == "proj-abc"
+        assert result.memory_ctx.visible_scopes[0].layer.value == "L1_tmp"  # L1 first
+
+    def test_dispatch_returns_memory_ctx_on_no_route(self):
+        from swarmmind.context_broker import dispatch
+
+        result = dispatch("Make me a sandwich")
+        assert result.memory_ctx is not None
+        assert result.memory_ctx.user_id == "default_user"
+
+    def test_dispatch_ctx_priority_order(self):
+        from swarmmind.context_broker import dispatch
+
+        result = dispatch(
+            "Review this PR",
+            user_id="alice",
+            team_id="team-x",
+            session_id="session-abc",
+        )
+
+        scopes = result.memory_ctx.visible_scopes
+        assert scopes[0].layer.value == "L1_tmp"      # session first
+        assert scopes[1].layer.value == "L2_team"    # team second
+        assert scopes[2].layer.value == "L4_user_soul"  # user last
+
+
 class TestStrategyTableUpdate:
     def test_success_count_increments(self):
         from swarmmind.context_broker import update_strategy_on_outcome

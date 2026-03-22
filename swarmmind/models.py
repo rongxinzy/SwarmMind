@@ -81,6 +81,67 @@ class EventLogEntry(BaseModel):
     latency_ms: Optional[int] = None
 
 
+# ---- Layered Memory models ----
+
+class MemoryLayer(str, Enum):
+    USER_SOUL = "L4_user_soul"
+    PROJECT = "L3_project"
+    TEAM = "L2_team"
+    TMP = "L1_tmp"
+
+
+class MemoryScope(BaseModel):
+    layer: MemoryLayer
+    scope_id: str
+
+
+class MemoryEntry(BaseModel):
+    id: str
+    scope: MemoryScope
+    key: str
+    value: str
+    tags: list[str] = []
+    created_at: datetime
+    updated_at: datetime
+    ttl: int | None = None
+    version: int = 1
+    last_writer_agent_id: str | None = None
+
+
+class MemoryContext(BaseModel):
+    """Carries scope information through a request lifecycle."""
+    user_id: str
+    project_id: str | None = None
+    team_id: str | None = None
+    session_id: str | None = None
+
+    @property
+    def visible_scopes(self) -> list[MemoryScope]:
+        """
+        Return scopes in priority order: L1 > L2 > L3 > L4.
+        More specific layers override more abstract ones.
+        """
+        scopes = []
+        if self.session_id:
+            scopes.append(MemoryScope(layer=MemoryLayer.TMP, scope_id=self.session_id))
+        if self.team_id:
+            scopes.append(MemoryScope(layer=MemoryLayer.TEAM, scope_id=self.team_id))
+        if self.project_id:
+            scopes.append(MemoryScope(layer=MemoryLayer.PROJECT, scope_id=self.project_id))
+        scopes.append(MemoryScope(layer=MemoryLayer.USER_SOUL, scope_id=self.user_id))
+        return scopes
+
+
+class CompactionHint(BaseModel):
+    id: str
+    scope_layer: str
+    scope_id: str
+    policy: str
+    trigger_count: int = 0
+    fired_at: datetime | None = None
+    created_at: datetime
+
+
 # ---- API Request/Response models ----
 
 class GoalRequest(BaseModel):
@@ -100,6 +161,7 @@ class DispatchResponse(BaseModel):
     action_proposal_id: str
     agent_id: str
     status: str
+    memory_ctx: MemoryContext | None = None
 
 
 class PendingResponse(BaseModel):

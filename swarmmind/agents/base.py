@@ -10,8 +10,8 @@ from typing import Any, Optional
 from swarmmind.context_broker import create_action_proposal, update_proposal_result
 from swarmmind.db import get_connection
 from swarmmind.llm import LLMClient, LLMError
-from swarmmind.models import ActionProposal, ProposalStatus
-from swarmmind.shared_memory import SharedMemory
+from swarmmind.layered_memory import LayeredMemory
+from swarmmind.models import ActionProposal, MemoryContext, MemoryLayer, MemoryScope, ProposalStatus
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class BaseAgent(ABC):
 
     Each agent:
     1. Has a specialized domain
-    2. Reads from shared memory (filtered by domain tags)
+    2. Reads from layered memory (filtered by domain tags + visible_scopes)
     3. Calls LLM to decide what to do
     4. Proposes an action (ActionProposal)
     """
@@ -45,7 +45,7 @@ class BaseAgent(ABC):
     def __init__(self, agent_id: str, domain: str):
         self.agent_id = agent_id
         self.domain = domain
-        self.memory = SharedMemory(agent_id)
+        self.memory = LayeredMemory(agent_id)
         self._system_prompt = self._load_system_prompt()
 
     def _load_system_prompt(self) -> str:
@@ -70,23 +70,43 @@ class BaseAgent(ABC):
         """Domain tags this agent reads from shared memory."""
         raise NotImplementedError
 
-    def _build_prompt(self, goal: str) -> str:
-        """Build the full prompt with goal + relevant shared memory."""
-        memory_entries = []
-        for tag in self.domain_tags:
-            entries = self.memory.read_all_by_tag(tag)
-            memory_entries.extend(entries)
+    def _resolve_write_scope(self, ctx: MemoryContext | None) -> MemoryScope:
+        """
+        Determine the most specific writable scope from ctx.
+
+        Priority: session_id (L1) > team_id (L2) > project_id (L3) > user_id (L4).
+        Agents cannot write to L4 unless they are in SOUL_WRITER_AGENT_IDS,
+        but since ctx always provides user_id as a fallback, we fall through
+        to the most specific available scope (never L4 for regular agents).
+        """
+        from swarmmind.models import MemoryLayer
+        if ctx is None:
+            # No context — use a default user scope (L4, but agent will be denied
+            # unless they are soul_writer; this is intentional guardrail)
+            return MemoryScope(layer=MemoryLayer.USER_SOUL, scope_id="default_user")
+        if ctx.session_id:
+            return MemoryScope(layer=MemoryLayer.TMP, scope_id=ctx.session_id)
+        if ctx.team_id:
+            return MemoryScope(layer=MemoryLayer.TEAM, scope_id=ctx.team_id)
+        if ctx.project_id:
+            return MemoryScope(layer=MemoryLayer.PROJECT, scope_id=ctx.project_id)
+        return MemoryScope(layer=MemoryLayer.USER_SOUL, scope_id=ctx.user_id)
+
+    def _build_prompt(self, goal: str, ctx: MemoryContext | None = None) -> str:
+        """Build the full prompt with goal + relevant layered memory."""
+        memory_entries = self.memory.read_all(tags=self.domain_tags, ctx=ctx)
 
         context_block = ""
         if memory_entries:
             context_lines = []
             for entry in memory_entries:
+                tag_str = ",".join(entry.tags) if entry.tags else ""
                 context_lines.append(
-                    f"[{entry['key']}] ({entry.get('domain_tags', '')}): {entry['value']}"
+                    f"[{entry.key}] ({tag_str}): {entry.value}"
                 )
-            context_block = "\n\n--- Relevant Shared Memory ---\n" + "\n".join(context_lines)
+            context_block = "\n\n--- Relevant Memory ---\n" + "\n".join(context_lines)
         else:
-            context_block = "\n\n(No relevant shared memory found yet.)"
+            context_block = "\n\n(No relevant memory found yet.)"
 
         return (
             f"<system>\n{self._system_prompt}\n</system>\n\n"
@@ -105,7 +125,7 @@ class BaseAgent(ABC):
         except LLMError as e:
             raise AgentError(str(e)) from e
 
-    def act(self, goal: str, action_proposal_id: str) -> ActionProposal:
+    def act(self, goal: str, action_proposal_id: str, ctx: MemoryContext | None = None) -> ActionProposal:
         """
         Main agent entry point.
 
@@ -120,7 +140,7 @@ class BaseAgent(ABC):
             self.agent_id, goal[:100], action_proposal_id,
         )
 
-        prompt = self._build_prompt(goal)
+        prompt = self._build_prompt(goal, ctx)
 
         try:
             raw_response = self._call_llm(prompt)
@@ -179,11 +199,13 @@ class BaseAgent(ABC):
             confidence=parsed.get("confidence", 0.5),
         )
 
-        # Write goal + result to shared memory for future agents
+        # Write goal + result to layered memory for future agents
+        scope = self._resolve_write_scope(ctx)
         self.memory.write(
+            scope=scope,
             key=f"goal:{action_proposal_id}",
             value=json.dumps({"goal": goal, "description": description, "agent": self.agent_id}),
-            domain_tags=self.domain,
+            tags=[self.domain],
         )
 
         logger.info(

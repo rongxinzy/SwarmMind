@@ -91,6 +91,44 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id)
 );
+
+-- Layered memory entries (L4/L3/L2/L1)
+CREATE TABLE IF NOT EXISTS memory_entries (
+    id              TEXT PRIMARY KEY,
+    layer           TEXT NOT NULL,          -- 'L4_user_soul', 'L3_project', 'L2_team', 'L1_tmp'
+    scope_id        TEXT NOT NULL,          -- user_id / project_id / team_id / session_id
+    key             TEXT NOT NULL,
+    value           TEXT NOT NULL,
+    tags            TEXT,                    -- JSON array of tag strings
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ttl             INTEGER,                 -- seconds until expiry (NULL = no expiry)
+    version         INTEGER DEFAULT 1,
+    last_writer_agent_id TEXT,
+    UNIQUE(layer, scope_id, key)
+);
+
+-- Session promotions: L1 → L3/L2 migration records
+CREATE TABLE IF NOT EXISTS session_promotions (
+    id                  TEXT PRIMARY KEY,
+    session_id          TEXT NOT NULL,
+    target_layer        TEXT NOT NULL,       -- 'L3_project' or 'L2_team'
+    target_scope_id     TEXT NOT NULL,
+    key_filter          TEXT,                -- JSON array of keys to migrate (NULL = all)
+    promoted_at         DATETIME DEFAULT CURRENT_TIMESTAMP,
+    snapshot_count      INTEGER DEFAULT 0    -- number of entries migrated
+);
+
+-- Compaction hints: Phase 2 compression policy registry
+CREATE TABLE IF NOT EXISTS compaction_hints (
+    id              TEXT PRIMARY KEY,
+    scope_layer     TEXT NOT NULL,
+    scope_id        TEXT NOT NULL,
+    policy          TEXT NOT NULL,           -- 'dedup', 'compress', 'archive'
+    trigger_count   INTEGER DEFAULT 0,       -- fire after N writes
+    fired_at        DATETIME,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 """
 
 # Indexes for performance
@@ -99,6 +137,10 @@ CREATE INDEX IF NOT EXISTS idx_action_proposals_status ON action_proposals(statu
 CREATE INDEX IF NOT EXISTS idx_event_log_timestamp ON event_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_working_memory_tags ON working_memory(domain_tags);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_memory_scope ON memory_entries(layer, scope_id);
+CREATE INDEX IF NOT EXISTS idx_memory_layer_key ON memory_entries(layer, scope_id, key);
+CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_entries(tags);
+CREATE INDEX IF NOT EXISTS idx_compaction_scope ON compaction_hints(scope_layer, scope_id);
 """
 
 
@@ -140,6 +182,9 @@ def health_check() -> dict:
         "strategy_change_proposals",
         "conversations",
         "messages",
+        "memory_entries",
+        "session_promotions",
+        "compaction_hints",
     ]
 
     conn = get_connection()
@@ -187,6 +232,11 @@ def seed_default_agents() -> None:
                 "When given a goal, analyze the shared context, identify what code "
                 "information is needed, and propose specific actions. "
                 "Always respond with a valid JSON action proposal.",
+            ),
+            (
+                "unknown",
+                "unknown",
+                "Placeholder agent for unmatched routing situations.",
             ),
         ]
 

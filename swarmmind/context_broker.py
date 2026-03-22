@@ -11,6 +11,7 @@ from swarmmind.models import (
     ActionProposal,
     DispatchResponse,
     EventLogEntry,
+    MemoryContext,
     ProposalStatus,
     SupervisorDecision,
 )
@@ -151,15 +152,28 @@ def log_dispatch(
         conn.close()
 
 
-def dispatch(goal: str) -> DispatchResponse:
+def dispatch(
+    goal: str,
+    user_id: str = "default_user",
+    project_id: str | None = None,
+    team_id: str | None = None,
+    session_id: str | None = None,
+) -> DispatchResponse:
     """
     Main dispatch entry point.
 
-    1. Derive situation_tag from goal (keyword extraction)
-    2. Look up strategy_table for routing
-    3. Log to event_log
-    4. Return action_proposal_id for supervisor review
+    1. Build MemoryContext from scope parameters
+    2. Derive situation_tag from goal (keyword extraction)
+    3. Look up strategy_table for routing
+    4. Log to event_log
+    5. Return action_proposal_id for supervisor review + MemoryContext
     """
+    memory_ctx = MemoryContext(
+        user_id=user_id,
+        project_id=project_id,
+        team_id=team_id,
+        session_id=session_id,
+    )
     situation_tag = derive_situation_tag(goal)
     agent_id = route_to_agent(situation_tag)
 
@@ -192,6 +206,7 @@ def dispatch(goal: str) -> DispatchResponse:
             action_proposal_id=proposal.id,
             agent_id="unknown",
             status="no_route",
+            memory_ctx=memory_ctx,
         )
 
     # Create a placeholder proposal — the actual agent will update description
@@ -212,6 +227,7 @@ def dispatch(goal: str) -> DispatchResponse:
         action_proposal_id=proposal.id,
         agent_id=agent_id,
         status="pending",
+        memory_ctx=memory_ctx,
     )
 
 

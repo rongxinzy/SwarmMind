@@ -29,6 +29,7 @@ from swarmmind.models import (
     ConversationListResponse,
     DispatchResponse,
     GoalRequest,
+    MemoryContext,
     Message,
     MessageListResponse,
     PendingResponse,
@@ -258,7 +259,12 @@ def get_strategy():
 def post_dispatch(body: GoalRequest):
     """Submit a new goal for dispatch to an agent."""
     try:
-        result = dispatch(body.goal)
+        session_id = str(uuid.uuid4())
+        result = dispatch(
+            body.goal,
+            user_id="supervisor",
+            session_id=session_id,
+        )
         return result
     except Exception as e:
         logger.error("Dispatch error: %s", e)
@@ -393,6 +399,12 @@ def send_message(conversation_id: str, body: SendMessageRequest):
     finally:
         conn.close()
 
+    # Build MemoryContext using conversation_id as session_id
+    memory_ctx = MemoryContext(
+        user_id="supervisor",
+        session_id=conversation_id,
+    )
+
     # Route through ContextBroker — use lightweight check first to avoid creating orphaned proposals
     situation_tag = derive_situation_tag(body.content)
     routed_agent_id = route_to_agent(situation_tag)
@@ -410,7 +422,11 @@ def send_message(conversation_id: str, body: SendMessageRequest):
             ai_response = f"I received your message: {body.content}. How can I help you?"
     else:
         # Agent matched — full dispatch, auto-approve, and execute
-        dispatch_result = dispatch(body.content)
+        dispatch_result = dispatch(
+            body.content,
+            user_id="supervisor",
+            session_id=conversation_id,
+        )
         proposal_id = dispatch_result.action_proposal_id
         agent_id = dispatch_result.agent_id
 
@@ -429,7 +445,7 @@ def send_message(conversation_id: str, body: SendMessageRequest):
         # Log supervisor decision
         record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
 
-        # Execute the agent
+        # Execute the agent with MemoryContext
         try:
             if agent_id == "finance":
                 agent = FinanceAgent()
@@ -438,7 +454,7 @@ def send_message(conversation_id: str, body: SendMessageRequest):
             else:
                 raise ValueError(f"Unknown agent_id: {agent_id}")
 
-            completed_proposal = agent.act(body.content, proposal_id)
+            completed_proposal = agent.act(body.content, proposal_id, ctx=memory_ctx)
             ai_response = completed_proposal.description
         except Exception as e:
             logger.error("Agent execution error: %s", e)

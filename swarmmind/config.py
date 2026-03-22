@@ -30,3 +30,10 @@ AGENT_POLL_INTERVAL = int(os.environ.get("AGENT_POLL_INTERVAL", "5"))
 # Shared memory retry config
 MEMORY_MAX_RETRIES = 3
 MEMORY_RETRY_DELAY_MS = 100
+
+# Layered memory TTL config
+MEMORY_DEFAULT_L1_TTL_SECONDS = 86400  # 24 hours
+MEMORY_MAX_TTL_SECONDS = 604800       # 7 days
+
+# L4 USER_SOUL write authorization — only these agents may write to L4
+SOUL_WRITER_AGENT_IDS = {"soul_writer"}
