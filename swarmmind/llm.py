@@ -4,9 +4,12 @@ Phase 1: uses litellm for both streaming and non-streaming calls.
 Phase 2: swap this implementation for any provider's SDK.
 """
 
-import json
+from __future__ import annotations
+
 import logging
 import os
+from dataclasses import dataclass
+from typing import Literal
 
 import litellm
 
@@ -14,10 +17,114 @@ from swarmmind.config import LLM_API_KEY, LLM_BASE_URL, LLM_MODEL, LLM_PROVIDER
 
 logger = logging.getLogger(__name__)
 
+# Enable LiteLLM features for cross-provider compatibility:
+# - drop_params=True: silently drops params the model doesn't support (no error)
+# - modify_params=True: auto-translates params across provider boundaries
+litellm.drop_params = True
+litellm.modify_params = True
+
 
 class LLMError(Exception):
     """Base exception for LLM errors."""
     pass
+
+
+# ---- Reasoning configuration ----
+
+ReasoningLevel = Literal["none", "minimum", "low", "medium", "high", "xhigh"]
+
+
+@dataclass
+class ReasoningConfig:
+    """
+    Unified reasoning/thinking config — single interface across all providers.
+
+    Args:
+        enabled: whether to enable extended reasoning (default False for speed).
+        level: reasoning effort level (only meaningful when enabled=True).
+               Values: none | minimum | low | medium | high | xhigh
+               DashScope qwen: none=off, minimum=ultra-short, low/medium/high/xhigh = increasing depth.
+               OpenAI: maps to reasoning_effort values.
+               Anthropic: maps to thinking budget_tokens.
+    """
+
+    enabled: bool = False
+    level: ReasoningLevel = "medium"
+
+
+# ---- Per-provider reasoning parameter mapping ----
+#
+# Each provider uses different field names and value schemes.
+# Keys are provider prefixes used in litellm model strings (e.g. "openai/", "anthropic/").
+# Values are callables that translate ReasoningConfig → extra_body dict.
+
+_PROVIDER_REASONING_HANDLERS: dict[str, callable[[ReasoningConfig], dict]] = {}
+
+
+def _register_reasoning_handler(provider_prefix: str):
+    """Decorator to register a reasoning handler for a provider prefix."""
+
+    def decorator(func: callable[[ReasoningConfig], dict]):
+        _PROVIDER_REASONING_HANDLERS[provider_prefix] = func
+        return func
+
+    return decorator
+
+
+@_register_reasoning_handler("openai/")
+def _openai_reasoning(cfg: ReasoningConfig) -> dict:
+    """
+    OpenAI (and OpenAI-compatible APIs like DashScope):
+    - reasoning_effort=none → disable extended reasoning
+    - reasoning_effort=minimum|low|medium|high|xhigh → set reasoning depth
+    """
+    if not cfg.enabled:
+        return {"reasoning_effort": "none"}
+    return {"reasoning_effort": cfg.level}
+
+
+@_register_reasoning_handler("anthropic/")
+def _anthropic_reasoning(cfg: ReasoningConfig) -> dict:
+    """
+    Anthropic Claude:
+    - thinking.type="disabled" when disabled
+    - thinking.type="enabled" + budget_tokens when enabled
+    """
+    if not cfg.enabled:
+        return {"thinking": {"type": "disabled"}}
+    # Map level to approximate token budget
+    budget_map: dict[ReasoningLevel, int] = {
+        "none": 0,
+        "minimum": 256,
+        "low": 512,
+        "medium": 1024,
+        "high": 2048,
+        "xhigh": 4096,
+    }
+    return {"thinking": {"type": "enabled", "budget_tokens": budget_map[cfg.level]}}
+
+
+def apply_reasoning_config(model: str, cfg: ReasoningConfig) -> dict:
+    """
+    Translate ReasoningConfig to provider-specific extra_body dict.
+
+    Falls back to OpenAI-style (reasoning_effort) for unregistered providers,
+    which covers DashScope, Ollama, and most OpenAI-compatible APIs.
+    """
+    for prefix, handler in _PROVIDER_REASONING_HANDLERS.items():
+        if model.startswith(prefix):
+            return handler(cfg)
+    # Default: assume OpenAI-compatible (DashScope, Ollama, etc.)
+    return _openai_reasoning(cfg)
+
+
+def _clear_proxy_env() -> dict:
+    """Remove proxy env vars to prevent proxy interference with LLM API calls."""
+    env_backup = {}
+    for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
+        if var in os.environ:
+            env_backup[var] = os.environ.pop(var)
+    return env_backup
 
 
 class LLMClient:
@@ -66,9 +173,10 @@ class LLMClient:
         }
         if self.base_url:
             kwargs["api_base"] = self.base_url
-        # Disable thinking/reasoning mode for speed when not needed (DashScope qwen models)
-        if not reasoning:
-            kwargs["extra_body"] = {"think": False}
+
+        # Apply unified reasoning config (provider-specific parameter translation)
+        reason_cfg = ReasoningConfig(enabled=reasoning)
+        kwargs["extra_body"] = apply_reasoning_config(litellm_model, reason_cfg)
 
         # litellm respects this for per-request timeout
         kwargs["request_timeout"] = 120
@@ -77,11 +185,7 @@ class LLMClient:
         kwargs["max_retries"] = 0
 
         # Clear proxy env vars for this request to prevent proxy interference
-        # DashScope calls should go direct, not through any proxy
-        env_backup = {}
-        for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
-            if var in os.environ:
-                env_backup[var] = os.environ.pop(var)
+        env_backup = _clear_proxy_env()
 
         try:
             response = litellm.completion(**kwargs)
@@ -116,15 +220,13 @@ class LLMClient:
         }
         if self.base_url:
             kwargs["api_base"] = self.base_url
-        # Disable thinking/reasoning mode for speed when not needed (DashScope qwen models)
-        if not reasoning:
-            kwargs["extra_body"] = {"think": False}
+
+        # Apply unified reasoning config (provider-specific parameter translation)
+        reason_cfg = ReasoningConfig(enabled=reasoning)
+        kwargs["extra_body"] = apply_reasoning_config(litellm_model, reason_cfg)
 
         # Clear proxy env vars for this request to prevent proxy interference
-        env_backup = {}
-        for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
-            if var in os.environ:
-                env_backup[var] = os.environ.pop(var)
+        env_backup = _clear_proxy_env()
 
         try:
             stream_resp = await litellm.acompletion(**kwargs)
