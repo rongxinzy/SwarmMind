@@ -400,7 +400,11 @@ def send_message(conversation_id: str, body: SendMessageRequest):
     if routed_agent_id is None:
         # No agent matched — fall back to direct LLM (no proposal created)
         try:
-            ai_response = render_status(body.content, reasoning=body.reasoning)
+            enhanced_content = (
+                f"[respond_in_language] Detect the language of the text below "
+                f"and respond in that same language.\nText: {body.content}\n"
+            )
+            ai_response = render_status(enhanced_content, reasoning=body.reasoning)
         except Exception as e:
             logger.error("render_status error: %s", e)
             ai_response = f"I received your message: {body.content}. How can I help you?"
@@ -492,7 +496,11 @@ async def chat(request: ChatRequest):
     """
     try:
         # Run blocking LLM call in thread pool to avoid blocking the event loop
-        summary = await asyncio.to_thread(render_status, request.message, request.reasoning)
+        enhanced_message = (
+            f"[respond_in_language] Detect the language of the text below "
+            f"and respond in that same language.\nText: {request.message}\n"
+        )
+        summary = await asyncio.to_thread(render_status, enhanced_message, request.reasoning)
         return ChatResponse(response=summary)
     except Exception as e:
         logger.error("Chat error: %s", e)
@@ -503,7 +511,11 @@ async def _stream_chat(request: ChatRequest):
     """Async generator for streaming chat responses in data-stream format."""
     import json
 
-    messages = [{"role": "user", "content": request.message}]
+    enhanced_message = (
+        f"[respond_in_language] Detect the language of the text below "
+        f"and respond in that same language.\nText: {request.message}\n"
+    )
+    messages = [{"role": "user", "content": enhanced_message}]
     try:
         client = LLMClient()
     except LLMError as e:

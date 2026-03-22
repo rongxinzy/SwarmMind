@@ -42,7 +42,8 @@ progress, and what might be missing.
 </system>
 
 <goal>
-{goal}
+[respond_in_language] Detect the language of the text below and respond in that same language.
+Text: {goal}
 </goal>
 
 <shared_context>
