@@ -46,6 +46,17 @@ SwarmMind is the answer.
 
 **The shift:** *"humans are the main actors, AI is the assistant"* → ***AI agent teams are the main actors, humans are the referees.***
 
+## Enterprise Use Cases
+
+SwarmMind transforms how enterprises operate at scale:
+
+| Use Case | What it replaces | Value |
+|----------|-----------------|-------|
+| **Automated periodic briefings** | Weekly ops digests, monthly P&L decks | Consistent, always current, zero human compilation |
+| **Anomaly alerts** | Exception reports, flagged KPIs | Proactive — detects patterns humans miss |
+| **Cross-system research** | "I'll need to ask 5 departments for that" | One question, aggregated across all systems |
+| **Deep-dive investigations** | Days of back-and-forth with analysts | Minutes — AI reads everything, answers precisely |
+
 ---
 
 ## What is SwarmMind
@@ -89,6 +100,30 @@ The core OS insight: **multiple independent entities don't need to know each oth
 ```
 
 **Why not message passing?** Imagine two human experts in the same room — they don't email each other, they share a whiteboard. SwarmMind is that shared room for AI agents.
+
+**For Enterprises — the "Last Mile" AI Connector**
+
+While big tech builds general AI frameworks, SwarmMind solves a different problem: connecting your existing enterprise data to AI capabilities that actually ship to production.
+
+Most enterprises have data scattered across OA systems, CRM, finance, HR, legacy platforms — but their AI initiatives stall at the PoC stage because no one has solved the "last mile" of data integration, permissions, and operational workflows. SwarmMind is that bridge: we aggregate your internal data via MCP/Skills protocols, wrap it with governance and audit controls, and give your team — especially decision-makers who don't write code — a way to actually interrogate that data like a research conversation.
+
+**The Information Decay Problem**
+
+In a traditional company, information from the shop floor takes weeks to reach the CEO — filtered through layers of management, summarized in presentations, stripped of nuance. By the time it reaches a decision-maker, the signal has degraded: exceptions get normalized, context disappears, and early warning signs get smoothed into scheduled reports.
+
+This isn't a communication failure — it's structural. The same reporting hierarchy that distributes authority also filters information.
+
+Leaders who see this clearly (Zuckerberg reportedly building a personal AI to cut through corporate hierarchy is one signal) are moving toward direct data access. SwarmMind gives every organization that capability. Your leadership team can ask:
+
+- *"What caused this month's gross margin decline?"*
+- *"What common patterns predict customer churn?"*
+- *"Which projects are behind schedule and why?"*
+
+Not static dashboards. Not scheduled reports. A live conversation with your organization's data — one that can be queried deeply, challenged, and refined.
+
+**Enterprise-Grade Foundation**
+
+SwarmMind is built for production use from day one: syscall and MCP permission boundaries, data classification, audit logs, and rollback support for critical operations. We don't treat security as an afterthought.
 
 ---
 
@@ -163,6 +198,8 @@ The open source community will contribute: new agent types, better routing algor
 | **Phase 2a** | **Collaboration Trace Visibility** — replay the full agent reasoning process after each task | 🚧 In Progress |
 | **Phase 2b** | **Real-time Collaboration + Human Guidance** — live SSE stream, intervention API, user accounts | 📋 Planned |
 | **Phase 3** | **Dynamic Agent Onboarding + Autonomous Mode** — system proposes new agents, confident tasks auto-execute | 📋 Planned |
+| **Phase 2c** | **Enterprise Data Connectors** — pre-built MCP integrations for common enterprise systems (OA, CRM, finance) | 📋 Planned |
+| **Phase 3b** | **Private Skills Marketplace** — white-listable plugin ecosystem for enterprise-extensible agent capabilities | 📋 Planned |
 
 ### Phase 2a: Collaboration Trace Visibility
 
