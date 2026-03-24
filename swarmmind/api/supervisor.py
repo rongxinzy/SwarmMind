@@ -389,21 +389,16 @@ def send_message(conversation_id: str, body: SendMessageRequest):
     2. If routed: auto-approve, execute agent, use result as response
     3. If no_route: fall back to render_status() (direct LLM)
     """
-    # Validate conversation first
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
-        if cursor.fetchone() is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-    finally:
-        conn.close()
-
-    # Save user message
+    # Save user message (validates conversation exists via FK or explicit check)
     user_msg_id = str(uuid.uuid4())
     conn = get_connection()
     try:
         cursor = conn.cursor()
+        # Validate conversation exists
+        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
+        if cursor.fetchone() is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        # Insert user message
         cursor.execute(
             "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
             (user_msg_id, conversation_id, "user", body.content),

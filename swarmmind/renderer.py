@@ -9,19 +9,26 @@ from swarmmind.models import MemoryContext
 logger = logging.getLogger(__name__)
 
 
-def render_status(goal: str, reasoning: bool = False) -> str:
+def render_status(goal: str, ctx: MemoryContext | None = None, reasoning: bool = False) -> str:
     """
     LLM Status Renderer: given a goal, read all relevant shared context
     and generate a human-readable prose summary.
 
+    Args:
+        goal: the supervisor's query.
+        ctx: optional memory context to scope reads to specific session/team/project.
+             When None, reads all layers — use this when no session context is available
+             (e.g., a supervisor checking status without an active conversation).
+        reasoning: whether to enable LLM reasoning/thinking mode.
+
     Phase 1: returns prose summary only.
     Phase 2: LLM decides format (prose / table / Gantt).
     """
-    # Read all layered memory entries across all scopes
+    # Read layered memory — ctx=None means all layers, which is correct for
+    # a status check that has no session context. Callers that have a ctx
+    # (e.g. conversation_id as session_id) should pass it for scoped reads.
     memory = LayeredMemory(agent_id="status_renderer")
-    # Use a default user context to access all layers
-    default_ctx = MemoryContext(user_id="default_user")
-    all_entries = memory.read_all(ctx=default_ctx)
+    all_entries = memory.read_all(ctx=ctx)
 
     # Build context string for LLM
     if all_entries:
@@ -97,6 +104,6 @@ Respond with ONLY the title. No quotes, no explanation. Just the title itself.""
         if len(title) > 50:
             title = title[:47] + "..."
         return title
-    except Exception as e:
+    except LLMError as e:
         logger.error("Title generation error: %s", e)
         return user_message[:50] + ("..." if len(user_message) > 50 else "")

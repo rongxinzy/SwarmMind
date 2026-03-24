@@ -8,10 +8,16 @@ import json
 import logging
 
 from swarmmind.agents.base import BaseAgent
+
+# DeerFlow event types (from deerflow-core/src/deerflow-core/logging_handler.py)
+_DEERFLOW_EVENT_MESSAGES = "messages-tuple"
+_DEERFLOW_MSG_AI = "ai"
+_DEERFLOW_MSG_TOOL = "tool"
+_DEERFLOW_EVENT_END = "end"
 from swarmmind.config import DEER_FLOW_CONFIG_PATH
 from swarmmind.context_broker import update_proposal_result
 from swarmmind.db import get_connection
-from swarmmind.models import ActionProposal, MemoryContext, ProposalStatus
+from swarmmind.models import ActionProposal, MemoryContext
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +33,6 @@ class GeneralAgent(BaseAgent):
     def __init__(
         self,
         deer_flow_config_path: str | None = None,
-        skills_path: str | None = None,
         default_model: str | None = None,
         thinking_enabled: bool = True,
     ):
@@ -35,7 +40,6 @@ class GeneralAgent(BaseAgent):
         super().__init__(agent_id="general", domain="general")
 
         self._config_path = deer_flow_config_path or DEER_FLOW_CONFIG_PATH
-        self._skills_path = skills_path
         self._default_model = default_model
         self._thinking_enabled = thinking_enabled
 
@@ -83,18 +87,18 @@ class GeneralAgent(BaseAgent):
 
         try:
             for event in self._client.stream(goal, thread_id=thread_id):
-                if event.type == "messages-tuple":
+                if event.type == _DEERFLOW_EVENT_MESSAGES:
                     data = event.data
                     msg_type = data.get("type", "")
-                    if msg_type == "ai":
+                    if msg_type == _DEERFLOW_MSG_AI:
                         content = data.get("content", "")
                         if content:
                             final_text = content
-                    elif msg_type == "tool":
+                    elif msg_type == _DEERFLOW_MSG_TOOL:
                         tool_name = data.get("name", "unknown")
                         tool_content = data.get("content", "")
                         tool_results.append(f"[{tool_name}]: {tool_content[:200]}")
-                elif event.type == "end":
+                elif event.type == _DEERFLOW_EVENT_END:
                     pass
         except Exception as e:
             logger.error("DeerFlow stream error: %s", e)
@@ -109,9 +113,10 @@ class GeneralAgent(BaseAgent):
             final_text = "DeerFlow processed the request but returned no text output."
 
         # Build a description from the final text (truncated for DB)
-        description = final_text[:1000] if len(final_text) > 1000 else final_text
         if len(final_text) > 1000:
             description = final_text[:997] + "..."
+        else:
+            description = final_text
 
         # Update proposal with result
         update_proposal_result(
@@ -159,18 +164,5 @@ class GeneralAgent(BaseAgent):
             cursor.execute("SELECT * FROM action_proposals WHERE id = ?", (action_proposal_id,))
             row = cursor.fetchone()
             return ActionProposal(**dict(row))
-        finally:
-            conn.close()
-
-    def _create_rejected_proposal(self, proposal_id: str, description: str) -> None:
-        """Update a proposal to rejected status with error description."""
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE action_proposals SET status = ?, description = ? WHERE id = ?",
-                (ProposalStatus.REJECTED.value, description, proposal_id),
-            )
-            conn.commit()
         finally:
             conn.close()
