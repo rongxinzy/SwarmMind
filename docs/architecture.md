@@ -1360,16 +1360,26 @@ swarmmind/
 
 1. **Remote Agent 的生命周期管理**
    - OpenClaw 等远程 Agent 如何启动/停止？
+     - 我们应该有能力使用容器技术临时启动一个openClaw实例
+     - 如果有外部已经启动的openClaw实例, 只要告诉我们gateway地址和token, 我们也可以纳管, 但是这种情况我们不会负责管理它的生命周期, 但是可以给它安排工作. 
    - SwarmMind 是否负责管理这些进程的生死？
-
+     - 是我们启动的, 我们就管, 不是的不管. 
+   
 2. **Remote Adapter 的健康检查频率**
    - 多久检查一次远程 Agent 是否存活？
+     - 定期检查
+     - 分配工作之前检查
    - 不可用时如何降级？
-
+     - 路由到其他agent
+     - 再启动一个(如果可行的话)
+   
 3. **Adapter 级别的认证和限流**
    - 不同 Adapter 可能有不同的 API Key、限流策略
+     - 我还没去想
    - 如何统一管理？
-
+     - 用数据库 ? 
+   
 4. **Phase 2 的 Finance Agent / Code Review Agent 如何迁移？**
    - 选项 A：保留为 Local Adapter，内部委托给 SkillExecutor
    - 选项 B：完全废弃，Adapter 替代
+   - 我选B
