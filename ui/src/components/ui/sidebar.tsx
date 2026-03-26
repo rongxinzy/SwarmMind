@@ -117,14 +117,14 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
                 className={cn(
                   "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[13px] transition-colors",
                   activeView === item.value
-                    ? "bg-secondary text-foreground font-medium"
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
                 <span className="opacity-60">{item.icon}</span>
                 <span>{item.label}</span>
                 {item.badge && (
-                  <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded bg-border text-muted-foreground">
+                  <span className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded text-muted-foreground">
                     {item.badge}
                   </span>
                 )}
