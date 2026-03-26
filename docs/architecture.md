@@ -1,6 +1,6 @@
 # SwarmMind 架构文档
 
-> 版本：v0.4.1（草案） 状态：持续演进 调研来源：DeerFlow（bytedance）、OpenSpace（HKUDS）、OpenClaw
+> 版本：v0.4.2（草案） 状态：持续演进 调研来源：DeerFlow（bytedance）、OpenSpace（HKUDS）、OpenClaw
 
 ------
 
@@ -1402,7 +1402,43 @@ swarmmind/
 
 ------
 
-## 十二、开放问题
+## 十二、开源组件选型
+
+SwarmMind 的每个模块都有成熟的开源库可以直接用作零件，不需要从零实现。下表按模块列出推荐选型和使用方式。
+
+### 12.1 可直接复用的部分
+
+| 模块                      | 推荐库                                   | 说明                                                      |
+| ------------------------- | ---------------------------------------- | --------------------------------------------------------- |
+| LayeredMemory 存储层      | **SQLAlchemy** + SQLite / PostgreSQL     | TTL 惰性检查、CAS 乐观锁均有现成 recipe，不需要自己写 SQL |
+| RemoteAdapter HTTP 客户端 | **httpx**                                | `stream()` 原生支持 SSE 流式，无额外依赖                  |
+| Supervisor 审批 UI        | **Streamlit** 或 **Gradio**              | Phase 1 两天可出可用原型，无需写前端                      |
+| 后台健康检查心跳          | **APScheduler** 或 `asyncio.create_task` | 无需引入消息队列，原生异步即可                            |
+| Supervisor 审批等待       | **FastAPI** + WebSocket 或长轮询         | `wait_for_decision()` 的实现载体，不需要自己实现消息总线  |
+
+### 12.2 可部分复用的部分
+
+| 模块                                             | 推荐库                      | 说明                                                         |
+| ------------------------------------------------ | --------------------------- | ------------------------------------------------------------ |
+| AgentRegistry Phase 2 路由                       | **LiteLLM Router**          | 已实现按延迟、成功率、负载选后端的逻辑，映射到 Adapter 名称即可复用 |
+| `_derive_situation_tag()` Phase 2 embedding 路由 | **ChromaDB** 或 **LanceDB** | 直接托管向量索引，不需要自己维护                             |
+| SoulManager 特质提炼引擎                         | **mem0**                    | 定位与 L4 USER_SOUL 高度重合（从对话历史提炼用户记忆），可直接作为 SoulManager 的后端引擎 |
+
+### 12.3 LocalAdapter 本身就是薄 wrapper
+
+DeerFlow 和 OpenSpace 本身是可 import 的库，LocalAdapter 的主体工作只是调用它们的方法并做格式转换。真正需要手写的只有 `_normalize_proposal()` 和 `_normalize_execution()`，即把各框架的原生返回格式转成 SwarmMind 的 dataclass，针对每个框架写一次。
+
+### 12.4 必须自己实现的部分
+
+以下三块是 SwarmMind 的业务逻辑核心，没有现成轮子，但代码量都不大：
+
+- **`ContextBroker` 主流程**：`propose → 审批等待 → execute → commit writes` 的调度逻辑
+- **各框架的 `_normalize_\*` 转换**：针对每个接入框架写一次，纯体力活
+- **`TeamOrchestrator` 调度逻辑**：Role 的执行顺序、并行 vs 串行策略、partial failure 处理
+
+------
+
+## 十三、开放问题
 
 1. **Remote Agent 的生命周期管理**
    - 我们启动的实例（如容器化 OpenClaw）由 SwarmMind 负责生命周期
