@@ -160,12 +160,12 @@ make status        # show PM2 status
 - **Use `pm2 stop`** to stop processes gracefully — this prevents auto-restart
 - **DO NOT use `kill -9`** on PM2-managed processes — PM2 detects death and auto-restarts, creating a zombie loop
 - Only use `kill -9` as a last resort if `pm2 stop` hangs
-- `make restart` uses `pm2 restart` (not delete+start) — avoids "address already in use" errors from port release timing
+- `make restart` keeps the backend on `pm2 restart`, but recreates the frontend process so the UI always picks up the current repo `cwd`
 
 **Individual services (local dev):**
 ```bash
 make restart-api   # restart backend only (pick up code changes)
-make restart-ui    # restart frontend only
+ make restart-ui    # recreate frontend only (fixes stale PM2 cwd)
 make restart       # restart both
 make backend       # start backend only (first time)
 make frontend      # start frontend only (first time)

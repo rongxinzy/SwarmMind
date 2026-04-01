@@ -35,6 +35,24 @@
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
     --sidebar-ring: oklch(0.708 0 0);
+    --status-running: oklch(0.54 0.13 248);
+    --status-running-bg: oklch(0.96 0.02 248);
+    --status-running-border: oklch(0.9 0.03 248);
+    --status-approval: oklch(0.64 0.14 82);
+    --status-approval-bg: oklch(0.97 0.03 88);
+    --status-approval-border: oklch(0.9 0.05 88);
+    --status-blocked: oklch(0.66 0.18 38);
+    --status-blocked-bg: oklch(0.97 0.03 38);
+    --status-blocked-border: oklch(0.9 0.05 38);
+    --status-done: oklch(0.58 0.13 153);
+    --status-done-bg: oklch(0.96 0.03 153);
+    --status-done-border: oklch(0.9 0.04 153);
+    --status-chat: oklch(0.47 0 0);
+    --status-chat-bg: oklch(0.97 0 0);
+    --status-chat-border: oklch(0.9 0 0);
+    --status-draft: oklch(0.43 0.01 250);
+    --status-draft-bg: oklch(0.96 0.01 250);
+    --status-draft-border: oklch(0.9 0.01 250);
 
     /* Typography */
     --font-sans: "Geist", system-ui, -apple-system, sans-serif;
@@ -69,6 +87,24 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(0.2 0 0);
     --sidebar-ring: oklch(0.556 0 0);
+    --status-running: oklch(0.76 0.11 248);
+    --status-running-bg: oklch(0.24 0.04 248);
+    --status-running-border: oklch(0.32 0.05 248);
+    --status-approval: oklch(0.82 0.11 88);
+    --status-approval-bg: oklch(0.24 0.03 88);
+    --status-approval-border: oklch(0.32 0.04 88);
+    --status-blocked: oklch(0.78 0.15 38);
+    --status-blocked-bg: oklch(0.25 0.04 38);
+    --status-blocked-border: oklch(0.34 0.05 38);
+    --status-done: oklch(0.8 0.11 153);
+    --status-done-bg: oklch(0.24 0.03 153);
+    --status-done-border: oklch(0.32 0.04 153);
+    --status-chat: oklch(0.84 0 0);
+    --status-chat-bg: oklch(0.22 0 0);
+    --status-chat-border: oklch(0.3 0 0);
+    --status-draft: oklch(0.82 0.02 250);
+    --status-draft-bg: oklch(0.22 0.01 250);
+    --status-draft-border: oklch(0.3 0.01 250);
   }
 
   * {
@@ -82,5 +118,47 @@
 
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .status-pill {
+    @apply border font-medium;
+  }
+
+  .status-pill-running {
+    color: var(--status-running);
+    background-color: var(--status-running-bg);
+    border-color: var(--status-running-border);
+  }
+
+  .status-pill-approval {
+    color: var(--status-approval);
+    background-color: var(--status-approval-bg);
+    border-color: var(--status-approval-border);
+  }
+
+  .status-pill-blocked {
+    color: var(--status-blocked);
+    background-color: var(--status-blocked-bg);
+    border-color: var(--status-blocked-border);
+  }
+
+  .status-pill-done {
+    color: var(--status-done);
+    background-color: var(--status-done-bg);
+    border-color: var(--status-done-border);
+  }
+
+  .status-pill-chat {
+    color: var(--status-chat);
+    background-color: var(--status-chat-bg);
+    border-color: var(--status-chat-border);
+  }
+
+  .status-pill-draft {
+    color: var(--status-draft);
+    background-color: var(--status-draft-bg);
+    border-color: var(--status-draft-border);
   }
 }
