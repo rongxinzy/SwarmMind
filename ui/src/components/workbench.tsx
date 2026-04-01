@@ -1,9 +1,9 @@
 import {
   AlertTriangle,
-  ArrowRight,
   Bot,
   CheckCircle2,
   Clock3,
+  Compass,
   FileText,
   FolderKanban,
   ShieldCheck,
@@ -25,12 +25,12 @@ import { cn } from "@/lib/utils"
 type Tone = "running" | "approval" | "blocked" | "done" | "chat" | "draft"
 
 const toneClasses: Record<Tone, string> = {
-  running: "status-pill status-pill-running",
-  approval: "status-pill status-pill-approval",
-  blocked: "status-pill status-pill-blocked",
-  done: "status-pill status-pill-done",
-  chat: "status-pill status-pill-chat",
-  draft: "status-pill status-pill-draft",
+  running: "status-pill-running",
+  approval: "status-pill-approval",
+  blocked: "status-pill-blocked",
+  done: "status-pill-done",
+  chat: "status-pill-chat",
+  draft: "status-pill-draft",
 }
 
 const recentProjects = [
@@ -83,10 +83,25 @@ const runningTeams = [
   },
 ]
 
-const recentSessions = [
-  "CRM 报表范围是否应纳入首期",
-  "GitLab MCP 接入方案比较",
-  "招聘流程自动化是否先做面试安排",
+const focusQueue = [
+  {
+    title: "把 Enterprise CRM 提升为正式项目",
+    detail: "当前需求已超过临时对话范围，下一步应挂载 Team 模板并进入审批闭环。",
+    tone: "running" as const,
+    label: "建议现在处理",
+  },
+  {
+    title: "收口 GitLab MCP 权限方案",
+    detail: "先确认最小权限边界，再决定是否纳入默认项目模板。",
+    tone: "approval" as const,
+    label: "等待决策",
+  },
+  {
+    title: "整理招聘流程自动化的验收口径",
+    detail: "把分散在探索对话里的结论沉淀为项目摘要和产物目录。",
+    tone: "draft" as const,
+    label: "需要落档",
+  },
 ]
 
 const recentArtifacts = [
@@ -97,7 +112,7 @@ const recentArtifacts = [
 
 function ToneBadge({ children, tone }: { children: React.ReactNode; tone: Tone }) {
   return (
-    <Badge variant="outline" className={cn("rounded-full border px-2.5", toneClasses[tone])}>
+    <Badge variant="outline" className={cn("rounded-full px-2.5", toneClasses[tone])}>
       {children}
     </Badge>
   )
@@ -115,7 +130,7 @@ function ListRow({
   tone?: Tone
 }) {
   return (
-    <button className="flex w-full items-start gap-3 rounded-xl border border-transparent px-1 py-2 text-left transition-colors hover:border-border hover:bg-muted/40">
+    <Button variant="ghost" className="h-auto w-full items-start justify-start gap-3 whitespace-normal px-2 py-2 font-normal hover:bg-muted/50">
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium text-foreground">{title}</span>
@@ -124,7 +139,7 @@ function ListRow({
         <p className="text-xs text-muted-foreground">{subtitle}</p>
       </div>
       {!tone ? <span className="text-xs text-muted-foreground">{meta}</span> : null}
-    </button>
+    </Button>
   )
 }
 
@@ -137,12 +152,18 @@ export function Workbench({
   onOpenProjects: () => void
   onOpenApprovals: () => void
 }) {
+  const focusActions = [
+    { label: "进入项目空间", onClick: onOpenProjects },
+    { label: "查看待审批", onClick: onOpenApprovals },
+    { label: "发起新对话", onClick: onStartChat },
+  ] as const
+
   return (
-    <div className="min-h-full bg-muted/30">
+    <div className="min-h-full bg-background">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-4 p-4 md:p-6">
         <section className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.95fr)]">
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="gap-3 border-b">
+          <Card>
+            <CardHeader className="gap-3">
               <div className="flex flex-wrap items-center gap-2">
                 <ToneBadge tone="chat">Chat first</ToneBadge>
                 <ToneBadge tone="running">3 个项目推进中</ToneBadge>
@@ -158,14 +179,14 @@ export function Workbench({
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-4 pt-5">
-              <div className="rounded-2xl border border-border bg-muted/20 p-3">
+              <div className="rounded-lg border bg-background p-3">
                 <Textarea
                   readOnly
                   value=""
                   placeholder="输入一句目标，例如：帮我梳理 CRM MVP 的模块边界，并判断现在是否应该立项。"
-                  className="min-h-[124px] resize-none border-none bg-transparent px-0 py-0 text-[15px] shadow-none focus-visible:border-none focus-visible:ring-0"
+                  className="min-h-[124px] resize-none border-none bg-transparent px-0 py-0 text-sm shadow-none focus-visible:border-none focus-visible:ring-0"
                 />
-                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                <div className="flex flex-wrap items-center gap-2 border-t pt-3">
                   <Button onClick={onStartChat} size="lg" className="gap-2">
                     <Sparkles className="size-4" />
                     新建对话
@@ -182,24 +203,24 @@ export function Workbench({
               </div>
 
               <div className="grid gap-3 lg:grid-cols-3">
-                <div className="rounded-2xl border bg-background p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-xs font-medium text-muted-foreground">
                     入口原则
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     Chat 用于探索，Project 用于执行和治理。
                   </p>
                 </div>
-                <div className="rounded-2xl border bg-background p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-xs font-medium text-muted-foreground">
                     Agent Team
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
                     用户看到的是 Team，项目内实际挂载的是 Team 实例。
                   </p>
                 </div>
-                <div className="rounded-2xl border bg-background p-4">
-                  <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-xs font-medium text-muted-foreground">
                     今天建议
                   </p>
                   <p className="mt-2 text-sm font-medium text-foreground">
@@ -210,8 +231,8 @@ export function Workbench({
             </CardContent>
           </Card>
 
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="border-b">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Clock3 className="size-4 text-muted-foreground" />
                 今日工作台
@@ -220,25 +241,25 @@ export function Workbench({
             </CardHeader>
             <CardContent className="flex flex-col gap-4 pt-5">
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border bg-muted/30 p-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
                   <p className="text-2xl font-semibold tracking-tight">12</p>
                   <p className="mt-1 text-xs text-muted-foreground">活跃项目</p>
                 </div>
-                <div className="rounded-2xl border bg-muted/30 p-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
                   <p className="text-2xl font-semibold tracking-tight">3</p>
                   <p className="mt-1 text-xs text-muted-foreground">阻塞项目</p>
                 </div>
-                <div className="rounded-2xl border bg-muted/30 p-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
                   <p className="text-2xl font-semibold tracking-tight">5</p>
                   <p className="mt-1 text-xs text-muted-foreground">待审批</p>
                 </div>
-                <div className="rounded-2xl border bg-muted/30 p-4">
+                <div className="rounded-lg border bg-muted/30 p-4">
                   <p className="text-2xl font-semibold tracking-tight">4</p>
                   <p className="mt-1 text-xs text-muted-foreground">活跃 Team</p>
                 </div>
               </div>
 
-              <div className="rounded-2xl border bg-background p-4">
+              <div className="rounded-lg border bg-background p-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="size-4 text-muted-foreground" />
                   <p className="text-sm font-medium">风险热区</p>
@@ -259,7 +280,7 @@ export function Workbench({
                 </div>
               </div>
 
-              <div className="rounded-2xl border bg-background p-4">
+              <div className="rounded-lg border bg-background p-4">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="size-4 text-muted-foreground" />
                   <p className="text-sm font-medium">推荐下一步</p>
@@ -273,8 +294,8 @@ export function Workbench({
         </section>
 
         <section className="grid gap-4 xl:grid-cols-3">
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="border-b">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <FolderKanban className="size-4 text-muted-foreground" />
                 最近项目
@@ -294,8 +315,8 @@ export function Workbench({
             </CardContent>
           </Card>
 
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="border-b">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <ShieldCheck className="size-4 text-muted-foreground" />
                 待我审批
@@ -314,8 +335,8 @@ export function Workbench({
             </CardContent>
           </Card>
 
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="border-b">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Bot className="size-4 text-muted-foreground" />
                 正在运行的 Agent Team
@@ -334,29 +355,32 @@ export function Workbench({
             </CardContent>
           </Card>
 
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="border-b">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="size-4 text-muted-foreground" />
-                最近会话
+                <Compass className="size-4 text-muted-foreground" />
+                今日焦点
               </CardTitle>
-              <CardDescription>临时 Chat 是一等入口，不是阉割模式。</CardDescription>
+              <CardDescription>首页负责给方向和动作，历史对话继续留在左侧导航中承接。</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col gap-1 pt-4">
-              {recentSessions.map((session) => (
-                <button
-                  key={session}
-                  className="flex items-center justify-between rounded-xl border border-transparent px-1 py-2 text-left transition-colors hover:border-border hover:bg-muted/40"
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{session}</span>
-                  <ArrowRight className="size-4 text-muted-foreground" />
-                </button>
+            <CardContent className="flex flex-col gap-3 pt-4">
+              {focusQueue.map((item, index) => (
+                <div key={item.title} className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ToneBadge tone={item.tone}>{item.label}</ToneBadge>
+                  </div>
+                  <p className="mt-3 text-sm font-medium text-foreground">{item.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.detail}</p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={focusActions[index].onClick}>
+                    {focusActions[index].label}
+                  </Button>
+                </div>
               ))}
             </CardContent>
           </Card>
 
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="border-b">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <FileText className="size-4 text-muted-foreground" />
                 最近产物
@@ -376,8 +400,8 @@ export function Workbench({
             </CardContent>
           </Card>
 
-          <Card className="border-none bg-card shadow-sm">
-            <CardHeader className="border-b">
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Clock3 className="size-4 text-muted-foreground" />
                 工作台原则
@@ -385,13 +409,13 @@ export function Workbench({
               <CardDescription>这不是普通聊天壳，而是权限化的执行与治理入口。</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 pt-4">
-              <div className="rounded-2xl border bg-muted/30 p-4">
+              <div className="rounded-lg border bg-muted/30 p-4">
                 <p className="text-sm font-medium">统一入口</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   所有用户先进入工作台，再按权限看到自己的项目、审批、风险和资产。
                 </p>
               </div>
-              <div className="rounded-2xl border bg-muted/30 p-4">
+              <div className="rounded-lg border bg-muted/30 p-4">
                 <p className="text-sm font-medium">范围切换</p>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">
                   结构保持稳定，只切换数据范围，不切成多套页面。

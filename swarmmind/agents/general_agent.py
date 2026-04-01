@@ -8,16 +8,14 @@ from __future__ import annotations
 
 import json
 import logging
+import uuid
+from collections.abc import Generator
+from typing import Any
 
 from deerflow.client import DeerFlowClient
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from swarmmind.agents.base import BaseAgent
-
-# DeerFlow event types (from deerflow-core/src/deerflow-core/logging_handler.py)
-_DEERFLOW_EVENT_MESSAGES = "messages-tuple"
-_DEERFLOW_MSG_AI = "ai"
-_DEERFLOW_MSG_TOOL = "tool"
-_DEERFLOW_EVENT_END = "end"
 from swarmmind.config import DEER_FLOW_CONFIG_PATH
 from swarmmind.context_broker import update_proposal_result
 from swarmmind.db import get_connection
@@ -39,6 +37,7 @@ class GeneralAgent(BaseAgent):
         deer_flow_config_path: str | None = None,
         default_model: str | None = None,
         thinking_enabled: bool = True,
+        subagent_enabled: bool = True,
     ):
         # Initialize BaseAgent (sets self.memory, loads system_prompt from DB)
         super().__init__(agent_id="general", domain="general")
@@ -46,11 +45,13 @@ class GeneralAgent(BaseAgent):
         self._config_path = deer_flow_config_path or DEER_FLOW_CONFIG_PATH
         self._default_model = default_model
         self._thinking_enabled = thinking_enabled
+        self._subagent_enabled = subagent_enabled
 
         self._client: DeerFlowClient = DeerFlowClient(
             config_path=self._config_path,
             model_name=default_model,
             thinking_enabled=thinking_enabled,
+            subagent_enabled=subagent_enabled,
         )
 
     @property
@@ -74,25 +75,8 @@ class GeneralAgent(BaseAgent):
             goal[:100], action_proposal_id,
         )
 
-        thread_id = ctx.session_id if ctx else None
-        final_text = ""
-        tool_results: list[str] = []
-
         try:
-            for event in self._client.stream(goal, thread_id=thread_id):
-                if event.type == _DEERFLOW_EVENT_MESSAGES:
-                    data = event.data
-                    msg_type = data.get("type", "")
-                    if msg_type == _DEERFLOW_MSG_AI:
-                        content = data.get("content", "")
-                        if content:
-                            final_text = content
-                    elif msg_type == _DEERFLOW_MSG_TOOL:
-                        tool_name = data.get("name", "unknown")
-                        tool_content = data.get("content", "")
-                        tool_results.append(f"[{tool_name}]: {tool_content[:200]}")
-                elif event.type == _DEERFLOW_EVENT_END:
-                    pass
+            final_text, tool_results = self._run_deerflow_turn(goal, ctx=ctx)
         except Exception as e:
             logger.error("DeerFlow stream error: %s", e)
             self._create_rejected_proposal(
@@ -159,3 +143,132 @@ class GeneralAgent(BaseAgent):
             return ActionProposal(**dict(row))
         finally:
             conn.close()
+
+    def stream_events(
+        self,
+        goal: str,
+        ctx: MemoryContext | None = None,
+    ) -> Generator[dict[str, Any], None, tuple[str, list[str]]]:
+        """Yield structured runtime events for a DeerFlow-backed turn.
+
+        SwarmMind's temporary ChatSession uses this to surface runtime state
+        without exposing DeerFlow's raw internal terms directly to the user.
+        """
+        thread_id = ctx.session_id if ctx and ctx.session_id else str(uuid.uuid4())
+        config = self._client._get_runnable_config(
+            thread_id,
+            model_name=self._default_model,
+            thinking_enabled=self._thinking_enabled,
+            subagent_enabled=self._subagent_enabled,
+        )
+        self._client._ensure_agent(config)
+
+        state: dict[str, Any] = {"messages": [HumanMessage(content=goal)]}
+        runtime_context = {"thread_id": thread_id}
+
+        seen_ids: set[str] = set()
+        final_text = ""
+        tool_results: list[str] = []
+
+        for chunk in self._client._agent.stream(
+            state,
+            config=config,
+            context=runtime_context,
+            stream_mode="values",
+        ):
+            messages = chunk.get("messages", [])
+
+            for msg in messages:
+                msg_id = getattr(msg, "id", None)
+                if msg_id and msg_id in seen_ids:
+                    continue
+                if msg_id:
+                    seen_ids.add(msg_id)
+
+                if isinstance(msg, AIMessage):
+                    reasoning = self._extract_reasoning(msg)
+                    if reasoning:
+                        yield {
+                            "type": "assistant_reasoning",
+                            "message_id": msg_id,
+                            "content": reasoning,
+                        }
+
+                    if msg.tool_calls:
+                        yield {
+                            "type": "assistant_tool_calls",
+                            "message_id": msg_id,
+                            "tool_calls": [
+                                {
+                                    "name": tool_call.get("name"),
+                                    "args": tool_call.get("args", {}),
+                                    "id": tool_call.get("id"),
+                                }
+                                for tool_call in msg.tool_calls
+                            ],
+                        }
+
+                    content = self._client._extract_text(msg.content)
+                    if content:
+                        final_text = content
+                        yield {
+                            "type": "assistant_message",
+                            "message_id": msg_id,
+                            "content": content,
+                        }
+
+                elif isinstance(msg, ToolMessage):
+                    tool_name = getattr(msg, "name", None) or "unknown"
+                    tool_content = self._client._extract_text(msg.content)
+                    if tool_content:
+                        tool_results.append(f"[{tool_name}]: {tool_content[:200]}")
+
+                    yield {
+                        "type": "tool_result",
+                        "message_id": msg_id,
+                        "tool_name": tool_name,
+                        "tool_call_id": getattr(msg, "tool_call_id", None),
+                        "content": tool_content,
+                    }
+
+        return final_text, tool_results
+
+    def _run_deerflow_turn(
+        self,
+        goal: str,
+        ctx: MemoryContext | None = None,
+    ) -> tuple[str, list[str]]:
+        final_text = ""
+        tool_results: list[str] = []
+
+        stream = self.stream_events(goal, ctx=ctx)
+        while True:
+            try:
+                next(stream)
+            except StopIteration as stop:
+                final_text, tool_results = stop.value
+                break
+
+        return final_text, tool_results
+
+    @staticmethod
+    def _extract_reasoning(message: AIMessage) -> str | None:
+        additional_kwargs = getattr(message, "additional_kwargs", None) or {}
+        reasoning = additional_kwargs.get("reasoning_content")
+        if isinstance(reasoning, str) and reasoning.strip():
+            return reasoning.strip()
+
+        content = getattr(message, "content", None)
+        if isinstance(content, list):
+            reasoning_parts: list[str] = []
+            for block in content:
+                if isinstance(block, dict):
+                    block_type = block.get("type")
+                    if block_type == "thinking" and isinstance(block.get("thinking"), str):
+                        thinking = block.get("thinking", "").strip()
+                        if thinking:
+                            reasoning_parts.append(thinking)
+            if reasoning_parts:
+                return "\n\n".join(reasoning_parts)
+
+        return None

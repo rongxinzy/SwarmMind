@@ -1,373 +1,951 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Upload, FolderOpen, Calendar } from "lucide-react";
+import {
+  Bot,
+  Brain,
+  Calendar,
+  FolderOpen,
+  Loader2,
+  Plus,
+  Send,
+  Sparkles,
+  Upload,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface V0ChatProps {
   conversationId?: string;
   onConversationCreated?: (id: string) => void;
+  onConversationsChange?: (items: ConversationRecord[]) => void;
 }
 
-interface Message {
+export interface ConversationRecord {
+  id: string;
+  title: string;
+  title_status: "pending" | "generated" | "fallback" | "manual";
+  updated_at: string;
+  created_at: string;
+}
+
+interface StoredMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
-  thinking?: string;
+  created_at?: string;
 }
 
-const AGENTS = [
-  { name: "CRM Agent", ready: true },
-  { name: "财务 Agent", ready: true },
-  { name: "项目 Agent", ready: true },
-  { name: "交付 Agent", ready: true },
-  { name: "+2 待命", ready: false },
-];
+interface RuntimeTask {
+  id: string;
+  title: string;
+  status: "running" | "completed" | "failed";
+  detail?: string;
+}
+
+interface RuntimeActivity {
+  id: string;
+  label: string;
+  status: "running" | "completed";
+  detail?: string;
+}
+
+interface RuntimeState {
+  phase: "idle" | "accepted" | "routing" | "running" | "completed" | "error";
+  label: string;
+  tasks: RuntimeTask[];
+  activities: RuntimeActivity[];
+  thinkingByMessageId: Record<string, string>;
+}
+
+interface StreamEventUserMessage {
+  id: string;
+  role: "user";
+  content: string;
+  created_at?: string;
+}
+
+interface StreamEventAssistantMessage {
+  id: string;
+  role: "assistant";
+  content: string;
+  created_at?: string;
+}
+
+type StreamEvent =
+  | { type: "status"; phase: RuntimeState["phase"]; label: string }
+  | { type: "user_message"; message: StreamEventUserMessage }
+  | { type: "thinking"; message_id: string; content: string }
+  | { type: "assistant_message"; message_id: string; content: string }
+  | { type: "assistant_final"; message: StreamEventAssistantMessage }
+  | {
+      type: "team_task";
+      task: Partial<RuntimeTask> & {
+        id: string;
+      };
+    }
+  | {
+      type: "team_activity";
+      activity: {
+        id: string;
+        label: string;
+        status: RuntimeActivity["status"];
+        detail?: string | null;
+      };
+    }
+  | {
+      type: "title";
+      conversation: ConversationRecord;
+    }
+  | { type: "done" };
+
+type ChatMessage = StoredMessage & {
+  pendingPersist?: boolean;
+  isStreaming?: boolean;
+};
 
 const QUICK_CHIPS = [
-  { label: "Q3 财务报告", icon: "📊", prompt: "Q3 财务报告" },
-  { label: "代码审查", icon: "🔍", prompt: "代码审查" },
-  { label: "撰写邮件", icon: "✉️", prompt: "撰写邮件" },
-  { label: "续费风险", icon: "⚠️", prompt: "客户续费风险分析" },
-  { label: "竞品调研", icon: "🧭", prompt: "深度竞品调研" },
+  { label: "CRM MVP 范围", prompt: "帮我梳理 CRM MVP 的模块边界，并判断是否应该立项。" },
+  { label: "竞品调研", prompt: "做一轮简洁的竞品调研，帮我列出差异点和风险。" },
+  { label: "招聘自动化", prompt: "招聘流程自动化第一版应该优先覆盖哪些环节？" },
+  { label: "续费风险", prompt: "请分析我们当前客户续费风险最高的信号有哪些。" },
 ];
 
-const CAPS = [
-  { icon: "🔗", title: "跨系统调研", desc: "一问打通 CRM、财务与项目，答案带依据" },
-  { icon: "💬", title: "可追问", desc: "不只给结论，支持逐层深挖与上下文继续" },
-  { icon: "🛡️", title: "人类裁决", desc: "关键动作保留审批权，治理边界清晰" },
+const CAPABILITIES = [
+  {
+    title: "流式会话",
+    description: "回答按运行过程持续更新，不等最后一次性返回。",
+  },
+  {
+    title: "Thinking",
+    description: "当模型提供推理内容时，在当前工作面内展开查看。",
+  },
+  {
+    title: "协作状态",
+    description: "展示 Agent Team 的分工、工具执行和进度变化。",
+  },
 ];
 
 function generateId() {
-  return Math.random().toString(36).substring(2, 9);
+  return Math.random().toString(36).slice(2, 10);
 }
 
-export function V0Chat({ conversationId, onConversationCreated }: V0ChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+function createEmptyRuntime(): RuntimeState {
+  return {
+    phase: "idle",
+    label: "准备开始新的探索会话",
+    tasks: [],
+    activities: [],
+    thinkingByMessageId: {},
+  };
+}
+
+function sortConversations(items: ConversationRecord[]) {
+  return [...items].sort((a, b) => {
+    const left = new Date(a.updated_at).getTime();
+    const right = new Date(b.updated_at).getTime();
+    return right - left;
+  });
+}
+
+function upsertTask(tasks: RuntimeTask[], patch: Partial<RuntimeTask> & { id: string }) {
+  const index = tasks.findIndex((task) => task.id === patch.id);
+  if (index === -1) {
+    return [
+      ...tasks,
+      {
+        id: patch.id,
+        title: patch.title ?? "新的协作分工",
+        status: patch.status ?? "running",
+        detail: patch.detail,
+      },
+    ];
+  }
+
+  const next = [...tasks];
+  next[index] = {
+    ...next[index],
+    ...patch,
+    title: patch.title ?? next[index].title,
+    status: patch.status ?? next[index].status,
+  };
+  return next;
+}
+
+function upsertActivity(
+  activities: RuntimeActivity[],
+  patch: Partial<RuntimeActivity> & { id: string; label: string; status: RuntimeActivity["status"] },
+) {
+  const index = activities.findIndex((activity) => activity.id === patch.id);
+  if (index === -1) {
+    return [
+      {
+        id: patch.id,
+        label: patch.label,
+        status: patch.status,
+        detail: patch.detail,
+      },
+      ...activities,
+    ];
+  }
+
+  const next = [...activities];
+  next[index] = {
+    ...next[index],
+    ...patch,
+  };
+  return next;
+}
+
+function statusTone(phase: RuntimeState["phase"]) {
+  if (phase === "error") return "status-pill-blocked";
+  if (phase === "completed") return "status-pill-done";
+  if (phase === "routing" || phase === "running" || phase === "accepted") {
+    return "status-pill-running";
+  }
+  return "status-pill-chat";
+}
+
+function MessageBubble({
+  message,
+  thinking,
+}: {
+  message: ChatMessage;
+  thinking?: string;
+}) {
+  const isUser = message.role === "user";
+
+  return (
+    <div className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
+      <div
+        className={cn(
+          "max-w-[88%] rounded-lg border px-4 py-3",
+          isUser
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border bg-card text-foreground",
+        )}
+      >
+        {!isUser && thinking ? (
+          <details className="mb-3 rounded-md border border-border bg-muted/40 px-3 py-2">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-muted-foreground">
+              <Brain className="size-3.5" />
+              模型思考
+            </summary>
+            <div className="mt-2 whitespace-pre-wrap text-xs leading-6 text-muted-foreground">
+              {thinking}
+            </div>
+          </details>
+        ) : null}
+
+        {message.content ? (
+          isUser ? (
+            <div className="whitespace-pre-wrap text-sm leading-7">{message.content}</div>
+          ) : (
+            <div className="prose prose-sm max-w-none text-sm leading-7 dark:prose-invert">
+              <ReactMarkdown>{message.content}</ReactMarkdown>
+            </div>
+          )
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            正在整理回答
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EmptyHero({
+  onFillPrompt,
+}: {
+  onFillPrompt: (prompt: string) => void;
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col items-center px-4 py-16 text-center">
+      <Badge variant="outline" className="status-pill-chat rounded-full px-3 py-1">
+        临时 ChatSession
+      </Badge>
+      <h2 className="mt-6 text-3xl font-semibold tracking-tight text-foreground">
+        先发起一次探索，再决定是否提升为 Project
+      </h2>
+      <p className="mt-3 max-w-2xl text-sm leading-7 text-muted-foreground">
+        这里优先承接临时会话。系统会在当前工作面持续展示运行状态、思考信息和 Agent Team
+        协作过程。
+      </p>
+
+      <div className="mt-8 flex flex-wrap justify-center gap-2">
+        {QUICK_CHIPS.map((chip) => (
+          <Button
+            key={chip.label}
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={() => onFillPrompt(chip.prompt)}
+          >
+            {chip.label}
+          </Button>
+        ))}
+      </div>
+
+      <div className="mt-10 grid w-full gap-3 md:grid-cols-3">
+        {CAPABILITIES.map((capability) => (
+          <Card key={capability.title}>
+            <CardHeader>
+              <CardTitle className="text-sm">{capability.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <p className="text-sm leading-6 text-muted-foreground">{capability.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RuntimePanel({ runtime }: { runtime: RuntimeState }) {
+  const thinkingEntries = Object.entries(runtime.thinkingByMessageId).filter(([, content]) =>
+    Boolean(content.trim()),
+  );
+
+  return (
+    <div className="flex h-full flex-col gap-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-sm">当前运行</CardTitle>
+              <CardDescription className="mt-1 text-xs leading-5">
+                运行态直接对齐 deer-flow 的流式过程，但界面保留 SwarmMind 自己的产品语义。
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className={cn("rounded-full px-2.5", statusTone(runtime.phase))}>
+              {runtime.phase === "idle" ? "待开始" : runtime.phase}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-4">
+          <div className="rounded-lg border bg-muted/30 p-3">
+            <p className="text-xs font-medium text-muted-foreground">Status</p>
+            <p className="mt-2 text-sm leading-6 text-foreground">{runtime.label}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Agent Team 协作</CardTitle>
+          <CardDescription>不暴露 sub-agent 术语，统一翻译为用户可理解的协作分工。</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 pt-4">
+          {runtime.tasks.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+              当前还没有新的协作分工。复杂问题进入多步骤处理后，会在这里出现 Team 内部分工。
+            </div>
+          ) : (
+            runtime.tasks.map((task) => (
+              <div key={task.id} className="rounded-lg border bg-background p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{task.title}</p>
+                    {task.detail ? (
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{task.detail}</p>
+                    ) : null}
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-full px-2.5",
+                      task.status === "failed"
+                        ? "status-pill-blocked"
+                        : task.status === "completed"
+                          ? "status-pill-done"
+                          : "status-pill-running",
+                    )}
+                  >
+                    {task.status === "running"
+                      ? "进行中"
+                      : task.status === "completed"
+                        ? "已完成"
+                        : "失败"}
+                  </Badge>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">运行活动</CardTitle>
+          <CardDescription>工具调用、资料读取和外部检索会作为活动流显示在这里。</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 pt-4">
+          {runtime.activities.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+              当前没有新的运行活动。
+            </div>
+          ) : (
+            runtime.activities.map((activity) => (
+              <div key={activity.id} className="rounded-lg border bg-background p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">{activity.label}</p>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "rounded-full px-2.5",
+                      activity.status === "completed"
+                        ? "status-pill-done"
+                        : "status-pill-running",
+                    )}
+                  >
+                    {activity.status === "completed" ? "完成" : "执行中"}
+                  </Badge>
+                </div>
+                {activity.detail ? (
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{activity.detail}</p>
+                ) : null}
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Thinking</CardTitle>
+          <CardDescription>如果模型返回推理内容，会在这里和消息气泡内同时可见。</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 pt-4">
+          {thinkingEntries.length === 0 ? (
+            <div className="rounded-lg border border-dashed bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+              当前没有可展示的 thinking 内容。
+            </div>
+          ) : (
+            thinkingEntries.map(([messageId, content]) => (
+              <div key={messageId} className="rounded-lg border bg-background p-4">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Brain className="size-3.5" />
+                  Thinking
+                </div>
+                <div className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+                  {content}
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+export function V0Chat({ conversationId, onConversationCreated, onConversationsChange }: V0ChatProps) {
+  const [conversations, setConversations] = useState<ConversationRecord[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [runtime, setRuntime] = useState<RuntimeState>(createEmptyRuntime());
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
-  const [enableReasoning] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load messages when conversationId changes
-  useEffect(() => {
-    if (conversationId) {
-      setCurrentConversationId(conversationId);
-      loadMessages(conversationId);
-    } else {
-      setMessages([]);
-      setCurrentConversationId(undefined);
-    }
-  }, [conversationId]);
-
-  const loadMessages = async (convId: string) => {
+  const fetchConversations = useCallback(async () => {
     try {
-      const res = await fetch(`/conversations/${convId}/messages`);
-      if (res.ok) {
-        const data = await res.json();
-        setMessages(
-          data.items.map((msg: { id: string; role: string; content: string }) => ({
-            id: msg.id,
-            role: msg.role as "user" | "assistant",
-            content: msg.content,
-          }))
-        );
+      const response = await fetch("/conversations");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
-    } catch (e) {
-      console.error("Failed to load messages:", e);
+      const data = await response.json();
+      setConversations(sortConversations(data.items));
+    } catch (requestError) {
+      console.error("Failed to fetch conversations:", requestError);
     }
-  };
+  }, []);
 
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const loadMessages = useCallback(async (nextConversationId: string) => {
+    try {
+      const response = await fetch(`/conversations/${nextConversationId}/messages`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      setMessages(
+        data.items.map((message: StoredMessage) => ({
+          id: message.id,
+          role: message.role,
+          content: message.content,
+          created_at: message.created_at,
+        })),
+      );
+      setRuntime(createEmptyRuntime());
+      setError(null);
+    } catch (requestError) {
+      console.error("Failed to load messages:", requestError);
+      setError(requestError instanceof Error ? requestError.message : "加载会话失败");
+    }
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    void fetchConversations();
+  }, [fetchConversations]);
 
-  const handleSubmit = useCallback(async (prompt?: string) => {
-    const text = (prompt ?? input).trim();
-    if (!text || isLoading) return;
+  useEffect(() => {
+    onConversationsChange?.(conversations);
+  }, [conversations, onConversationsChange]);
 
-    if (!prompt) {
-      setInput("");
+  useEffect(() => {
+    if (conversationId) {
+      setCurrentConversationId(conversationId);
+      void loadMessages(conversationId);
+      return;
     }
-    setIsLoading(true);
+
+    setCurrentConversationId(undefined);
+    setMessages([]);
+    setRuntime(createEmptyRuntime());
     setError(null);
+  }, [conversationId, loadMessages]);
 
-    const userMessage: Message = { id: generateId(), role: "user", content: text };
-    setMessages((prev) => [...prev, userMessage]);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, runtime]);
 
-    if (currentConversationId) {
-      await handleConversationSubmit(text, userMessage.id, enableReasoning);
-    } else {
-      try {
-        const createRes = await fetch("/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ goal: text }),
-        });
-        if (createRes.ok) {
-          const newConv = await createRes.json();
-          setCurrentConversationId(newConv.id);
-          onConversationCreated?.(newConv.id);
-          await handleConversationSubmitWithId(text, newConv.id, userMessage.id, enableReasoning);
-        } else {
-          throw new Error(`HTTP ${createRes.status}`);
+  const activeConversation = useMemo(() => {
+    if (!currentConversationId) return undefined;
+    return conversations.find((conversation) => conversation.id === currentConversationId);
+  }, [conversations, currentConversationId]);
+
+  const handleNewConversation = useCallback(() => {
+    setCurrentConversationId(undefined);
+    setMessages([]);
+    setRuntime(createEmptyRuntime());
+    setError(null);
+    setInput("");
+    inputRef.current?.focus();
+  }, []);
+
+  const createConversation = useCallback(async () => {
+    const response = await fetch("/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goal: input.trim() || "新建临时会话" }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const record = (await response.json()) as ConversationRecord;
+    setConversations((previous) => sortConversations([record, ...previous.filter((item) => item.id !== record.id)]));
+    setCurrentConversationId(record.id);
+    onConversationCreated?.(record.id);
+    return record.id;
+  }, [input, onConversationCreated]);
+
+  const handleStreamEvent = useCallback((event: StreamEvent) => {
+    switch (event.type) {
+      case "status":
+        setRuntime((previous) => ({
+          ...previous,
+          phase: event.phase,
+          label: event.label,
+        }));
+        if (event.phase === "completed" || event.phase === "error") {
+          setIsLoading(false);
         }
-      } catch (e) {
+        return;
+
+      case "user_message":
+        setMessages((previous) => {
+          const pendingIndex = [...previous].reverse().findIndex(
+            (message) => message.role === "user" && message.pendingPersist,
+          );
+          if (pendingIndex === -1) {
+            return [
+              ...previous,
+              {
+                id: event.message.id,
+                role: "user",
+                content: event.message.content,
+                created_at: event.message.created_at,
+              },
+            ];
+          }
+
+          const actualIndex = previous.length - 1 - pendingIndex;
+          const next = [...previous];
+          next[actualIndex] = {
+            ...next[actualIndex],
+            id: event.message.id,
+            pendingPersist: false,
+            created_at: event.message.created_at,
+          };
+          return next;
+        });
+        return;
+
+      case "thinking":
+        setRuntime((previous) => ({
+          ...previous,
+          thinkingByMessageId: {
+            ...previous.thinkingByMessageId,
+            [event.message_id]: previous.thinkingByMessageId[event.message_id]
+              ? `${previous.thinkingByMessageId[event.message_id]}\n${event.content}`
+              : event.content,
+          },
+        }));
+        return;
+
+      case "assistant_message":
+        setMessages((previous) => {
+          const index = previous.findIndex((message) => message.id === event.message_id);
+          if (index !== -1) {
+            const next = [...previous];
+            next[index] = {
+              ...next[index],
+              content: event.content,
+              isStreaming: true,
+            };
+            return next;
+          }
+
+          return [
+            ...previous,
+            {
+              id: event.message_id,
+              role: "assistant",
+              content: event.content,
+              isStreaming: true,
+            },
+          ];
+        });
+        return;
+
+      case "assistant_final":
+        setMessages((previous) => {
+          const exactIndex = previous.findIndex((message) => message.id === event.message.id);
+          if (exactIndex !== -1) {
+            const next = [...previous];
+            next[exactIndex] = {
+              ...next[exactIndex],
+              ...event.message,
+              isStreaming: false,
+            };
+            return next;
+          }
+
+          const streamingIndex = [...previous].reverse().findIndex(
+            (message) => message.role === "assistant" && message.isStreaming,
+          );
+          if (streamingIndex !== -1) {
+            const actualIndex = previous.length - 1 - streamingIndex;
+            const next = [...previous];
+            next[actualIndex] = {
+              ...next[actualIndex],
+              ...event.message,
+              isStreaming: false,
+            };
+            return next;
+          }
+
+          return [
+            ...previous,
+            {
+              ...event.message,
+              isStreaming: false,
+            },
+          ];
+        });
+        return;
+
+      case "team_task":
+        setRuntime((previous) => ({
+          ...previous,
+          tasks: upsertTask(previous.tasks, {
+            id: event.task.id,
+            title: event.task.title,
+            status: event.task.status,
+            detail: event.task.detail,
+          }),
+        }));
+        return;
+
+      case "team_activity":
+        setRuntime((previous) => ({
+          ...previous,
+          activities: upsertActivity(previous.activities, {
+            id: event.activity.id,
+            label: event.activity.label,
+            status: event.activity.status,
+            detail: event.activity.detail ?? undefined,
+          }),
+        }));
+        return;
+
+      case "title":
+        setConversations((previous) =>
+          sortConversations([
+            event.conversation,
+            ...previous.filter((conversation) => conversation.id !== event.conversation.id),
+          ]),
+        );
+        return;
+
+      case "done":
         setIsLoading(false);
-        setMessages((prev) => [
-          ...prev,
-          { id: generateId(), role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Unknown error"}` },
-        ]);
-      }
+        return;
     }
-  }, [input, isLoading, currentConversationId, enableReasoning]);
+  }, []);
 
-  const handleConversationSubmit = async (text: string, _userMsgId: string, reasoning: boolean) => {
-    try {
-      const res = await fetch(`/conversations/${currentConversationId}/messages`, {
+  const streamConversation = useCallback(
+    async (nextConversationId: string, text: string) => {
+      const response = await fetch(`/conversations/${nextConversationId}/messages/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text, reasoning }),
+        body: JSON.stringify({ content: text, reasoning: true }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: data.assistant_message.id,
-            role: "assistant" as const,
-            content: data.assistant_message.content,
-          },
-        ]);
-      } else {
-        throw new Error(`HTTP ${res.status}`);
-      }
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        { id: generateId(), role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Unknown error"}` },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleConversationSubmitWithId = async (text: string, convId: string, _userMsgId: string, reasoning: boolean) => {
-    try {
-      const res = await fetch(`/conversations/${convId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text, reasoning }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: data.assistant_message.id,
-            role: "assistant" as const,
-            content: data.assistant_message.content,
-          },
-        ]);
-      } else {
-        throw new Error(`HTTP ${res.status}`);
+      if (!response.ok || !response.body) {
+        throw new Error(`HTTP ${response.status}`);
       }
-    } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        { id: generateId(), role: "assistant", content: `Error: ${e instanceof Error ? e.message : "Unknown error"}` },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSubmit();
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        let lineBreakIndex = buffer.indexOf("\n");
+        while (lineBreakIndex >= 0) {
+          const rawLine = buffer.slice(0, lineBreakIndex).trim();
+          buffer = buffer.slice(lineBreakIndex + 1);
+
+          if (rawLine) {
+            handleStreamEvent(JSON.parse(rawLine) as StreamEvent);
+          }
+
+          lineBreakIndex = buffer.indexOf("\n");
+        }
+      }
+
+      const lastLine = buffer.trim();
+      if (lastLine) {
+        handleStreamEvent(JSON.parse(lastLine) as StreamEvent);
       }
     },
-    [handleSubmit]
+    [handleStreamEvent],
   );
 
-  const resizeTextarea = (el: HTMLTextAreaElement) => {
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, 160) + "px";
-  };
+  const handleSubmit = useCallback(
+    async (prompt?: string) => {
+      const text = (prompt ?? input).trim();
+      if (!text || isLoading) {
+        return;
+      }
 
-  const fillInput = (text: string) => {
-    setInput(text);
-    inputRef.current?.focus();
-    if (inputRef.current) resizeTextarea(inputRef.current);
-  };
+      if (!prompt) {
+        setInput("");
+      }
+
+      setError(null);
+      setIsLoading(true);
+      setRuntime({
+        ...createEmptyRuntime(),
+        phase: "accepted",
+        label: "消息已提交，正在准备本轮运行",
+      });
+
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: `temp-user-${generateId()}`,
+          role: "user",
+          content: text,
+          pendingPersist: true,
+        },
+      ]);
+
+      try {
+        const nextConversationId = currentConversationId ?? (await createConversation());
+        await streamConversation(nextConversationId, text);
+        await fetchConversations();
+      } catch (requestError) {
+        setIsLoading(false);
+        const message =
+          requestError instanceof Error ? requestError.message : "发送消息时发生未知错误";
+        setError(message);
+        setRuntime((previous) => ({
+          ...previous,
+          phase: "error",
+          label: `会话执行失败：${message}`,
+        }));
+      }
+    },
+    [createConversation, currentConversationId, fetchConversations, input, isLoading, streamConversation],
+  );
+
+  const currentTitle = currentConversationId
+    ? activeConversation?.title ?? "New Conversation"
+    : "新建对话";
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-center justify-center min-h-full px-6 py-8">
-          {messages.length === 0 && !isLoading ? (
-            <div className="w-full max-w-[520px] animate-[up_0.35s_ease_both]">
-              {/* Hero Eyebrow */}
-              <div className="inline-flex items-center gap-1.5 border border-border rounded-full px-2.5 py-1 mb-5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <span className="text-[11px] font-mono text-muted-foreground tracking-wider">6 个 Agent 就绪</span>
-              </div>
-
-              {/* Title */}
-              <h1 className="text-[30px] font-semibold text-foreground tracking-tight leading-tight mb-2.5">
-                向 Agent 团队提问
-              </h1>
-              <p className="text-[13.5px] text-muted-foreground leading-relaxed mb-7 font-light">
-                描述目标或问题，系统自动协调跨系统调研、聚合依据，<br />返回可追问的结构化答案。
-              </p>
-
-              {/* Agent Tags */}
-              <div className="flex flex-wrap gap-1.5 justify-center mb-7">
-                {AGENTS.map((agent) => (
-                  <div
-                    key={agent.name}
-                    className="flex items-center gap-1.5 border border-border rounded-full px-2.5 py-1 text-[10.5px] font-mono text-muted-foreground hover:border-secondary hover:text-foreground transition-colors cursor-default"
-                  >
-                    <span className={`w-1 h-1 rounded-full ${agent.ready ? "bg-green-500" : "bg-muted-foreground"}`} />
-                    {agent.name}
-                  </div>
-                ))}
-              </div>
-
-              {/* Quick Chips Label */}
-              <p className="text-[10px] font-mono tracking-widest uppercase text-muted-foreground/50 mb-2.5 text-center">快速开始</p>
-
-              {/* Quick Chips */}
-              <div className="flex flex-wrap gap-2 justify-center mb-7">
-                {QUICK_CHIPS.map((chip) => (
-                  <button
-                    key={chip.label}
-                    onClick={() => fillInput(chip.prompt)}
-                    className="inline-flex items-center gap-1.5 border border-border bg-transparent rounded-md px-3 py-1.5 text-[12.5px] text-muted-foreground hover:bg-secondary hover:border-secondary hover:text-foreground transition-colors cursor-pointer"
-                  >
-                    <span>{chip.icon}</span>
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-
-              {/* Capability Cards */}
-              <div className="grid grid-cols-3 gap-2 w-full mb-9 animate-[up_0.35s_0.08s_ease_both]">
-                {CAPS.map((cap) => (
-                  <div
-                    key={cap.title}
-                    className="border border-border rounded-md p-3.5 text-left bg-card hover:bg-secondary hover:border-secondary transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span className="text-[13px]">{cap.icon}</span>
-                      <span className="text-[12.5px] font-medium text-foreground">{cap.title}</span>
-                    </div>
-                    <p className="text-[11.5px] text-muted-foreground leading-relaxed">{cap.desc}</p>
-                  </div>
-                ))}
-              </div>
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      <div className="border-b border-border bg-background px-4 py-4 md:px-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-xl font-semibold tracking-tight text-foreground">
+                {currentTitle}
+              </h2>
+              {activeConversation?.title_status === "pending" ? (
+                <Badge variant="outline" className="status-pill-chat rounded-full px-2.5">
+                  标题待生成
+                </Badge>
+              ) : null}
             </div>
-          ) : (
-            /* Messages Thread */
-            <div className="w-full max-w-[720px] py-4 space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={message.role === "user" ? "flex justify-end" : "flex justify-start"}
-                >
-                  {message.role === "user" ? (
-                    <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap bg-primary text-primary-foreground">
-                      {message.content}
-                    </div>
-                  ) : (
-                    <div className="max-w-[85%] rounded-2xl px-4 py-3 text-sm bg-muted text-foreground">
-                      {enableReasoning && message.thinking && (
-                        <details className="mb-2">
-                          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground select-none">
-                            Thinking...
-                          </summary>
-                          <div className="mt-2 text-xs text-muted-foreground/70 whitespace-pre-wrap font-mono border-l-2 border-muted-foreground/20 pl-3">
-                            {message.thinking}
-                          </div>
-                        </details>
-                      )}
-                      {message.content && (
-                        <div className="prose prose-sm max-w-none dark:prose-invert">
-                          <ReactMarkdown>{message.content}</ReactMarkdown>
-                        </div>
-                      )}
-                      {!message.content && !message.thinking && (
-                        <span className="animate-pulse">Thinking...</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Input Area - Fixed at bottom */}
-      <div className="flex-shrink-0 px-5 pb-4">
-        <div className="max-w-[720px] mx-auto">
-          <div className="border border-border rounded-lg bg-card transition-colors focus-within:border-muted-foreground/50 focus-within:shadow-[0_0_0_3px_rgba(255,255,255,0.04)] overflow-hidden">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                resizeTextarea(e.target);
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="描述你的目标，或直接提问…"
-              className="w-full px-4 py-3.5 pb-2 bg-transparent border-none text-[13.5px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none resize-none min-h-[56px] max-h-[160px] leading-relaxed font-light"
-              rows={2}
-              disabled={isLoading}
-            />
-            <div className="flex items-center px-3 py-2 gap-1 border-t border-border">
-              <button className="flex items-center gap-1 text-[11.5px] text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent hover:border-border rounded px-2 py-1 transition-colors">
-                <Upload className="w-3 h-3" />
-                上传文件
-              </button>
-              <button className="flex items-center gap-1 text-[11.5px] text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent hover:border-border rounded px-2 py-1 transition-colors">
-                <FolderOpen className="w-3 h-3" />
-                关联项目
-              </button>
-              <button className="flex items-center gap-1 text-[11.5px] text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent hover:border-border rounded px-2 py-1 transition-colors">
-                <Calendar className="w-3 h-3" />
-                定时执行
-              </button>
-              <button
-                onClick={() => handleSubmit()}
-                disabled={!input.trim() || isLoading}
-                className="ml-auto flex items-center gap-1.5 bg-primary text-primary-foreground hover:opacity-85 rounded px-3.5 py-1.5 text-[12.5px] font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                发送
-                <Send className="w-3 h-3" />
-              </button>
-            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              临时 ChatSession 用于探索、提问和快速验证；需要共享、审批和治理时再提升为
+              Project。
+            </p>
           </div>
-          <p className="text-center mt-2 text-[10px] font-mono text-muted-foreground/40 tracking-wider">
-            <kbd className="font-mono text-[10px] bg-secondary border border-border rounded px-1.5 text-muted-foreground/60">Enter</kbd> 发送 &nbsp;·&nbsp; <kbd className="font-mono text-[10px] bg-secondary border border-border rounded px-1.5 text-muted-foreground/60">Shift+Enter</kbd> 换行 &nbsp;·&nbsp; <kbd className="font-mono text-[10px] bg-secondary border border-border rounded px-1.5 text-muted-foreground/60">⌘K</kbd> 快速指令
-          </p>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="lg" onClick={handleNewConversation} className="gap-2">
+              <Plus className="size-4" />
+              新建对话
+            </Button>
+            <Button variant="outline" size="lg" className="gap-2" disabled>
+              <Upload className="size-4" />
+              上传资料
+            </Button>
+            <Button size="lg" className="gap-2" disabled={!currentConversationId}>
+              <Sparkles className="size-4" />
+              提升为 Project
+            </Button>
+          </div>
         </div>
       </div>
 
-      {error && (
-        <div className="px-4 pb-4 text-destructive text-sm text-center">{error}</div>
-      )}
+      <div className="grid min-h-0 flex-1 gap-4 p-4 xl:grid-cols-[minmax(0,1fr)_360px] md:p-6">
+        <main className="min-h-0">
+          <Card className="flex h-full">
+            <CardHeader>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="size-4 text-muted-foreground" />
+                  <div>
+                    <CardTitle className="text-sm">主会话面</CardTitle>
+                    <CardDescription>
+                      主消息流承接探索问题；运行细节与协作状态留在同一工作面，而不是跳页查看。
+                    </CardDescription>
+                  </div>
+                </div>
+                <Badge variant="outline" className={cn("rounded-full px-2.5", statusTone(runtime.phase))}>
+                  {runtime.label}
+                </Badge>
+              </div>
+            </CardHeader>
+
+            <CardContent className="flex min-h-0 flex-1 flex-col px-0 pt-0">
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-6">
+                {messages.length === 0 && !isLoading ? (
+                  <EmptyHero onFillPrompt={(prompt) => setInput(prompt)} />
+                ) : (
+                  <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+                    {messages.map((message) => (
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        thinking={runtime.thinkingByMessageId[message.id]}
+                      />
+                    ))}
+                    {isLoading && messages.every((message) => message.role !== "assistant") ? (
+                      <div className="flex justify-start">
+                        <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+                          <Loader2 className="size-4 animate-spin" />
+                          Agent Team 正在整理第一条回复
+                        </div>
+                      </div>
+                    ) : null}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border px-4 py-4 md:px-6">
+                <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
+                  {error ? (
+                    <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                      {error}
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <textarea
+                      ref={inputRef}
+                      value={input}
+                      onChange={(event) => setInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          void handleSubmit();
+                        }
+                      }}
+                      placeholder="描述你的问题、目标或临时任务。系统会直接在当前工作面展示 thinking 与协作状态。"
+                      className="min-h-[120px] w-full resize-none border-none bg-transparent px-1 py-1 text-sm leading-7 text-foreground outline-none placeholder:text-muted-foreground"
+                      disabled={isLoading}
+                    />
+
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+                      <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+                        <Upload className="size-3.5" />
+                        上传文件
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+                        <FolderOpen className="size-3.5" />
+                        关联项目
+                      </Button>
+                      <Button variant="outline" size="sm" className="gap-1.5 text-muted-foreground">
+                        <Calendar className="size-3.5" />
+                        定时执行
+                      </Button>
+
+                      <Button
+                        onClick={() => void handleSubmit()}
+                        disabled={!input.trim() || isLoading}
+                        className="ml-auto gap-2 px-4"
+                      >
+                        {isLoading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                        {isLoading ? "处理中" : "发送"}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+
+        <aside className="hidden min-h-0 xl:block">
+          <RuntimePanel runtime={runtime} />
+        </aside>
+      </div>
+
+      <div className="px-4 pb-4 xl:hidden md:px-6">
+        <RuntimePanel runtime={runtime} />
+      </div>
     </div>
   );
 }

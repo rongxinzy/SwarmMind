@@ -1,6 +1,5 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -26,7 +25,7 @@
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
-    --radius: 0.375rem;
+    --radius: 0.5rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -53,10 +52,8 @@
     --status-draft: oklch(0.43 0.01 250);
     --status-draft-bg: oklch(0.96 0.01 250);
     --status-draft-border: oklch(0.9 0.01 250);
-
-    /* Typography */
-    --font-sans: "Geist", system-ui, -apple-system, sans-serif;
-    --font-mono: "Geist Mono", ui-monospace, monospace;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
     --font-heading: var(--font-sans);
   }
 
@@ -113,7 +110,6 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "rlig" 1, "calt" 1;
   }
 
   html {
@@ -122,10 +118,6 @@
 }
 
 @layer components {
-  .status-pill {
-    @apply border font-medium;
-  }
-
   .status-pill-running {
     color: var(--status-running);
     background-color: var(--status-running-bg);

@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import type { ConversationRecord } from "@/components/ui/v0-ai-chat"
 import { cn } from "@/lib/utils"
 
 export type SidebarView =
@@ -46,12 +47,6 @@ const projectItems = [
   { label: "Enterprise CRM", meta: "进行中" },
   { label: "Recruiting Automation", meta: "设计中" },
   { label: "Partner Portal", meta: "阻塞" },
-]
-
-const recentItems = [
-  { label: "CRM 报表范围是否纳入首期", meta: "1h" },
-  { label: "GitLab MCP 接入方案", meta: "3h" },
-  { label: "招聘流程自动化优先级", meta: "昨天" },
 ]
 
 const primaryItems: Array<{ value: SidebarView; label: string; icon: React.ReactNode }> = [
@@ -109,41 +104,61 @@ function NavButton({
   onClick: () => void
 }) {
   return (
-    <button
+    <Button
+      variant="ghost"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-[13px] transition-colors",
+        "h-auto w-full justify-start gap-2 px-2.5 py-2 font-normal",
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          ? "bg-sidebar-accent text-sidebar-accent-foreground hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground"
           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
       )}
     >
-      <span className="opacity-70">{icon}</span>
-      <span className="truncate">{label}</span>
+      {icon}
+      <span className="flex-1 truncate text-left">{label}</span>
       {badge ? (
         <span className="ml-auto rounded-full border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
           {badge}
         </span>
       ) : null}
-    </button>
+    </Button>
   )
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-2.5 text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/70">
+    <p className="px-2.5 text-xs font-medium text-muted-foreground">
       {children}
     </p>
   )
 }
 
+function formatConversationTime(value?: string) {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "numeric",
+    day: "numeric",
+  }).format(date)
+}
+
 interface SidebarProps {
   activeView: SidebarView
   onViewChange: (view: SidebarView) => void
+  recentConversations?: ConversationRecord[]
+  onSelectConversation?: (id: string) => void
   pageTitle?: string
 }
 
-export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
+export function Sidebar({
+  activeView,
+  onViewChange,
+  recentConversations = [],
+  onSelectConversation,
+  pageTitle,
+}: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false)
 
   const handleSelect = (view: SidebarView) => {
@@ -151,17 +166,22 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
     setIsOpen(false)
   }
 
+  const handleSelectConversation = (conversationId: string) => {
+    onSelectConversation?.(conversationId)
+    setIsOpen(false)
+  }
+
   const sidebarContent = (
     <div className="flex h-full flex-col">
       <div className="flex h-[60px] items-center gap-3 border-b border-sidebar-border px-4">
-        <div className="flex size-8 items-center justify-center rounded-xl bg-foreground text-background">
+        <div className="flex size-8 items-center justify-center rounded-md border bg-background text-foreground">
           <SwarmLogo className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold tracking-tight text-foreground">SwarmMind</p>
           <p className="text-[11px] text-muted-foreground">Supervisor Console</p>
         </div>
-        <span className="rounded-full border border-sidebar-border px-2 py-1 font-mono text-[10px] text-muted-foreground">
+        <span className="rounded-md border border-sidebar-border px-2 py-1 font-mono text-[10px] text-muted-foreground">
           v0.1
         </span>
       </div>
@@ -208,9 +228,14 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between px-2.5">
               <SectionLabel>项目</SectionLabel>
-              <button className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6 text-muted-foreground"
+                onClick={() => handleSelect("projects")}
+              >
                 <Plus className="size-3.5" />
-              </button>
+              </Button>
             </div>
             <NavButton
               active={activeView === "projects"}
@@ -221,14 +246,15 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
             />
             <div className="flex flex-col gap-1">
               {projectItems.map((project) => (
-                <button
+                <Button
                   key={project.label}
+                  variant="ghost"
                   onClick={() => handleSelect("projects")}
-                  className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  className="h-auto w-full justify-start gap-2 px-2.5 py-2 font-normal text-sm text-muted-foreground hover:text-foreground"
                 >
-                  <span className="min-w-0 flex-1 truncate">{project.label}</span>
+                  <span className="min-w-0 flex-1 truncate text-left">{project.label}</span>
                   <span className="text-[10px] text-muted-foreground">{project.meta}</span>
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -242,16 +268,25 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
               onClick={() => handleSelect("recent")}
             />
             <div className="flex flex-col gap-1">
-              {recentItems.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => handleSelect("recent")}
-                  className="flex items-center gap-2 rounded-xl px-2.5 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                >
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                  <span className="text-[10px] text-muted-foreground">{item.meta}</span>
-                </button>
-              ))}
+              {recentConversations.length > 0 ? (
+                recentConversations.slice(0, 4).map((conversation) => (
+                  <Button
+                    key={conversation.id}
+                    variant="ghost"
+                    onClick={() => handleSelectConversation(conversation.id)}
+                    className="h-auto w-full justify-start gap-2 px-2.5 py-2 font-normal text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-left">{conversation.title}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {formatConversationTime(conversation.updated_at)}
+                    </span>
+                  </Button>
+                ))
+              ) : (
+                <div className="rounded-md border border-dashed border-sidebar-border px-2.5 py-3 text-xs leading-5 text-muted-foreground">
+                  还没有最近会话。新建一次对话后，这里会显示真实记录。
+                </div>
+              )}
             </div>
           </div>
 
@@ -271,8 +306,11 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
       </nav>
 
       <div className="border-t border-sidebar-border p-3">
-        <button className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-secondary">
-          <div className="flex size-8 items-center justify-center rounded-full border border-border bg-secondary text-xs font-semibold text-foreground">
+        <Button
+          variant="ghost"
+          className="h-auto w-full justify-start gap-3 px-2.5 py-2"
+        >
+          <div className="flex size-8 items-center justify-center rounded-md border border-border bg-muted text-xs font-semibold text-foreground">
             KL
           </div>
           <div className="min-w-0 flex-1 text-left">
@@ -280,7 +318,7 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
             <p className="truncate text-[11px] text-muted-foreground">容芯开源组</p>
           </div>
           <ChevronDown className="size-4 text-muted-foreground" />
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -306,7 +344,7 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
             >
               <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-8 items-center justify-center rounded-xl bg-foreground text-background">
+                  <div className="flex size-8 items-center justify-center rounded-md border bg-background text-foreground">
                     <SwarmLogo className="size-4" />
                   </div>
                   <span className="text-sm font-semibold text-foreground">SwarmMind</span>
@@ -328,7 +366,7 @@ export function Sidebar({ activeView, onViewChange, pageTitle }: SidebarProps) {
       <div className="fixed left-0 right-0 top-0 z-30 border-b border-sidebar-border bg-sidebar md:hidden">
         <div className="flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-xl bg-foreground text-background">
+            <div className="flex size-8 items-center justify-center rounded-md border bg-background text-foreground">
               <SwarmLogo className="size-4" />
             </div>
             <span className="text-sm font-semibold text-foreground">{pageTitle || "SwarmMind"}</span>

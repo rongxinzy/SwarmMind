@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react"
+import { useCallback, useEffect, useState, type ReactNode } from "react"
 import {
   Bot,
   BookOpenText,
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Sidebar, SidebarView, VIEW_LABELS } from "@/components/ui/sidebar"
-import { V0Chat } from "@/components/ui/v0-ai-chat"
+import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat"
 
 const viewDescriptions: Record<SidebarView, string> = {
   workbench: "每个用户的首页工作台，聚合项目、审批、风险和资产。",
@@ -41,10 +41,10 @@ function PlaceholderView({
   action: string
 }) {
   return (
-    <div className="flex min-h-full items-start justify-center bg-muted/30 p-4 md:p-6">
-      <Card className="w-full max-w-3xl border-none bg-card shadow-sm">
-        <CardHeader className="gap-3 border-b">
-          <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted/40 text-muted-foreground">
+    <div className="flex min-h-full items-start justify-center bg-muted/20 p-4 md:p-6">
+      <Card className="w-full max-w-3xl">
+        <CardHeader className="gap-3">
+          <div className="flex size-10 items-center justify-center rounded-md border bg-muted text-muted-foreground">
             {icon}
           </div>
           <div className="flex flex-col gap-1">
@@ -53,7 +53,7 @@ function PlaceholderView({
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 pt-5">
-          <div className="rounded-2xl border bg-muted/30 p-4">
+          <div className="rounded-lg border bg-muted/40 p-4">
             <p className="text-sm font-medium text-foreground">当前阶段先做结构落位</p>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               这块视图先与最新架构和术语对齐，再逐步接入真实数据和交互流。
@@ -79,7 +79,7 @@ function PageHeader({
   const isWorkbench = activeView === "workbench"
 
   return (
-    <header className="sticky top-[64px] z-20 border-b border-border bg-background/95 backdrop-blur md:top-0">
+    <header className="sticky top-[64px] z-20 border-b bg-background md:top-0">
       <div className="flex flex-col gap-4 px-4 py-4 md:px-6">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-col gap-1">
@@ -103,7 +103,7 @@ function PageHeader({
                 readOnly
                 value=""
                 placeholder="全局搜索项目、会话、产物"
-                className="h-10 rounded-xl bg-muted/30 pl-9"
+                className="h-10 bg-background pl-9"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -136,6 +136,31 @@ function PageHeader({
 export default function App() {
   const [activeView, setActiveView] = useState<SidebarView>("workbench")
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined)
+  const [recentConversations, setRecentConversations] = useState<ConversationRecord[]>([])
+
+  const fetchRecentConversations = useCallback(async () => {
+    try {
+      const response = await fetch("/conversations")
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const data = (await response.json()) as { items: ConversationRecord[] }
+      setRecentConversations(
+        [...data.items].sort((left, right) => {
+          const leftTime = new Date(left.updated_at).getTime()
+          const rightTime = new Date(right.updated_at).getTime()
+          return rightTime - leftTime
+        }),
+      )
+    } catch (error) {
+      console.error("Failed to fetch recent conversations:", error)
+    }
+  }, [])
+
+  useEffect(() => {
+    void fetchRecentConversations()
+  }, [fetchRecentConversations])
 
   const handleViewChange = (view: SidebarView) => {
     setActiveView(view)
@@ -146,6 +171,11 @@ export default function App() {
 
   const handleStartChat = () => {
     setActiveConversationId(undefined)
+    setActiveView("chat")
+  }
+
+  const handleSelectConversation = (conversationId: string) => {
+    setActiveConversationId(conversationId)
     setActiveView("chat")
   }
 
@@ -166,6 +196,7 @@ export default function App() {
             onConversationCreated={(id) => {
               setActiveConversationId(id)
             }}
+            onConversationsChange={setRecentConversations}
           />
         )
       case "teams":
@@ -238,9 +269,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar activeView={activeView} onViewChange={handleViewChange} pageTitle={VIEW_LABELS[activeView]} />
+      <Sidebar
+        activeView={activeView}
+        onViewChange={handleViewChange}
+        recentConversations={recentConversations}
+        onSelectConversation={handleSelectConversation}
+        pageTitle={VIEW_LABELS[activeView]}
+      />
 
-      <main className="flex min-h-screen flex-col md:ml-[280px]">
+      <main className="flex min-h-screen flex-col bg-background md:ml-[280px]">
         <PageHeader activeView={activeView} onStartChat={handleStartChat} />
         <div className="flex-1 pt-[64px] md:pt-0">{renderContent()}</div>
       </main>
