@@ -26,7 +26,7 @@ typecheck: ## Run TypeScript type check (frontend)
 
 # ---- Test ----
 test: ## Run Python backend tests
-	uv run pytest tests/ -v
+	uv run python -m pytest tests/ -v
 
 # ---- Dev ----
 dev: ## Run both backend and frontend via PM2 (background)

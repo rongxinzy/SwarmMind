@@ -42,13 +42,15 @@ from swarmmind.models import (
     StrategyResponse,
     SupervisorDecision,
 )
-from swarmmind.renderer import generate_conversation_title, render_status
+from swarmmind.renderer import generate_conversation_title_from_exchange, render_status
 from swarmmind.llm import LLMClient, LLMError
 from swarmmind.agents.finance import FinanceAgent
 from swarmmind.agents.code_review import CodeReviewAgent
 from swarmmind.agents.general_agent import GeneralAgent
 
 logger = logging.getLogger(__name__)
+
+NEW_CONVERSATION_TITLE = "New Conversation"
 
 # ---- Pydantic models ----
 
@@ -296,6 +298,87 @@ def health():
 
 # ---- Conversation endpoints ----
 
+def _row_to_conversation(row) -> Conversation:
+    return Conversation(
+        id=row["id"],
+        title=row["title"],
+        title_status=row["title_status"],
+        title_source=row["title_source"],
+        title_generated_at=(
+            str(row["title_generated_at"]) if row["title_generated_at"] is not None else None
+        ),
+        created_at=str(row["created_at"]),
+        updated_at=str(row["updated_at"]),
+    )
+
+
+def _maybe_generate_conversation_title(conversation_id: str) -> None:
+    """
+    Generate a conversation title after the first complete exchange.
+
+    This mirrors deer-flow's timing: wait until the first assistant response is
+    present, then persist the title into conversation metadata exactly once.
+    """
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, title_status
+            FROM conversations
+            WHERE id = ?
+            """,
+            (conversation_id,),
+        )
+        conversation = cursor.fetchone()
+        if conversation is None or conversation["title_status"] != "pending":
+            return
+
+        cursor.execute(
+            """
+            SELECT role, content
+            FROM messages
+            WHERE conversation_id = ?
+            ORDER BY created_at ASC, id ASC
+            """,
+            (conversation_id,),
+        )
+        rows = cursor.fetchall()
+        user_messages = [row["content"] for row in rows if row["role"] == "user"]
+        assistant_messages = [
+            row["content"] for row in rows if row["role"] == "assistant"
+        ]
+
+        if len(user_messages) != 1 or len(assistant_messages) < 1:
+            return
+
+        title, source = generate_conversation_title_from_exchange(
+            user_messages[0],
+            assistant_messages[0],
+        )
+
+        cursor.execute(
+            """
+            UPDATE conversations
+            SET
+                title = ?,
+                title_status = ?,
+                title_source = ?,
+                title_generated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND title_status = 'pending'
+            """,
+            (
+                title or NEW_CONVERSATION_TITLE,
+                "generated" if source == "llm" else "fallback",
+                source,
+                conversation_id,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
 @app.get("/conversations")
 def list_conversations():
     """List all conversations ordered by updated_at descending."""
@@ -309,7 +392,7 @@ def list_conversations():
             "SELECT * FROM conversations ORDER BY updated_at DESC"
         )
         rows = cursor.fetchall()
-        items = [Conversation(id=row["id"], title=row["title"], created_at=str(row["created_at"]), updated_at=str(row["updated_at"])) for row in rows]
+        items = [_row_to_conversation(row) for row in rows]
         return ConversationListResponse(items=items, total=total)
     finally:
         conn.close()
@@ -319,20 +402,22 @@ def list_conversations():
 def create_conversation(body: GoalRequest):
     """Create a new conversation with the first user message."""
     conv_id = str(uuid.uuid4())
-    title = generate_conversation_title(body.goal)
 
     conn = get_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO conversations (id, title) VALUES (?, ?)",
-            (conv_id, title),
+            """
+            INSERT INTO conversations (id, title, title_status)
+            VALUES (?, ?, ?)
+            """,
+            (conv_id, NEW_CONVERSATION_TITLE, "pending"),
         )
         conn.commit()
 
         cursor.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,))
         row = cursor.fetchone()
-        return Conversation(id=row["id"], title=row["title"], created_at=str(row["created_at"]), updated_at=str(row["updated_at"]))
+        return _row_to_conversation(row)
     finally:
         conn.close()
 
@@ -347,7 +432,7 @@ def get_conversation(conversation_id: str):
         row = cursor.fetchone()
         if row is None:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        return Conversation(id=row["id"], title=row["title"], created_at=str(row["created_at"]), updated_at=str(row["updated_at"]))
+        return _row_to_conversation(row)
     finally:
         conn.close()
 
@@ -507,8 +592,19 @@ def send_message(conversation_id: str, body: SendMessageRequest):
             "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
             (assistant_msg_id, conversation_id, "assistant", ai_response),
         )
+        cursor.execute(
+            "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (conversation_id,),
+        )
         conn.commit()
+    finally:
+        conn.close()
 
+    _maybe_generate_conversation_title(conversation_id)
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
         cursor.execute("SELECT * FROM messages WHERE id = ?", (user_msg_id,))
         row = cursor.fetchone()
         user_msg = Message(id=str(row["id"]), conversation_id=str(row["conversation_id"]), role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"]))

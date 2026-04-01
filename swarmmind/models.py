@@ -183,6 +183,9 @@ class StrategyResponse(BaseModel):
 class Conversation(BaseModel):
     id: str
     title: str
+    title_status: str = "pending"
+    title_source: str | None = None
+    title_generated_at: str | None = None
     created_at: str
     updated_at: str
 

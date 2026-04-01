@@ -556,6 +556,10 @@ ChatSession
   - chat_session_id
   - actor_id
   - entry_mode          (direct_model | default_agent)
+  - title
+  - title_status        (pending | generated | fallback | manual)
+  - title_source        (llm | fallback | manual)
+  - title_generated_at
   - thread_id
   - status
   - summary_ref
@@ -568,6 +572,10 @@ ChatSession
 
 - `ChatSession` 默认是单用户私有入口，不是项目级共享空间。
 - 它允许使用直连模型或默认 Agent，但不默认承载 workflow 模板、审批和多成员治理。
+- 标题属于 `ChatSessionStore` 元数据，不属于 `RunStore`，也不应只存在于前端内存里。
+- 标题生成应在首轮完整交换后触发，即至少有 1 条用户消息和 1 条 assistant 响应后再生成。
+- 标题默认优先由 LLM 生成；若生成失败，则退化为基于首条用户消息的截断 fallback。
+- 标题一旦生成，后续不应在每轮运行后反复改写；用户手动改名优先级最高。
 - 若用户触发提升，`promoted_project_id` 必须建立与目标 `Project` 的映射。
 - 提升时应生成语义压缩摘要，并作为目标 `Project` 的文档资产落库。
 - 提升后不复用原 `ChatSession` thread；正式项目从新的项目上下文开始。

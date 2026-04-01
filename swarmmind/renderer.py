@@ -107,3 +107,51 @@ Respond with ONLY the title. No quotes, no explanation. Just the title itself.""
     except LLMError as e:
         logger.error("Title generation error: %s", e)
         return user_message[:50] + ("..." if len(user_message) > 50 else "")
+
+
+def generate_conversation_title_from_exchange(
+    user_message: str,
+    assistant_message: str,
+) -> tuple[str, str]:
+    """
+    Generate a conversation title from the first complete exchange.
+
+    Returns:
+        tuple[title, source], where source is 'llm' or 'fallback'.
+    """
+    prompt = f"""<system>
+You generate titles for chat sessions.
+
+Given the first user message and the assistant's first response, return one concise
+title that captures the real intent of the session.
+
+Rules:
+- 3 to 8 words when possible
+- no quotes
+- no punctuation decoration
+- no explanation
+- prefer concrete task intent over generic labels
+</system>
+
+User:
+{user_message[:500]}
+
+Assistant:
+{assistant_message[:500]}
+
+Respond with ONLY the title."""
+
+    try:
+        client = LLMClient()
+        title = client.complete(prompt, max_tokens=32, reasoning=False).strip()
+        if not title:
+            raise LLMError("Empty title response")
+        if len(title) > 60:
+            title = title[:57] + "..."
+        return title, "llm"
+    except Exception as e:
+        logger.error("Exchange title generation error: %s", e)
+        fallback = user_message[:50].strip()
+        if len(user_message) > 50:
+            fallback += "..."
+        return fallback or "New Conversation", "fallback"

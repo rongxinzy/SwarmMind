@@ -1,6 +1,7 @@
 """SQLite database setup, schema, and health check."""
 
 import logging
+import os
 import sqlite3
 from pathlib import Path
 from typing import Optional
@@ -78,6 +79,9 @@ CREATE TABLE IF NOT EXISTS strategy_change_proposals (
 CREATE TABLE IF NOT EXISTS conversations (
     id          TEXT PRIMARY KEY,
     title       TEXT NOT NULL,
+    title_status TEXT NOT NULL DEFAULT 'pending',
+    title_source TEXT,
+    title_generated_at DATETIME,
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -137,6 +141,7 @@ CREATE INDEX IF NOT EXISTS idx_action_proposals_status ON action_proposals(statu
 CREATE INDEX IF NOT EXISTS idx_event_log_timestamp ON event_log(timestamp);
 CREATE INDEX IF NOT EXISTS idx_working_memory_tags ON working_memory(domain_tags);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_updated_at ON conversations(updated_at);
 CREATE INDEX IF NOT EXISTS idx_memory_scope ON memory_entries(layer, scope_id);
 CREATE INDEX IF NOT EXISTS idx_memory_layer_key ON memory_entries(layer, scope_id, key);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_entries(tags);
@@ -144,9 +149,70 @@ CREATE INDEX IF NOT EXISTS idx_compaction_scope ON compaction_hints(scope_layer,
 """
 
 
+def _get_db_path() -> str:
+    """Read DB path dynamically so tests and runtime env overrides take effect."""
+    return os.environ.get("SWARMMIND_DB_PATH", DB_PATH)
+
+
+def _migrate_conversation_title_columns(conn: sqlite3.Connection) -> None:
+    """
+    Backfill newer conversation title metadata columns for existing databases.
+
+    SQLite's CREATE TABLE IF NOT EXISTS will not alter old schemas, so we add
+    missing columns here and mark legacy titled rows as already generated.
+    """
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(conversations)")
+    existing_columns = {row["name"] for row in cursor.fetchall()}
+
+    if "conversations" not in {
+        row["name"]
+        for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'"
+        ).fetchall()
+    }:
+        return
+
+    if "title_status" not in existing_columns:
+        cursor.execute(
+            "ALTER TABLE conversations ADD COLUMN title_status TEXT NOT NULL DEFAULT 'pending'"
+        )
+    if "title_source" not in existing_columns:
+        cursor.execute("ALTER TABLE conversations ADD COLUMN title_source TEXT")
+    if "title_generated_at" not in existing_columns:
+        cursor.execute("ALTER TABLE conversations ADD COLUMN title_generated_at DATETIME")
+
+    cursor.execute(
+        """
+        UPDATE conversations
+        SET
+            title_status = CASE
+                WHEN title IS NOT NULL AND TRIM(title) != '' AND title = 'New Conversation'
+                    THEN 'pending'
+                WHEN title IS NOT NULL AND TRIM(title) != ''
+                    THEN 'generated'
+                ELSE 'pending'
+            END,
+            title_source = CASE
+                WHEN title IS NOT NULL AND TRIM(title) != '' AND title != 'New Conversation'
+                    THEN COALESCE(title_source, 'legacy')
+                ELSE title_source
+            END,
+            title_generated_at = CASE
+                WHEN title IS NOT NULL AND TRIM(title) != '' AND title != 'New Conversation'
+                    THEN COALESCE(title_generated_at, updated_at, created_at)
+                ELSE title_generated_at
+            END
+        WHERE title_status IS NULL
+           OR title_source IS NULL
+           OR title_generated_at IS NULL
+        """
+    )
+
+
 def get_connection() -> sqlite3.Connection:
     """Get a SQLite connection with row factory."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(_get_db_path())
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -159,10 +225,11 @@ def init_db() -> None:
         cursor = conn.cursor()
         # Create tables
         cursor.executescript(SCHEMA)
+        _migrate_conversation_title_columns(conn)
         # Create indexes
         cursor.executescript(INDEXES)
         conn.commit()
-        logger.info("Database initialized at %s", DB_PATH)
+        logger.info("Database initialized at %s", _get_db_path())
     finally:
         conn.close()
 
@@ -199,10 +266,14 @@ def health_check() -> dict:
         if missing:
             logger.warning("Missing tables detected: %s. Auto-creating schema.", missing)
             cursor.executescript(SCHEMA)
+            _migrate_conversation_title_columns(conn)
             cursor.executescript(INDEXES)
             conn.commit()
             return {"status": "healed", "missing_tables": missing}
 
+        _migrate_conversation_title_columns(conn)
+        cursor.executescript(INDEXES)
+        conn.commit()
         return {"status": "ok", "missing_tables": []}
     finally:
         conn.close()
