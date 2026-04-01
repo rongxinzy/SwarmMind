@@ -141,22 +141,27 @@ export function Sidebar({
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-sidebar">
-      <div className="border-b border-sidebar-border px-4 py-4">
+      <div className="px-4 pt-4 pb-3">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[16px] leading-6 font-semibold text-foreground">SwarmMind</p>
-            <p className="mt-1 text-[12px] leading-[18px] text-muted-foreground">Enterprise AI Workspace</p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
+              <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
+                <path d="M6.5 1L11.5 4v5L6.5 12 1.5 9V4L6.5 1Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                <circle cx="6.5" cy="6.5" r="1.5" fill="currentColor" />
+              </svg>
+            </div>
+            <span className="text-[14px] font-semibold tracking-tight text-foreground">SwarmMind</span>
           </div>
-          <span className="rounded-md bg-white px-2 py-1 text-[12px] leading-[18px] text-muted-foreground">
-            v0.1
-          </span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => handleSelect("chat")}
+            className="text-muted-foreground hover:text-foreground"
+            title="新建生成任务"
+          >
+            <Plus className="size-4" />
+          </Button>
         </div>
-      </div>
-
-      <div className="border-b border-sidebar-border px-4 py-4">
-        <Button onClick={() => handleSelect("chat")} className="w-full justify-center">
-          新建生成任务
-        </Button>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
@@ -291,8 +296,16 @@ export function Sidebar({
               transition={{ type: "spring", damping: 24, stiffness: 280 }}
               className="fixed inset-y-0 left-0 z-50 w-[236px] border-r border-sidebar-border bg-sidebar md:hidden"
             >
-              <div className="flex items-center justify-between border-b border-sidebar-border px-4 py-4">
-                <span className="text-[16px] font-semibold text-foreground">SwarmMind</span>
+              <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-7 items-center justify-center rounded-md bg-foreground text-background">
+                    <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
+                      <path d="M6.5 1L11.5 4v5L6.5 12 1.5 9V4L6.5 1Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+                      <circle cx="6.5" cy="6.5" r="1.5" fill="currentColor" />
+                    </svg>
+                  </div>
+                  <span className="text-[14px] font-semibold tracking-tight text-foreground">SwarmMind</span>
+                </div>
                 <Button variant="icon" size="icon-sm" onClick={() => setIsOpen(false)}>
                   <X className="size-4" />
                 </Button>
