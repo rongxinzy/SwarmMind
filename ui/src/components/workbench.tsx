@@ -1,25 +1,22 @@
 import {
-  AlertTriangle,
-  Bot,
   CheckCircle2,
-  Clock3,
-  Compass,
+  Copy,
+  Download,
+  FileSpreadsheet,
   FileText,
   FolderKanban,
+  ListChecks,
+  PencilLine,
+  RotateCcw,
   ShieldCheck,
   Sparkles,
+  WandSparkles,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 type Tone = "running" | "approval" | "blocked" | "done" | "chat" | "draft"
@@ -33,113 +30,176 @@ const toneClasses: Record<Tone, string> = {
   draft: "status-pill-draft",
 }
 
-const recentProjects = [
+const functionCards = [
   {
-    name: "Enterprise CRM",
-    stage: "需求澄清",
-    summary: "销售 CRM MVP，等待知识库访问审批",
-    tone: "approval" as const,
-    label: "待审批",
+    title: "文档生成",
+    description: "一键生成结构化报告、方案与会议纪要。",
+    icon: <FileText className="size-5" />,
+    tone: "var(--blue-soft)",
   },
   {
-    name: "Recruiting Automation",
-    stage: "方案设计",
-    summary: "已形成流程图和面试评分卡草案",
+    title: "数据分析",
+    description: "上传数据后输出洞察、结论和汇报摘要。",
+    icon: <FileSpreadsheet className="size-5" />,
+    tone: "var(--green-soft)",
+  },
+  {
+    title: "任务拆解",
+    description: "把目标拆成步骤、负责人和交付清单。",
+    icon: <ListChecks className="size-5" />,
+    tone: "var(--orange-soft)",
+  },
+  {
+    title: "知识问答",
+    description: "基于企业知识源生成可引用的回答。",
+    icon: <Sparkles className="size-5" />,
+    tone: "var(--purple-soft)",
+  },
+]
+
+const steps = [
+  { step: "Step 1", title: "输入信息", detail: "填写主题、风格、受众等核心字段。" },
+  { step: "Step 2", title: "AI 处理", detail: "系统生成结构化草稿并给出处理状态。" },
+  { step: "Step 3", title: "输出结果", detail: "结果以标题、段落和列表形式展示。" },
+  { step: "Step 4", title: "编辑 / 导出", detail: "支持局部修改、复制、导出和复用。" },
+]
+
+const recentTasks = [
+  {
+    title: "Q2 销售复盘报告",
+    detail: "销售团队 / 需要补充区域维度分析",
     tone: "running" as const,
-    label: "进行中",
+    meta: "生成中",
   },
   {
-    name: "Partner Portal",
-    stage: "验收准备",
-    summary: "剩余 1 个阻塞，等待 SSO 联调结果",
-    tone: "blocked" as const,
-    label: "阻塞中",
-  },
-]
-
-const approvals = [
-  {
-    title: "Internal KB 访问授权",
-    detail: "归属项目：Enterprise CRM",
-    eta: "需今天处理",
-  },
-  {
-    title: "GitLab 写权限审批",
-    detail: "归属项目：Partner Portal",
-    eta: "已等待 5 小时",
-  },
-]
-
-const runningTeams = [
-  {
-    name: "软件开发 Team",
-    scope: "Enterprise CRM / 需求拆解与技术方案",
-    load: "2 个活跃 workstream",
-  },
-  {
-    name: "增长策略 Team",
-    scope: "Recruiting Automation / 用户访谈总结",
-    load: "1 个活跃 workstream",
-  },
-]
-
-const focusQueue = [
-  {
-    title: "把 Enterprise CRM 提升为正式项目",
-    detail: "当前需求已超过临时对话范围，下一步应挂载 Team 模板并进入审批闭环。",
-    tone: "running" as const,
-    label: "建议现在处理",
-  },
-  {
-    title: "收口 GitLab MCP 权限方案",
-    detail: "先确认最小权限边界，再决定是否纳入默认项目模板。",
+    title: "Partner Portal 项目摘要",
+    detail: "产品团队 / 等待 SSO 结论后重新输出",
     tone: "approval" as const,
-    label: "等待决策",
+    meta: "待确认",
   },
   {
-    title: "整理招聘流程自动化的验收口径",
-    detail: "把分散在探索对话里的结论沉淀为项目摘要和产物目录。",
-    tone: "draft" as const,
-    label: "需要落档",
+    title: "招聘流程自动化方案",
+    detail: "HR 团队 / 已导出 docx 版本",
+    tone: "done" as const,
+    meta: "已完成",
   },
 ]
 
-const recentArtifacts = [
-  { title: "PRD v0.3", type: "项目产物", tone: "done" as const },
-  { title: "风险清单", type: "治理摘要", tone: "blocked" as const },
-  { title: "知识库接入建议", type: "调研结论", tone: "chat" as const },
+const recentHistory = [
+  "CRM MVP 范围定义",
+  "企业知识接入建议",
+  "销售周报模板 v2",
 ]
 
 function ToneBadge({ children, tone }: { children: React.ReactNode; tone: Tone }) {
   return (
-    <Badge variant="outline" className={cn("rounded-full px-2.5", toneClasses[tone])}>
+    <Badge variant="outline" className={cn("px-2.5 py-0.5", toneClasses[tone])}>
       {children}
     </Badge>
   )
 }
 
+function SectionTitle({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex size-9 items-center justify-center rounded-md bg-secondary text-foreground">
+        {icon}
+      </div>
+      <div>
+        <h2 className="text-[20px] leading-7 font-semibold text-foreground">{title}</h2>
+        <p className="mt-1 text-[14px] leading-[22px] text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  )
+}
+
+function FunctionCard({
+  icon,
+  title,
+  description,
+  tone,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  tone: string
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div
+        className="flex size-10 items-center justify-center rounded-md"
+        style={{ backgroundColor: tone }}
+      >
+        {icon}
+      </div>
+      <h3 className="mt-4 text-[16px] leading-6 font-semibold text-foreground">{title}</h3>
+      <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
+function StepCard({
+  step,
+  title,
+  detail,
+}: {
+  step: string
+  title: string
+  detail: string
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <p className="text-[12px] leading-[18px] text-muted-foreground">{step}</p>
+      <h3 className="mt-2 text-[16px] leading-6 font-semibold text-foreground">{title}</h3>
+      <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">{detail}</p>
+    </div>
+  )
+}
+
+function ResultAction({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <Button variant="outline" size="sm">
+      {icon}
+      {label}
+    </Button>
+  )
+}
+
 function ListRow({
   title,
-  subtitle,
+  detail,
   meta,
   tone,
 }: {
   title: string
-  subtitle: string
+  detail: string
   meta: string
-  tone?: Tone
+  tone: Tone
 }) {
   return (
-    <Button variant="ghost" className="h-auto w-full items-start justify-start gap-3 whitespace-normal px-2 py-2 font-normal hover:bg-muted/50">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium text-foreground">{title}</span>
-          {tone ? <ToneBadge tone={tone}>{meta}</ToneBadge> : null}
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[14px] leading-[22px] font-medium text-foreground">{title}</p>
+          <p className="mt-1 text-[12px] leading-[18px] text-muted-foreground">{detail}</p>
         </div>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
+        <ToneBadge tone={tone}>{meta}</ToneBadge>
       </div>
-      {!tone ? <span className="text-xs text-muted-foreground">{meta}</span> : null}
-    </Button>
+    </div>
+  )
+}
+
+function OutputListItem({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="text-[14px] leading-[22px] text-muted-foreground">{children}</li>
   )
 }
 
@@ -152,277 +212,248 @@ export function Workbench({
   onOpenProjects: () => void
   onOpenApprovals: () => void
 }) {
-  const focusActions = [
-    { label: "进入项目空间", onClick: onOpenProjects },
-    { label: "查看待审批", onClick: onOpenApprovals },
-    { label: "发起新对话", onClick: onStartChat },
-  ] as const
-
   return (
-    <div className="min-h-full bg-background">
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-4 p-4 md:p-6">
-        <section className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.95fr)]">
-          <Card>
-            <CardHeader className="gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <ToneBadge tone="chat">Chat first</ToneBadge>
-                <ToneBadge tone="running">3 个项目推进中</ToneBadge>
-                <ToneBadge tone="approval">2 个待审批</ToneBadge>
-              </div>
-              <div className="flex flex-col gap-1">
-                <CardTitle className="text-2xl leading-tight md:text-[30px]">
-                  今天先推进什么？
-                </CardTitle>
-                <CardDescription className="max-w-2xl text-sm leading-6">
-                  先用临时对话探索问题，再决定是否提升为 Project。正式执行、审批、共享协作都回到项目空间。
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 pt-5">
-              <div className="rounded-lg border bg-background p-3">
-                <Textarea
-                  readOnly
-                  value=""
-                  placeholder="输入一句目标，例如：帮我梳理 CRM MVP 的模块边界，并判断现在是否应该立项。"
-                  className="min-h-[124px] resize-none border-none bg-transparent px-0 py-0 text-sm shadow-none focus-visible:border-none focus-visible:ring-0"
-                />
-                <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-                  <Button onClick={onStartChat} size="lg" className="gap-2">
-                    <Sparkles className="size-4" />
-                    新建对话
-                  </Button>
-                  <Button onClick={onOpenProjects} size="lg" variant="outline" className="gap-2">
-                    <FolderKanban className="size-4" />
-                    新建项目
-                  </Button>
-                  <Button onClick={onOpenApprovals} size="lg" variant="ghost" className="gap-2">
-                    <ShieldCheck className="size-4" />
-                    查看待审批
-                  </Button>
-                </div>
-              </div>
+    <div className="px-4 pb-6 pt-4 md:px-6 md:pb-8">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6">
+        <section className="hero-gradient rounded-lg border border-border p-6">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
+            <div>
+              <p className="text-[12px] leading-[18px] text-muted-foreground">Enterprise AI Workspace</p>
+              <h1 className="mt-3 text-[28px] leading-9 font-semibold text-foreground">
+                强结构、强引导、强结果
+              </h1>
+              <p className="mt-3 max-w-2xl text-[14px] leading-[22px] text-muted-foreground">
+                首页不再鼓励自由发散，而是直接进入结构化生成流程，让用户更快得到可编辑、可导出、可复用的结果。
+              </p>
+            </div>
 
-              <div className="grid gap-3 lg:grid-cols-3">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    入口原则
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    Chat 用于探索，Project 用于执行和治理。
-                  </p>
+            <div className="rounded-lg border border-border bg-white p-4">
+              <p className="field-label">工作流摘要</p>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between text-[14px] leading-[22px]">
+                  <span className="text-muted-foreground">当前重点</span>
+                  <span className="text-foreground">销售复盘报告</span>
                 </div>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Agent Team
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    用户看到的是 Team，项目内实际挂载的是 Team 实例。
-                  </p>
+                <div className="flex items-center justify-between text-[14px] leading-[22px]">
+                  <span className="text-muted-foreground">待审批</span>
+                  <span className="text-foreground">2 项</span>
                 </div>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    今天建议
-                  </p>
-                  <p className="mt-2 text-sm font-medium text-foreground">
-                    先把 Enterprise CRM 的访问审批清掉，再推进方案拆解。
-                  </p>
+                <div className="flex items-center justify-between text-[14px] leading-[22px]">
+                  <span className="text-muted-foreground">可导出结果</span>
+                  <span className="text-foreground">7 份</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Clock3 className="size-4 text-muted-foreground" />
-                今日工作台
-              </CardTitle>
-              <CardDescription>工作台按权限显示你的运行态、风险和审批堆积。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 pt-5">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-2xl font-semibold tracking-tight">12</p>
-                  <p className="mt-1 text-xs text-muted-foreground">活跃项目</p>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-2xl font-semibold tracking-tight">3</p>
-                  <p className="mt-1 text-xs text-muted-foreground">阻塞项目</p>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-2xl font-semibold tracking-tight">5</p>
-                  <p className="mt-1 text-xs text-muted-foreground">待审批</p>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-2xl font-semibold tracking-tight">4</p>
-                  <p className="mt-1 text-xs text-muted-foreground">活跃 Team</p>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-background p-4">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="size-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">风险热区</p>
-                </div>
-                <div className="mt-3 flex flex-col gap-2">
-                  <ListRow
-                    title="Partner Portal"
-                    subtitle="SSO 联调阻塞了验收排期"
-                    meta="high risk"
-                    tone="blocked"
-                  />
-                  <ListRow
-                    title="Enterprise CRM"
-                    subtitle="知识库接入等待企业审批"
-                    meta="approval"
-                    tone="approval"
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-background p-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="size-4 text-muted-foreground" />
-                  <p className="text-sm font-medium">推荐下一步</p>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  把 CRM 项目从 Chat 摘要提升为正式项目，并挂载软件开发 Team 模板，后续看板、产物和审批才会完整进入治理闭环。
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FolderKanban className="size-4 text-muted-foreground" />
-                最近项目
-              </CardTitle>
-              <CardDescription>正式执行、共享协作与审计都归属于 Project。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1 pt-4">
-              {recentProjects.map((project) => (
-                <ListRow
-                  key={project.name}
-                  title={project.name}
-                  subtitle={`${project.stage} · ${project.summary}`}
-                  meta={project.label}
-                  tone={project.tone}
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <SectionTitle
+                  icon={<WandSparkles className="size-4" />}
+                  title="结构化输入"
+                  description="用表单收集关键信息，再由 AI 处理，不再只给一个大输入框。"
                 />
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <ShieldCheck className="size-4 text-muted-foreground" />
-                待我审批
-              </CardTitle>
-              <CardDescription>审批是显式暂停节点，不是默认每轮都出现。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1 pt-4">
-              {approvals.map((item) => (
-                <ListRow
-                  key={item.title}
-                  title={item.title}
-                  subtitle={item.detail}
-                  meta={item.eta}
-                />
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Bot className="size-4 text-muted-foreground" />
-                正在运行的 Agent Team
-              </CardTitle>
-              <CardDescription>界面保留 Team 语义，项目内由 Team 实例承接正式执行。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1 pt-4">
-              {runningTeams.map((team) => (
-                <ListRow
-                  key={team.name}
-                  title={team.name}
-                  subtitle={team.scope}
-                  meta={team.load}
-                />
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Compass className="size-4 text-muted-foreground" />
-                今日焦点
-              </CardTitle>
-              <CardDescription>首页负责给方向和动作，历史对话继续留在左侧导航中承接。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-4">
-              {focusQueue.map((item, index) => (
-                <div key={item.title} className="rounded-lg border bg-muted/30 p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ToneBadge tone={item.tone}>{item.label}</ToneBadge>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="field-label">主题</label>
+                    <Input value="Q2 销售复盘报告" readOnly />
                   </div>
-                  <p className="mt-3 text-sm font-medium text-foreground">{item.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.detail}</p>
-                  <Button variant="outline" size="sm" className="mt-4" onClick={focusActions[index].onClick}>
-                    {focusActions[index].label}
+                  <div className="space-y-2">
+                    <label className="field-label">风格</label>
+                    <Input value="正式 / 管理层汇报" readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">受众</label>
+                    <Input value="销售负责人 / 管理层" readOnly />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="field-label">输出格式</label>
+                    <Input value="报告 + 关键结论 + 行动建议" readOnly />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border bg-secondary p-4">
+                  <p className="field-label">补充说明</p>
+                  <ul className="mt-3 list-disc space-y-1 pl-5">
+                    <OutputListItem>强调北区和华东区的增长差异</OutputListItem>
+                    <OutputListItem>补充续费风险与渠道贡献两个章节</OutputListItem>
+                    <OutputListItem>输出结果需要支持 docx 与 PDF 导出</OutputListItem>
+                  </ul>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={onStartChat}>开始生成</Button>
+                  <Button variant="outline" onClick={onOpenProjects}>
+                    保存为项目
                   </Button>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="size-4 text-muted-foreground" />
-                最近产物
-              </CardTitle>
-              <CardDescription>产物、摘要和治理材料要能被追溯，不应埋在聊天流里。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1 pt-4">
-              {recentArtifacts.map((artifact) => (
-                <ListRow
-                  key={artifact.title}
-                  title={artifact.title}
-                  subtitle={artifact.type}
-                  meta={artifact.type}
-                  tone={artifact.tone}
+            <Card>
+              <CardHeader>
+                <SectionTitle
+                  icon={<ListChecks className="size-4" />}
+                  title="标准流程"
+                  description="统一的 4 步流程，减少学习成本。"
                 />
-              ))}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                {steps.map((step) => (
+                  <StepCard key={step.step} step={step.step} title={step.title} detail={step.detail} />
+                ))}
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Clock3 className="size-4 text-muted-foreground" />
-                工作台原则
-              </CardTitle>
-              <CardDescription>这不是普通聊天壳，而是权限化的执行与治理入口。</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-4">
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <p className="text-sm font-medium">统一入口</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  所有用户先进入工作台，再按权限看到自己的项目、审批、风险和资产。
-                </p>
-              </div>
-              <div className="rounded-lg border bg-muted/30 p-4">
-                <p className="text-sm font-medium">范围切换</p>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  结构保持稳定，只切换数据范围，不切成多套页面。
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader>
+                <SectionTitle
+                  icon={<FileText className="size-4" />}
+                  title="输出结果预览"
+                  description="结果以可读、可编辑、可导出的结构展示。"
+                />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border border-border bg-secondary p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <ToneBadge tone="running">Generating</ToneBadge>
+                    <span className="text-[12px] leading-[18px] text-muted-foreground">结果正在补充区域分析章节</span>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    <div className="skeleton-line h-4 rounded-sm" />
+                    <div className="skeleton-line h-4 rounded-sm w-[82%]" />
+                    <div className="skeleton-line h-4 rounded-sm w-[64%]" />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border bg-card p-4 fade-up">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-[16px] leading-6 font-semibold text-foreground">Q2 销售复盘报告</h3>
+                      <p className="mt-1 text-[12px] leading-[18px] text-muted-foreground">
+                        结构化输出，已自动生成摘要、列表与关键结论。
+                      </p>
+                    </div>
+                    <ToneBadge tone="done">Success</ToneBadge>
+                  </div>
+
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="text-[14px] leading-[22px] font-medium text-foreground">执行摘要</p>
+                      <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">
+                        Q2 总体收入保持增长，但区域波动明显，北区续费风险上升，华东区由渠道带动的新增表现最好。
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[14px] leading-[22px] font-medium text-foreground">关键结论</p>
+                      <ul className="mt-2 list-disc space-y-1 pl-5">
+                        <OutputListItem>北区续费风险主要集中在大客户延期采购。</OutputListItem>
+                        <OutputListItem>渠道贡献提升明显，建议保留联合营销预算。</OutputListItem>
+                        <OutputListItem>重点项目需要单独跟踪合同推进状态。</OutputListItem>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <ResultAction icon={<PencilLine className="size-4" />} label="编辑" />
+                  <ResultAction icon={<Copy className="size-4" />} label="复制" />
+                  <ResultAction icon={<Download className="size-4" />} label="导出 PDF / docx" />
+                  <ResultAction icon={<RotateCcw className="size-4" />} label="重新生成" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <SectionTitle
+                  icon={<Sparkles className="size-4" />}
+                  title="功能入口"
+                  description="用户第一眼就知道能做什么。"
+                />
+              </CardHeader>
+              <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                {functionCards.map((card) => (
+                  <FunctionCard
+                    key={card.title}
+                    icon={card.icon}
+                    title={card.title}
+                    description={card.description}
+                    tone={card.tone}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <SectionTitle
+                  icon={<ShieldCheck className="size-4" />}
+                  title="最近任务"
+                  description="聚焦需要继续推进的结构化结果。"
+                />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recentTasks.map((item) => (
+                  <ListRow
+                    key={item.title}
+                    title={item.title}
+                    detail={item.detail}
+                    meta={item.meta}
+                    tone={item.tone}
+                  />
+                ))}
+                <Button variant="outline" onClick={onOpenApprovals} className="w-full">
+                  查看全部审批
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <SectionTitle
+                  icon={<FolderKanban className="size-4" />}
+                  title="历史记录"
+                  description="最近使用过的任务主题与结果上下文。"
+                />
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {recentHistory.map((item) => (
+                  <div key={item} className="rounded-lg border border-border bg-card px-4 py-3">
+                    <p className="text-[14px] leading-[22px] text-foreground">{item}</p>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <SectionTitle
+                  icon={<CheckCircle2 className="size-4" />}
+                  title="可控性"
+                  description="让用户始终感觉自己在控制 AI。"
+                />
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="rounded-lg border border-border bg-secondary p-4">
+                  <p className="field-label">提供能力</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    <OutputListItem>修改输入后重新生成</OutputListItem>
+                    <OutputListItem>对某一段落做局部重写</OutputListItem>
+                    <OutputListItem>将当前结果保存为模板复用</OutputListItem>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </section>
       </div>
     </div>

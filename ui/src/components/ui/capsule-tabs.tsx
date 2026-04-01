@@ -41,7 +41,6 @@ export default function CapsuleTabs({
 
   const handleTabChange = (value: string) => {
     setActive(value);
-    // Reset to correct page when tab changes externally
     const tabIndex = items.findIndex((item) => item.value === value);
     if (tabIndex >= 0) {
       setPage(Math.floor(tabIndex / visibleCount));
@@ -50,23 +49,21 @@ export default function CapsuleTabs({
 
   return (
     <div className={cn("flex flex-col items-center w-full", className)}>
-      {/* Pagination dots */}
       {totalPages > 1 && (
-        <div className="flex gap-2 my-2">
+        <div className="flex gap-2 my-3">
           {Array.from({ length: totalPages }).map((_, idx) => (
-            <span
+            <button
               key={idx}
               onClick={() => setPage(idx)}
               className={cn(
-                "w-3 h-3 rounded-full cursor-pointer transition-colors",
-                idx === page ? "bg-primary" : "bg-foreground/30"
+                "w-4 h-4 border-2 transition-all cursor-pointer",
+                idx === page ? "bg-primary border-primary" : "bg-muted border-border hover:border-foreground"
               )}
             />
           ))}
         </div>
       )}
-      <div className="flex items-center gap-2 w-full max-w-lg">
-        {/* Left arrow */}
+      <div className="flex items-center gap-3 w-full max-w-lg">
         <Button
           variant="icon"
           onClick={handlePrevPage}
@@ -77,7 +74,7 @@ export default function CapsuleTabs({
         </Button>
 
         <Tabs value={active} onValueChange={handleTabChange} className="flex-1 flex flex-col">
-          <TabsList className="flex gap-2 w-fit mx-auto justify-center bg-transparent p-0">
+          <TabsList className="flex gap-2 w-fit mx-auto justify-center bg-transparent p-0 border-0">
             {currentPageTabs.map((item) => {
               const isActive = item.value === active;
               return (
@@ -85,15 +82,15 @@ export default function CapsuleTabs({
                   key={item.value}
                   value={item.value}
                   className={cn(
-                    "px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium transition-all",
+                    "px-5 py-2.5 whitespace-nowrap text-sm font-bold font-mono uppercase tracking-wider transition-all border-2",
                     isActive
-                      ? "bg-primary text-white shadow-md"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                      ? "bg-primary text-primary-foreground border-primary shadow-brutal-sm"
+                      : "bg-muted text-muted-foreground border-border hover:border-foreground hover:text-foreground"
                   )}
                 >
                   <motion.span
                     className="contents"
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.03 }}
                   >
                     {item.label}
                   </motion.span>
@@ -104,12 +101,11 @@ export default function CapsuleTabs({
 
           {items.map((item) => (
             <TabsContent key={item.value} value={item.value}>
-              <div className="bg-card">{item.content}</div>
+              <div className="bg-card border-2 border-border p-5">{item.content}</div>
             </TabsContent>
           ))}
         </Tabs>
 
-        {/* Right arrow */}
         <Button
           variant="icon"
           onClick={handleNextPage}

@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react"
-import {
-  Bot,
-  BookOpenText,
-  Clock3,
-  FolderKanban,
-  History,
-  Library,
-  Search,
-  Sparkles,
-} from "lucide-react"
+import { BookOpenText, Bot, Clock3, FolderKanban, History, Library, Search, Sparkles } from "lucide-react"
 
 import { Workbench } from "@/components/workbench"
 import { Button } from "@/components/ui/button"
@@ -18,15 +9,27 @@ import { Sidebar, SidebarView, VIEW_LABELS } from "@/components/ui/sidebar"
 import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat"
 
 const viewDescriptions: Record<SidebarView, string> = {
-  workbench: "每个用户的首页工作台，聚合项目、审批、风险和资产。",
-  chat: "临时 Chat 是一等入口，用于探索、提问和快速验证。",
-  teams: "用户看到的是 Agent Team；治理页维护的是可复用配置模板。",
-  skills: "统一管理 MCP、Skills 和它们对 Team / Project 的绑定关系。",
-  assets: "沉淀正式产物、报告、摘要和可导出的项目资产。",
-  knowledge: "企业知识访问入口，承接授权后的知识检索与浏览。",
-  projects: "Project 是唯一正式执行边界，协作、审批和审计都归属于它。",
-  recent: "查看最近的对话、项目回访和最近进入的工作上下文。",
-  schedules: "定时任务负责周期性执行、汇总和自动化调度。",
+  workbench: "减少选择成本，让用户更快产出结构化结果。",
+  chat: "结构化输入、生成、编辑与导出在同一个工作面里完成。",
+  teams: "Agent Team 用业务语言表达协作能力，底层配置默认隐藏。",
+  skills: "统一管理可用能力、绑定关系和企业范围内的启用状态。",
+  assets: "所有正式产物都应该可追溯、可导出、可二次复用。",
+  knowledge: "知识访问作为工作流的一部分出现，而不是孤立的技术入口。",
+  projects: "项目空间承接执行边界、审批节奏和交付结果。",
+  recent: "快速回到最近任务、结果和生成上下文。",
+  schedules: "周期性生成、汇总和提醒统一纳入工作流调度。",
+}
+
+const viewActions: Record<SidebarView, { primary: string; secondary: string }> = {
+  workbench: { primary: "新建项目", secondary: "查看审批" },
+  chat: { primary: "开始生成", secondary: "查看最近" },
+  teams: { primary: "新建 Team", secondary: "查看模板" },
+  skills: { primary: "配置能力", secondary: "查看绑定" },
+  assets: { primary: "查看产物", secondary: "导出目录" },
+  knowledge: { primary: "连接知识源", secondary: "查看权限" },
+  projects: { primary: "新建项目", secondary: "查看模板" },
+  recent: { primary: "继续任务", secondary: "查看全部" },
+  schedules: { primary: "新建任务", secondary: "查看日志" },
 }
 
 function PlaceholderView({
@@ -41,27 +44,32 @@ function PlaceholderView({
   action: string
 }) {
   return (
-    <div className="flex min-h-full items-start justify-center bg-muted/20 p-4 md:p-6">
-      <Card className="w-full max-w-3xl">
-        <CardHeader className="gap-3">
-          <div className="flex size-10 items-center justify-center rounded-md border bg-muted text-muted-foreground">
-            {icon}
-          </div>
-          <div className="flex flex-col gap-1">
-            <CardTitle className="text-2xl">{title}</CardTitle>
-            <CardDescription className="text-sm leading-6">{description}</CardDescription>
+    <div className="px-4 pb-6 pt-4 md:px-6 md:pb-8">
+      <Card>
+        <CardHeader className="border-b border-border">
+          <div className="flex items-start gap-4">
+            <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-foreground">
+              {icon}
+            </div>
+            <div className="space-y-1.5">
+              <CardTitle className="text-[20px] leading-7">{title}</CardTitle>
+              <CardDescription>{description}</CardDescription>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col gap-4 pt-5">
-          <div className="rounded-lg border bg-muted/40 p-4">
-            <p className="text-sm font-medium text-foreground">当前阶段先做结构落位</p>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              这块视图先与最新架构和术语对齐，再逐步接入真实数据和交互流。
+        <CardContent className="grid gap-4 pt-4 lg:grid-cols-2">
+          <div className="rounded-lg border border-border bg-secondary p-4">
+            <p className="field-label">模块状态</p>
+            <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">
+              当前页面已完成结构定义，下一步会接入真实数据、编辑操作和导出流程。
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button>{action}</Button>
-            <Button variant="outline">查看相关文档</Button>
+          <div className="rounded-lg border border-border bg-background p-4">
+            <p className="field-label">下一步</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button>{action}</Button>
+              <Button variant="outline">查看相关文档</Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -71,60 +79,41 @@ function PlaceholderView({
 
 function PageHeader({
   activeView,
-  onStartChat,
+  onPrimaryAction,
+  onSecondaryAction,
 }: {
   activeView: SidebarView
-  onStartChat: () => void
+  onPrimaryAction: () => void
+  onSecondaryAction: () => void
 }) {
-  const isWorkbench = activeView === "workbench"
-
   return (
-    <header className="sticky top-[64px] z-20 border-b bg-background md:top-0">
+    <header className="sticky top-[65px] z-20 border-b border-border bg-background md:top-0">
       <div className="flex flex-col gap-4 px-4 py-4 md:px-6">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>SwarmMind</span>
-              <span>/</span>
-              <span className="text-foreground">{VIEW_LABELS[activeView]}</span>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="space-y-2">
+            <div className="text-[12px] leading-[18px] text-muted-foreground">
+              SwarmMind / {VIEW_LABELS[activeView]}
             </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+            <div className="space-y-1">
+              <h1 className="font-heading text-[28px] leading-9 font-semibold text-foreground">
                 {VIEW_LABELS[activeView]}
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">{viewDescriptions[activeView]}</p>
+              <p className="max-w-2xl text-[14px] leading-[22px] text-muted-foreground">
+                {viewDescriptions[activeView]}
+              </p>
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <div className="relative min-w-0 md:w-[320px]">
+          <div className="flex flex-col gap-3 lg:min-w-[420px]">
+            <div className="relative w-full xl:max-w-[420px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                readOnly
-                value=""
-                placeholder="全局搜索项目、会话、产物"
-                className="h-10 bg-background pl-9"
-              />
+              <Input readOnly value="" placeholder="搜索项目、结果、知识与历史记录" className="pl-9" />
             </div>
-            <div className="flex items-center gap-2">
-              {isWorkbench ? (
-                <>
-                  <Button variant="outline" size="lg">
-                    我的范围
-                  </Button>
-                  <Button variant="outline" size="lg">
-                    查看待审批
-                  </Button>
-                  <Button size="lg">新建项目</Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="outline" size="lg" onClick={onStartChat}>
-                    新建对话
-                  </Button>
-                  <Button size="lg">主动作</Button>
-                </>
-              )}
+            <div className="flex flex-wrap gap-2 xl:justify-end">
+              <Button variant="outline" onClick={onSecondaryAction}>
+                {viewActions[activeView].secondary}
+              </Button>
+              <Button onClick={onPrimaryAction}>{viewActions[activeView].primary}</Button>
             </div>
           </div>
         </div>
@@ -179,6 +168,28 @@ export default function App() {
     setActiveView("chat")
   }
 
+  const handlePrimaryAction = () => {
+    if (activeView === "chat") {
+      handleStartChat()
+      return
+    }
+
+    if (activeView === "workbench" || activeView === "projects") {
+      handleViewChange("projects")
+      return
+    }
+
+    if (activeView === "recent") {
+      handleViewChange("chat")
+    }
+  }
+
+  const handleSecondaryAction = () => {
+    if (activeView === "workbench" || activeView === "chat") {
+      handleViewChange("recent")
+    }
+  }
+
   const renderContent = () => {
     switch (activeView) {
       case "workbench":
@@ -204,8 +215,8 @@ export default function App() {
           <PlaceholderView
             icon={<Bot className="size-5" />}
             title="Agent Team"
-            description="这里承接 Team 模板的配置和治理。用户看到的是 Team 概念，项目里挂载的是项目级 Team 实例。"
-            action="新建 Team 模板"
+            description="为项目挂载可复用 Team，并在这里统一查看配置与治理边界。"
+            action="新建 Team"
           />
         )
       case "skills":
@@ -213,8 +224,8 @@ export default function App() {
           <PlaceholderView
             icon={<Sparkles className="size-5" />}
             title="技能中心"
-            description="统一查看 MCP、Skills、绑定关系和最近调用状态。"
-            action="新建绑定"
+            description="统一管理 MCP 与技能绑定，避免能力散落在不同页面里。"
+            action="配置能力"
           />
         )
       case "assets":
@@ -222,8 +233,8 @@ export default function App() {
           <PlaceholderView
             icon={<Library className="size-5" />}
             title="资源库"
-            description="集中管理项目产物、导出结果、复盘总结和其他正式资产。"
-            action="查看最近产物"
+            description="管理报告、摘要、导出文件和可复用模板。"
+            action="查看产物"
           />
         )
       case "knowledge":
@@ -231,7 +242,7 @@ export default function App() {
           <PlaceholderView
             icon={<BookOpenText className="size-5" />}
             title="知识库"
-            description="面向授权知识访问、检索和浏览，不等于运行时记忆本身。"
+            description="连接企业知识源，并把引用范围纳入工作流控制。"
             action="连接知识源"
           />
         )
@@ -240,7 +251,7 @@ export default function App() {
           <PlaceholderView
             icon={<FolderKanban className="size-5" />}
             title="项目"
-            description="正式执行、Team 实例挂载、审批和审计都应该在项目空间里闭环。"
+            description="项目空间用于承接结构化执行、审批、结果沉淀与复用。"
             action="新建项目"
           />
         )
@@ -249,8 +260,8 @@ export default function App() {
           <PlaceholderView
             icon={<History className="size-5" />}
             title="最近记录"
-            description="聚合你最近进入的 ChatSession、项目和回访上下文。"
-            action="继续最近对话"
+            description="快速回到最近的生成任务、项目和输出结果。"
+            action="继续任务"
           />
         )
       case "schedules":
@@ -258,8 +269,8 @@ export default function App() {
           <PlaceholderView
             icon={<Clock3 className="size-5" />}
             title="定时任务"
-            description="配置周期执行、自动汇总和需要定时运行的工作流入口。"
-            action="新建定时任务"
+            description="配置周期生成、汇总与提醒，使企业任务自动化可交付。"
+            action="新建任务"
           />
         )
       default:
@@ -268,7 +279,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen page-shell">
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
@@ -277,9 +288,15 @@ export default function App() {
         pageTitle={VIEW_LABELS[activeView]}
       />
 
-      <main className="flex min-h-screen flex-col bg-background md:ml-[280px]">
-        <PageHeader activeView={activeView} onStartChat={handleStartChat} />
-        <div className="flex-1 pt-[64px] md:pt-0">{renderContent()}</div>
+      <main className="flex min-h-screen flex-col md:ml-[236px]">
+        {activeView !== "chat" && (
+          <PageHeader
+            activeView={activeView}
+            onPrimaryAction={handlePrimaryAction}
+            onSecondaryAction={handleSecondaryAction}
+          />
+        )}
+        <div className={activeView === "chat" ? "flex flex-1 flex-col pt-[65px] md:pt-0" : "flex-1 pt-[65px] md:pt-0"}>{renderContent()}</div>
       </main>
     </div>
   )

@@ -6,151 +6,202 @@
 
 @layer base {
   :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.145 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.145 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.145 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: 0 0% 98%;
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --radius: 0.5rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
-    --status-running: oklch(0.54 0.13 248);
-    --status-running-bg: oklch(0.96 0.02 248);
-    --status-running-border: oklch(0.9 0.03 248);
-    --status-approval: oklch(0.64 0.14 82);
-    --status-approval-bg: oklch(0.97 0.03 88);
-    --status-approval-border: oklch(0.9 0.05 88);
-    --status-blocked: oklch(0.66 0.18 38);
-    --status-blocked-bg: oklch(0.97 0.03 38);
-    --status-blocked-border: oklch(0.9 0.05 38);
-    --status-done: oklch(0.58 0.13 153);
-    --status-done-bg: oklch(0.96 0.03 153);
-    --status-done-border: oklch(0.9 0.04 153);
-    --status-chat: oklch(0.47 0 0);
-    --status-chat-bg: oklch(0.97 0 0);
-    --status-chat-border: oklch(0.9 0 0);
-    --status-draft: oklch(0.43 0.01 250);
-    --status-draft-bg: oklch(0.96 0.01 250);
-    --status-draft-border: oklch(0.9 0.01 250);
-    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-    --font-heading: var(--font-sans);
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 214 100% 93%;
+    --primary-foreground: 220 39% 21%;
+    --secondary: 220 20% 97%;
+    --secondary-foreground: 0 0% 7%;
+    --muted: 220 20% 97%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 220 20% 97%;
+    --accent-foreground: 0 0% 7%;
+    --destructive: 0 70% 92%;
+    --destructive-foreground: 2 58% 42%;
+    --border: 220 13% 91%;
+    --input: 220 20% 97%;
+    --ring: 214 67% 77%;
+    --radius: 10px;
+
+    --sidebar: 220 20% 97%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 214 100% 93%;
+    --sidebar-primary-foreground: 220 39% 21%;
+    --sidebar-accent: 0 0% 100%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 214 67% 77%;
+
+    --status-running: 214 54% 42%;
+    --status-running-bg: 214 100% 93%;
+    --status-running-border: 214 69% 87%;
+    --status-approval: 28 64% 45%;
+    --status-approval-bg: 28 100% 92%;
+    --status-approval-border: 29 84% 86%;
+    --status-blocked: 6 58% 45%;
+    --status-blocked-bg: 0 70% 95%;
+    --status-blocked-border: 0 58% 88%;
+    --status-done: 136 30% 38%;
+    --status-done-bg: 135 39% 92%;
+    --status-done-border: 135 29% 84%;
+    --status-chat: 260 34% 48%;
+    --status-chat-bg: 259 100% 95%;
+    --status-chat-border: 259 45% 89%;
+    --status-draft: 0 0% 45%;
+    --status-draft-bg: 220 20% 97%;
+    --status-draft-border: 220 13% 89%;
+
+    --blue-soft: #dcebff;
+    --green-soft: #dff5e3;
+    --orange-soft: #ffe9d6;
+    --purple-soft: #eee6ff;
+
+    --font-sans: "Inter", "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-mono: "SFMono-Regular", "IBM Plex Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --font-heading: "Inter", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
   }
 
   .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.11 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.11 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.11 0 0);
-    --secondary: oklch(0.2 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.2 0 0);
-    --muted-foreground: oklch(0.65 0 0);
-    --accent: oklch(0.2 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(0.255 0 0);
-    --input: oklch(0.255 0 0);
-    --ring: oklch(0.556 0 0);
-    --sidebar: oklch(0.11 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.11 0 0);
-    --sidebar-accent: oklch(0.18 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.2 0 0);
-    --sidebar-ring: oklch(0.556 0 0);
-    --status-running: oklch(0.76 0.11 248);
-    --status-running-bg: oklch(0.24 0.04 248);
-    --status-running-border: oklch(0.32 0.05 248);
-    --status-approval: oklch(0.82 0.11 88);
-    --status-approval-bg: oklch(0.24 0.03 88);
-    --status-approval-border: oklch(0.32 0.04 88);
-    --status-blocked: oklch(0.78 0.15 38);
-    --status-blocked-bg: oklch(0.25 0.04 38);
-    --status-blocked-border: oklch(0.34 0.05 38);
-    --status-done: oklch(0.8 0.11 153);
-    --status-done-bg: oklch(0.24 0.03 153);
-    --status-done-border: oklch(0.32 0.04 153);
-    --status-chat: oklch(0.84 0 0);
-    --status-chat-bg: oklch(0.22 0 0);
-    --status-chat-border: oklch(0.3 0 0);
-    --status-draft: oklch(0.82 0.02 250);
-    --status-draft-bg: oklch(0.22 0.01 250);
-    --status-draft-border: oklch(0.3 0.01 250);
+    --background: 222 26% 12%;
+    --foreground: 220 17% 95%;
+    --card: 222 26% 14%;
+    --card-foreground: 220 17% 95%;
+    --popover: 222 26% 14%;
+    --popover-foreground: 220 17% 95%;
+    --primary: 214 48% 38%;
+    --primary-foreground: 220 17% 95%;
+    --secondary: 222 19% 18%;
+    --secondary-foreground: 220 17% 95%;
+    --muted: 222 19% 18%;
+    --muted-foreground: 220 10% 68%;
+    --accent: 222 19% 18%;
+    --accent-foreground: 220 17% 95%;
+    --destructive: 0 40% 25%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 16% 24%;
+    --input: 222 19% 18%;
+    --ring: 214 48% 48%;
+    --sidebar: 222 24% 14%;
+    --sidebar-foreground: 220 17% 95%;
+    --sidebar-primary: 214 48% 38%;
+    --sidebar-primary-foreground: 220 17% 95%;
+    --sidebar-accent: 222 19% 18%;
+    --sidebar-accent-foreground: 220 17% 95%;
+    --sidebar-border: 222 16% 24%;
+    --sidebar-ring: 214 48% 48%;
   }
 
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/40;
+  }
+
+  html {
+    @apply font-sans scroll-smooth;
   }
 
   body {
     @apply bg-background text-foreground antialiased;
+    min-height: 100vh;
   }
 
-  html {
-    @apply font-sans;
+  ::selection {
+    background: hsla(var(--ring) / 0.25);
+    color: hsl(var(--foreground));
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  @keyframes fade-up {
+    0% { opacity: 0; transform: translateY(8px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
 }
 
 @layer components {
+  .status-pill-running,
+  .status-pill-approval,
+  .status-pill-blocked,
+  .status-pill-done,
+  .status-pill-chat,
+  .status-pill-draft {
+    border-width: 1px;
+    border-style: solid;
+    border-radius: 999px;
+    font-size: 12px;
+    line-height: 18px;
+    font-weight: 500;
+  }
+
   .status-pill-running {
-    color: var(--status-running);
-    background-color: var(--status-running-bg);
-    border-color: var(--status-running-border);
+    color: hsl(var(--status-running));
+    background-color: hsl(var(--status-running-bg));
+    border-color: hsl(var(--status-running-border));
   }
 
   .status-pill-approval {
-    color: var(--status-approval);
-    background-color: var(--status-approval-bg);
-    border-color: var(--status-approval-border);
+    color: hsl(var(--status-approval));
+    background-color: hsl(var(--status-approval-bg));
+    border-color: hsl(var(--status-approval-border));
   }
 
   .status-pill-blocked {
-    color: var(--status-blocked);
-    background-color: var(--status-blocked-bg);
-    border-color: var(--status-blocked-border);
+    color: hsl(var(--status-blocked));
+    background-color: hsl(var(--status-blocked-bg));
+    border-color: hsl(var(--status-blocked-border));
   }
 
   .status-pill-done {
-    color: var(--status-done);
-    background-color: var(--status-done-bg);
-    border-color: var(--status-done-border);
+    color: hsl(var(--status-done));
+    background-color: hsl(var(--status-done-bg));
+    border-color: hsl(var(--status-done-border));
   }
 
   .status-pill-chat {
-    color: var(--status-chat);
-    background-color: var(--status-chat-bg);
-    border-color: var(--status-chat-border);
+    color: hsl(var(--status-chat));
+    background-color: hsl(var(--status-chat-bg));
+    border-color: hsl(var(--status-chat-border));
   }
 
   .status-pill-draft {
-    color: var(--status-draft);
-    background-color: var(--status-draft-bg);
-    border-color: var(--status-draft-border);
+    color: hsl(var(--status-draft));
+    background-color: hsl(var(--status-draft-bg));
+    border-color: hsl(var(--status-draft-border));
+  }
+
+  .surface-card {
+    @apply rounded-lg border bg-card shadow-none;
+  }
+
+  .page-shell {
+    @apply bg-background;
+  }
+
+  .hero-gradient {
+    background: linear-gradient(135deg, #ffe9d6, #f3e8ff);
+  }
+
+  .section-kicker {
+    @apply text-[12px] leading-[18px] font-medium text-muted-foreground;
+  }
+
+  .field-label {
+    @apply text-[12px] leading-[18px] font-medium text-foreground;
+  }
+
+  .skeleton-line {
+    background: linear-gradient(90deg, #f2f4f7 25%, #f8fafc 37%, #f2f4f7 63%);
+    background-size: 400% 100%;
+    animation: shimmer 1.6s ease infinite;
+  }
+
+  .fade-up {
+    animation: fade-up 220ms ease-out both;
   }
 }
