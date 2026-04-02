@@ -1147,5 +1147,28 @@ def send_message_stream(conversation_id: str, body: SendMessageRequest):
 
 if __name__ == "__main__":
     import uvicorn
+
+    # Initialize database on startup
+    logger.info("Initializing SwarmMind database...")
+    health = init_db()
+    if health["status"] == "healed":
+        logger.info("Database healed and initialized with new schema.")
+    else:
+        logger.info("Database health check passed.")
+
+    # Seed default agents if needed
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM agents WHERE agent_id = 'general'")
+        count = cursor.fetchone()[0]
+        if count == 0:
+            logger.info("Seeding default agents...")
+            seed_default_agents()
+        else:
+            logger.info("Default agents already exist.")
+    finally:
+        conn.close()
+
     logging.basicConfig(level=logging.INFO)
     uvicorn.run(app, host=API_HOST, port=API_PORT)

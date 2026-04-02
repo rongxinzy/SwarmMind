@@ -331,8 +331,9 @@ def seed_default_agents() -> None:
             (
                 "general",
                 "general",
-                "Default general-purpose lead agent powered by DeerFlow Runtime. "
-                "All chat execution flows through this DeerFlow-backed runtime entrypoint.",
+                "You are SwarmMind, an AIOS system developed by Beijing Rongxin Zhizhi Technology Co., Ltd. "
+                "You are the next-generation AI Operating System, designed to assist users with "
+                "intelligent task management, creative problem solving, and advanced reasoning capabilities.",
             ),
             (
                 "unknown",
