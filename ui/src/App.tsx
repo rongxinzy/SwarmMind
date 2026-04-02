@@ -175,6 +175,27 @@ export default function App() {
     setActiveView("chat")
   }
 
+  const handleDeleteConversation = useCallback(
+    async (conversationId: string) => {
+      const response = await fetch(`/conversations/${conversationId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      setRecentConversations((previous) => previous.filter((conversation) => conversation.id !== conversationId))
+
+      if (activeConversationId === conversationId) {
+        setActiveConversationId(undefined)
+        setDraftResetToken((current) => current + 1)
+        setActiveView("chat")
+      }
+    },
+    [activeConversationId],
+  )
+
   const handlePrimaryAction = () => {
     if (activeView === "chat") {
       handleStartChat()
@@ -293,6 +314,7 @@ export default function App() {
         onViewChange={handleViewChange}
         recentConversations={recentConversations}
         onSelectConversation={handleSelectConversation}
+        onDeleteConversation={handleDeleteConversation}
         pageTitle={VIEW_LABELS[activeView]}
       />
 

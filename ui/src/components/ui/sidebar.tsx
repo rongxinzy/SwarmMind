@@ -10,10 +10,12 @@ import {
   History,
   Home,
   Library,
+  Loader2,
   Menu,
   PenSquare,
   Plus,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react"
 
@@ -117,6 +119,7 @@ interface SidebarProps {
   onViewChange: (view: SidebarView) => void
   recentConversations?: ConversationRecord[]
   onSelectConversation?: (id: string) => void
+  onDeleteConversation?: (id: string) => Promise<void>
   pageTitle?: string
 }
 
@@ -125,9 +128,11 @@ export function Sidebar({
   onViewChange,
   recentConversations = [],
   onSelectConversation,
+  onDeleteConversation,
   pageTitle,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false)
+  const [deletingConversationId, setDeletingConversationId] = React.useState<string | null>(null)
 
   const handleSelect = (view: SidebarView) => {
     onViewChange(view)
@@ -137,6 +142,26 @@ export function Sidebar({
   const handleSelectConversation = (conversationId: string) => {
     onSelectConversation?.(conversationId)
     setIsOpen(false)
+  }
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    if (!onDeleteConversation) {
+      return
+    }
+
+    const confirmed = window.confirm("删除这个会话后，消息记录将一并移除。是否继续？")
+    if (!confirmed) {
+      return
+    }
+
+    setDeletingConversationId(conversationId)
+    try {
+      await onDeleteConversation(conversationId)
+    } catch (error) {
+      console.error("Failed to delete conversation:", error)
+    } finally {
+      setDeletingConversationId(null)
+    }
   }
 
   const sidebarContent = (
@@ -225,19 +250,38 @@ export function Sidebar({
               <p className="px-1 py-1 text-[12px] leading-[18px] text-muted-foreground">最近会话</p>
               {recentConversations.length > 0 ? (
                 recentConversations.slice(0, 4).map((conversation) => (
-                  <Button
-                    key={conversation.id}
-                    variant="ghost"
-                    onClick={() => handleSelectConversation(conversation.id)}
-                    className="mt-1 h-auto w-full justify-start rounded-md px-2.5 py-2"
-                  >
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="truncate text-[14px] leading-[22px] text-foreground">{conversation.title}</p>
-                      <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">
-                        {formatConversationTime(conversation.updated_at)}
-                      </p>
-                    </div>
-                  </Button>
+                  <div key={conversation.id} className="group mt-1 flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleSelectConversation(conversation.id)}
+                      className="h-auto min-w-0 flex-1 justify-start rounded-md px-2.5 py-2"
+                    >
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate text-[14px] leading-[22px] text-foreground">{conversation.title}</p>
+                        <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">
+                          {formatConversationTime(conversation.updated_at)}
+                        </p>
+                      </div>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-xs"
+                      disabled={deletingConversationId === conversation.id}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        void handleDeleteConversation(conversation.id)
+                      }}
+                      className="shrink-0 text-muted-foreground opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                      title="删除会话"
+                    >
+                      {deletingConversationId === conversation.id ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3.5" />
+                      )}
+                    </Button>
+                  </div>
                 ))
               ) : (
                 <div className="px-2.5 py-3 text-[12px] leading-[18px] text-muted-foreground">

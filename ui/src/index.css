@@ -122,6 +122,17 @@
     0% { opacity: 0; transform: translateY(8px); }
     100% { opacity: 1; transform: translateY(0); }
   }
+
+  @keyframes chat-dot-bounce {
+    0%, 80%, 100% {
+      transform: translateY(0);
+      opacity: 0.35;
+    }
+    40% {
+      transform: translateY(-3px);
+      opacity: 1;
+    }
+  }
 }
 
 @layer components {
@@ -203,5 +214,14 @@
 
   .fade-up {
     animation: fade-up 220ms ease-out both;
+  }
+
+  .chat-stream-dot {
+    width: 6px;
+    height: 6px;
+    margin-inline: 2px;
+    border-radius: 999px;
+    background: #8a94a6;
+    animation: chat-dot-bounce 1.05s infinite ease-in-out;
   }
 }

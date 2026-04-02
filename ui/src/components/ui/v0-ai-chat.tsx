@@ -7,8 +7,10 @@ import {
   motion,
 } from "framer-motion";
 import {
+  ArrowDown,
   ArrowUp,
   Brain,
+  Check,
   ChevronDown,
   Copy,
   GraduationCap,
@@ -81,7 +83,6 @@ interface RuntimeState {
   label: string;
   tasks: RuntimeTask[];
   activities: RuntimeActivity[];
-  thinkingByMessageId: Record<string, string>;
 }
 
 interface StreamEventUserMessage {
@@ -128,6 +129,8 @@ type StreamEvent =
 type ChatMessage = StoredMessage & {
   pendingPersist?: boolean;
   isStreaming?: boolean;
+  thinking?: string;
+  isReasoningStreaming?: boolean;
 };
 
 type ConversationMode = "flash" | "thinking" | "pro" | "ultra";
@@ -192,8 +195,19 @@ function createEmptyRuntime(): RuntimeState {
     label: "等待新的输入",
     tasks: [],
     activities: [],
-    thinkingByMessageId: {},
   };
+}
+
+function findActiveAssistantIndex(messages: ChatMessage[]) {
+  const reverseIndex = [...messages].reverse().findIndex(
+    (message) => message.role === "assistant" && (message.isStreaming || message.isReasoningStreaming),
+  );
+
+  if (reverseIndex === -1) {
+    return -1;
+  }
+
+  return messages.length - 1 - reverseIndex;
 }
 
 function sortConversations(items: ConversationRecord[]) {
@@ -457,31 +471,61 @@ function ModelPicker({
 
 function MessageBubble({
   message,
-  thinking,
 }: {
   message: ChatMessage;
-  thinking?: string;
 }) {
   const isUser = message.role === "user";
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => setCopied(false), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  const handleCopy = useCallback(async () => {
+    if (!message.content.trim()) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+    } catch (error) {
+      console.error("Failed to copy message content:", error);
+    }
+  }, [message.content]);
 
   return (
-    <div className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}>
+    <div className={cn("group flex w-full", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[88%] rounded-lg border px-4 py-3",
+          "relative max-w-[88%] rounded-lg border px-4 py-3 pr-12",
           isUser ? "border-[#c9ddff] bg-[#dcebff] text-[#23395b]" : "border-border bg-card text-foreground",
         )}
       >
-        {!isUser && thinking ? (
-          <details className="mb-3 rounded-md border border-border bg-secondary px-3 py-2">
-            <summary className="flex cursor-pointer list-none items-center gap-2 text-[12px] leading-[18px] text-muted-foreground">
-              <Brain className="size-3.5" />
-              模型过程
-            </summary>
-            <div className="mt-2 whitespace-pre-wrap text-[12px] leading-[18px] text-muted-foreground">
-              {thinking}
-            </div>
-          </details>
+        {message.content.trim().length > 0 ? (
+          <div className="absolute right-2 top-2 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => {
+                void handleCopy();
+              }}
+              className="border border-border/70 bg-white/90 text-muted-foreground shadow-sm backdrop-blur hover:bg-white hover:text-foreground"
+              title={copied ? "已复制" : "复制消息"}
+            >
+              {copied ? <Check className="size-3.5 text-[#0d6b4b]" /> : <Copy className="size-3.5" />}
+            </Button>
+          </div>
+        ) : null}
+
+        {!isUser && message.thinking ? (
+          <ReasoningPanel thinking={message.thinking} isStreaming={message.isReasoningStreaming} />
         ) : null}
 
         {message.content ? (
@@ -494,10 +538,145 @@ function MessageBubble({
           )
         ) : (
           <div className="flex items-center gap-2 text-[14px] leading-[22px] text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
+            <StreamingDots />
             正在整理回复
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ReasoningPanel({
+  thinking,
+  isStreaming = false,
+}: {
+  thinking: string;
+  isStreaming?: boolean;
+}) {
+  const [open, setOpen] = useState(true);
+  const [hasAutoClosed, setHasAutoClosed] = useState(false);
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!thinking) {
+      return;
+    }
+
+    if (startTimeRef.current === null) {
+      startTimeRef.current = Date.now();
+      setDurationSeconds(null);
+      setHasAutoClosed(false);
+    }
+  }, [thinking]);
+
+  useEffect(() => {
+    if (isStreaming) {
+      setOpen(true);
+      return;
+    }
+
+    if (!thinking) {
+      return;
+    }
+
+    if (startTimeRef.current !== null && durationSeconds === null) {
+      const elapsedSeconds = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
+      setDurationSeconds(elapsedSeconds);
+    }
+
+    if (!open || hasAutoClosed) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setOpen(false);
+      setHasAutoClosed(true);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [durationSeconds, hasAutoClosed, isStreaming, open, thinking]);
+
+  const statusText = isStreaming
+    ? "模型正在思考"
+    : durationSeconds
+      ? `思考完成，用时 ${durationSeconds} 秒`
+      : "思考过程";
+
+  return (
+    <div className="mb-3 rounded-md border border-border bg-secondary/90">
+      <button
+        type="button"
+        onClick={() => setOpen((previous) => !previous)}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] leading-[18px] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Brain className="size-3.5 shrink-0" />
+        <span className="flex-1">{statusText}</span>
+        {isStreaming ? <StreamingDots className="mr-1" /> : null}
+        <ChevronDown className={cn("size-3.5 shrink-0 transition-transform duration-200", open && "rotate-180")} />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open ? (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border/70 px-3 py-2 whitespace-pre-wrap text-[12px] leading-[18px] text-muted-foreground">
+              {thinking}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function StreamingDots({ className }: { className?: string }) {
+  return (
+    <div className={cn("inline-flex items-center", className)} aria-hidden="true">
+      {[0, 1, 2].map((index) => (
+        <span
+          key={index}
+          className="chat-stream-dot"
+          style={{ animationDelay: `${index * 0.16}s` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MessageListSkeleton() {
+  return (
+    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-8 px-6 py-6">
+      <div className="flex justify-end">
+        <div className="w-full max-w-[420px] space-y-2">
+          <div className="skeleton-line h-4 rounded-full" />
+          <div className="skeleton-line ml-auto h-4 w-[72%] rounded-full" />
+        </div>
+      </div>
+
+      <div className="flex justify-start">
+        <div className="w-full max-w-[560px] space-y-2">
+          <div className="skeleton-line h-4 rounded-full" />
+          <div className="skeleton-line h-4 w-[94%] rounded-full" />
+          <div className="skeleton-line h-4 w-[68%] rounded-full" />
+        </div>
+      </div>
+
+      <div className="flex justify-start">
+        <div className="w-full max-w-[520px] rounded-2xl border border-border/70 bg-card px-4 py-4">
+          <div className="space-y-2">
+            <div className="skeleton-line h-3.5 w-[120px] rounded-full" />
+            <div className="skeleton-line h-4 rounded-full" />
+            <div className="skeleton-line h-4 w-[88%] rounded-full" />
+            <div className="skeleton-line h-4 w-[54%] rounded-full" />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -514,20 +693,52 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
   const [defaultModel, setDefaultModel] = useState(DEFAULT_MODEL);
   const [modelOptions, setModelOptions] = useState<RuntimeModelOption[]>([]);
   const [isModelsLoading, setIsModelsLoading] = useState(true);
+  const [isConversationLoading, setIsConversationLoading] = useState(false);
   const [modelLoadError, setModelLoadError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const [showScrollToLatest, setShowScrollToLatest] = useState(false);
 
   const resetDraftState = useCallback(() => {
     setCurrentConversationId(undefined);
     setMessages([]);
     setRuntime(createEmptyRuntime());
+    setIsConversationLoading(false);
     setError(null);
     setInput("");
     setSelectedMode(DEFAULT_MODE);
     setSelectedModel(defaultModel);
+    shouldStickToBottomRef.current = true;
+    setShowScrollToLatest(false);
   }, [defaultModel]);
+
+  const syncScrollState = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const distanceToBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isNearBottom = distanceToBottom <= 72;
+    shouldStickToBottomRef.current = isNearBottom;
+    setShowScrollToLatest(!isNearBottom);
+  }, []);
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior,
+    });
+    shouldStickToBottomRef.current = true;
+    setShowScrollToLatest(false);
+  }, []);
 
   const fetchModels = useCallback(async () => {
     setIsModelsLoading(true);
@@ -583,6 +794,13 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
   }, []);
 
   const loadMessages = useCallback(async (nextConversationId: string) => {
+    setIsConversationLoading(true);
+    setMessages([]);
+    setRuntime(createEmptyRuntime());
+    setError(null);
+    shouldStickToBottomRef.current = true;
+    setShowScrollToLatest(false);
+
     try {
       const response = await fetch(`/conversations/${nextConversationId}/messages`);
       if (!response.ok) {
@@ -597,11 +815,11 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
           created_at: message.created_at,
         })),
       );
-      setRuntime(createEmptyRuntime());
-      setError(null);
     } catch (requestError) {
       console.error("Failed to load messages:", requestError);
       setError(requestError instanceof Error ? requestError.message : "加载会话失败");
+    } finally {
+      setIsConversationLoading(false);
     }
   }, []);
 
@@ -631,17 +849,29 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
 
   useEffect(() => {
     if (conversationId) {
-      setCurrentConversationId(conversationId);
-      void loadMessages(conversationId);
+      if (conversationId !== currentConversationId) {
+        setCurrentConversationId(conversationId);
+        void loadMessages(conversationId);
+      }
       return;
     }
 
     resetDraftState();
-  }, [conversationId, loadMessages, resetDraftState, draftResetToken]);
+  }, [conversationId, currentConversationId, loadMessages, resetDraftState, draftResetToken]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, runtime]);
+    if (!shouldStickToBottomRef.current) {
+      const rafId = window.requestAnimationFrame(() => {
+        syncScrollState();
+      });
+      return () => window.cancelAnimationFrame(rafId);
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      scrollToLatest(messages.length > 0 ? "smooth" : "auto");
+    });
+    return () => window.cancelAnimationFrame(rafId);
+  }, [messages, runtime, scrollToLatest, syncScrollState]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -690,6 +920,17 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
         }));
         if (event.phase === "completed" || event.phase === "error") {
           setIsLoading(false);
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.role === "assistant"
+                ? {
+                    ...message,
+                    isStreaming: false,
+                    isReasoningStreaming: false,
+                  }
+                : message,
+            ),
+          );
         }
         return;
 
@@ -723,15 +964,44 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
         return;
 
       case "thinking":
-        setRuntime((previous) => ({
-          ...previous,
-          thinkingByMessageId: {
-            ...previous.thinkingByMessageId,
-            [event.message_id]: previous.thinkingByMessageId[event.message_id]
-              ? `${previous.thinkingByMessageId[event.message_id]}\n${event.content}`
-              : event.content,
-          },
-        }));
+        setMessages((previous) => {
+          const exactIndex = previous.findIndex((message) => message.id === event.message_id);
+          if (exactIndex !== -1) {
+            const next = [...previous];
+            next[exactIndex] = {
+              ...next[exactIndex],
+              thinking: next[exactIndex].thinking ? `${next[exactIndex].thinking}\n${event.content}` : event.content,
+              isReasoningStreaming: true,
+            };
+            return next;
+          }
+
+          const activeAssistantIndex = findActiveAssistantIndex(previous);
+          if (activeAssistantIndex !== -1) {
+            const next = [...previous];
+            next[activeAssistantIndex] = {
+              ...next[activeAssistantIndex],
+              id: event.message_id,
+              thinking: next[activeAssistantIndex].thinking
+                ? `${next[activeAssistantIndex].thinking}\n${event.content}`
+                : event.content,
+              isReasoningStreaming: true,
+            };
+            return next;
+          }
+
+          return [
+            ...previous,
+            {
+              id: event.message_id,
+              role: "assistant",
+              content: "",
+              thinking: event.content,
+              isStreaming: false,
+              isReasoningStreaming: true,
+            },
+          ];
+        });
         return;
 
       case "assistant_message":
@@ -743,6 +1013,20 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
               ...next[index],
               content: event.content,
               isStreaming: true,
+              isReasoningStreaming: false,
+            };
+            return next;
+          }
+
+          const activeAssistantIndex = findActiveAssistantIndex(previous);
+          if (activeAssistantIndex !== -1) {
+            const next = [...previous];
+            next[activeAssistantIndex] = {
+              ...next[activeAssistantIndex],
+              id: event.message_id,
+              content: event.content,
+              isStreaming: true,
+              isReasoningStreaming: false,
             };
             return next;
           }
@@ -754,6 +1038,7 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
               role: "assistant",
               content: event.content,
               isStreaming: true,
+              isReasoningStreaming: false,
             },
           ];
         });
@@ -774,20 +1059,19 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
               ...next[exactIndex],
               ...event.message,
               isStreaming: false,
+              isReasoningStreaming: false,
             };
             return next;
           }
 
-          const streamingIndex = [...previous].reverse().findIndex(
-            (message) => message.role === "assistant" && message.isStreaming,
-          );
-          if (streamingIndex !== -1) {
-            const actualIndex = previous.length - 1 - streamingIndex;
+          const activeAssistantIndex = findActiveAssistantIndex(previous);
+          if (activeAssistantIndex !== -1) {
             const next = [...previous];
-            next[actualIndex] = {
-              ...next[actualIndex],
+            next[activeAssistantIndex] = {
+              ...next[activeAssistantIndex],
               ...event.message,
               isStreaming: false,
+              isReasoningStreaming: false,
             };
             return next;
           }
@@ -797,6 +1081,7 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
             {
               ...event.message,
               isStreaming: false,
+              isReasoningStreaming: false,
             },
           ];
         });
@@ -837,6 +1122,17 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
 
       case "done":
         setIsLoading(false);
+        setMessages((previous) =>
+          previous.map((message) =>
+            message.role === "assistant"
+              ? {
+                  ...message,
+                  isStreaming: false,
+                  isReasoningStreaming: false,
+                }
+              : message,
+          ),
+        );
     }
   }, []);
 
@@ -907,6 +1203,8 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
 
       setError(null);
       setIsLoading(true);
+      shouldStickToBottomRef.current = true;
+      setShowScrollToLatest(false);
       setRuntime({
         ...createEmptyRuntime(),
         phase: "accepted",
@@ -942,71 +1240,100 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
     [createConversation, currentConversationId, fetchConversations, input, isLoading, modelLoadError, selectedMode, selectedModel, streamConversation],
   );
 
-  const isEmpty = messages.length === 0 && !isLoading;
+  const isEmpty = messages.length === 0 && !isLoading && !isConversationLoading;
   const isComposerDisabled = isLoading || isModelsLoading || !selectedModel;
   const currentModeOption = MODE_OPTIONS.find((mode) => mode.id === selectedMode) ?? MODE_OPTIONS[0];
 
   return (
     <div className="flex h-[calc(100vh-65px)] flex-col bg-background md:h-screen">
       {/* Scrollable area: messages OR empty-state */}
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        {isEmpty ? (
-          <div className="flex flex-1 flex-col items-center justify-center px-6">
-            <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10">
-              <Sparkles className="size-6 text-primary" />
-            </div>
-            <h2 className="mt-5 text-[22px] font-semibold text-foreground">临时会话</h2>
-            <p className="mt-1.5 text-[14px] text-muted-foreground">
-              从这里快速探索、生成和试跑想法。首次发送成功后才会创建正式会话。
-            </p>
+      <div className="relative flex flex-1 flex-col">
+        <div
+          ref={scrollContainerRef}
+          onScroll={syncScrollState}
+          className="flex flex-1 flex-col overflow-y-auto"
+        >
+          {isConversationLoading ? (
+            <MessageListSkeleton />
+          ) : isEmpty ? (
+            <div className="flex flex-1 flex-col items-center justify-center px-6">
+              <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10">
+                <Sparkles className="size-6 text-primary" />
+              </div>
+              <h2 className="mt-5 text-[22px] font-semibold text-foreground">临时会话</h2>
+              <p className="mt-1.5 text-[14px] text-muted-foreground">
+                从这里快速探索、生成和试跑想法。首次发送成功后才会创建正式会话。
+              </p>
 
-            <div className="mt-4 rounded-full border border-border bg-card px-4 py-2 text-[12px] text-muted-foreground">
-              当前模式 <span className="font-medium text-foreground">{currentModeOption.label}</span>
-              <span className="mx-2 text-border">/</span>
-              {currentModeOption.description}
-            </div>
+              <div className="mt-4 rounded-full border border-border bg-card px-4 py-2 text-[12px] text-muted-foreground">
+                当前模式 <span className="font-medium text-foreground">{currentModeOption.label}</span>
+                <span className="mx-2 text-border">/</span>
+                {currentModeOption.description}
+              </div>
 
-            <div className="mt-8 w-full max-w-[560px]">
-              <p className="mb-3 text-[13px] font-medium text-muted-foreground">快速开始</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {QUICK_PROMPTS.map((prompt) => (
-                  <button
-                    key={prompt}
-                    onClick={() => setInput(prompt)}
-                    className="rounded-lg border border-border bg-card px-4 py-3 text-left text-[13px] text-foreground transition-colors hover:bg-accent"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+              <div className="mt-8 w-full max-w-[560px]">
+                <p className="mb-3 text-[13px] font-medium text-muted-foreground">快速开始</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {QUICK_PROMPTS.map((prompt) => (
+                    <button
+                      key={prompt}
+                      onClick={() => setInput(prompt)}
+                      className="rounded-lg border border-border bg-card px-4 py-3 text-left text-[13px] text-foreground transition-colors hover:bg-accent"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="mx-auto flex w-full max-w-[760px] flex-col gap-4 px-6 py-6">
+          ) : (
+            <div className="mx-auto flex w-full max-w-[760px] flex-col gap-4 px-6 py-6">
             {messages.map((message) => (
               <MessageBubble
                 key={message.id}
                 message={message}
-                thinking={runtime.thinkingByMessageId[message.id]}
               />
             ))}
-            {isLoading && messages.every((m) => m.role !== "assistant") && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3">
-                  <Loader2 className="size-4 animate-spin" />
-                  <span className="text-[14px] text-muted-foreground">正在生成回复</span>
+              {isLoading && messages.every((m) => m.role !== "assistant") && (
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5 shadow-sm">
+                    <StreamingDots />
+                    <span className="text-[13px] text-muted-foreground">正在生成回复</span>
+                  </div>
                 </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {showScrollToLatest && !isConversationLoading && !isEmpty ? (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 12 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2"
+            >
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => scrollToLatest("smooth")}
+                className="pointer-events-auto rounded-full border-border bg-background/95 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur"
+              >
+                <ArrowDown className="size-3.5" />
+                回到最新
+              </Button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
       {/* Pinned bottom: status bar + composer */}
       <div className="mx-auto w-full max-w-[760px] px-6 pb-5">
         {(runtime.phase !== "idle" || error) && (
-          <div className="mb-3 rounded-lg border border-border bg-secondary/50 px-4 py-2.5">
+          <div className="mb-3 rounded-lg border border-border bg-secondary/50 px-4 py-2.5" aria-live="polite">
             <div className="flex items-center justify-between">
               <p className="text-[13px] text-muted-foreground">{error || runtime.label}</p>
               <Badge variant="outline" className={cn("text-[11px]", statusTone(runtime.phase))}>
