@@ -35,6 +35,8 @@ from swarmmind.models import (
     PendingResponse,
     ProposalStatus,
     RejectRequest,
+    RuntimeModelCatalogResponse,
+    RuntimeModelOption,
     SendMessageRequest,
     SendMessageResponse,
     StrategyChangeProposal,
@@ -45,6 +47,13 @@ from swarmmind.models import (
 from swarmmind.renderer import generate_conversation_title_from_exchange, render_status
 from swarmmind.agents.general_agent import GeneralAgent
 from swarmmind.runtime import RuntimeConfigError, RuntimeExecutionError, RuntimeUnavailableError, ensure_default_runtime_instance
+from swarmmind.runtime.catalog import (
+    ANONYMOUS_SUBJECT_ID,
+    ANONYMOUS_SUBJECT_TYPE,
+    list_models_for_subject,
+    resolve_model_for_subject,
+    sync_env_runtime_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +115,7 @@ def startup():
     """Initialize DB on startup."""
     init_db()
     seed_default_agents()
+    sync_env_runtime_model()
     ensure_default_runtime_instance()
     logger.info("SwarmMind API started on %s:%s", API_HOST, API_PORT)
     # Start cleanup scanner (proposals + expired memory) in background
@@ -319,6 +329,33 @@ def ready():
     }
 
 
+@app.get("/models")
+def list_runtime_models():
+    """List runtime models available to the current anonymous visitor subject."""
+    models = list_models_for_subject(
+        subject_type=ANONYMOUS_SUBJECT_TYPE,
+        subject_id=ANONYMOUS_SUBJECT_ID,
+    )
+    default_model = next((model.name for model in models if model.is_default), None)
+    return RuntimeModelCatalogResponse(
+        models=[
+            RuntimeModelOption(
+                name=model.name,
+                provider=model.provider,
+                model=model.model,
+                display_name=model.display_name,
+                description=model.description,
+                supports_vision=model.supports_vision,
+                is_default=model.is_default,
+            )
+            for model in models
+        ],
+        default_model=default_model,
+        subject_type=ANONYMOUS_SUBJECT_TYPE,
+        subject_id=ANONYMOUS_SUBJECT_ID,
+    )
+
+
 # ---- Conversation endpoints ----
 
 def _row_to_conversation(row) -> Conversation:
@@ -472,6 +509,22 @@ def _normalize_model_name(model_name: str | None) -> str | None:
     return value or None
 
 
+def _resolve_model_name_for_request(model_name: str | None) -> str:
+    normalized_model_name = _normalize_model_name(model_name)
+    try:
+        selected_model = resolve_model_for_subject(
+            requested_model_name=normalized_model_name,
+            subject_type=ANONYMOUS_SUBJECT_TYPE,
+            subject_id=ANONYMOUS_SUBJECT_ID,
+        )
+    except RuntimeConfigError as exc:
+        raise HTTPException(
+            status_code=400 if normalized_model_name else 503,
+            detail=str(exc),
+        ) from exc
+    return selected_model.name
+
+
 def _conversation_thread_id(conversation_id: str) -> str:
     return conversation_id
 
@@ -517,7 +570,7 @@ def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOpt
     runtime_flags = MODE_RUNTIME_MAP[effective_mode]
     return ConversationRuntimeOptions(
         mode=effective_mode,
-        model_name=_normalize_model_name(body.model_name),
+        model_name=_resolve_model_name_for_request(body.model_name),
         thinking_enabled=runtime_flags["thinking_enabled"],
         plan_mode=runtime_flags["plan_mode"],
         subagent_enabled=runtime_flags["subagent_enabled"],

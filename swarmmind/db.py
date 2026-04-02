@@ -136,6 +136,34 @@ CREATE TABLE IF NOT EXISTS compaction_hints (
     fired_at        DATETIME,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Runtime model catalog
+CREATE TABLE IF NOT EXISTS runtime_models (
+    name            TEXT PRIMARY KEY,
+    provider        TEXT NOT NULL,
+    model           TEXT NOT NULL,
+    display_name    TEXT,
+    description     TEXT,
+    model_class     TEXT NOT NULL,
+    api_key_env_var TEXT NOT NULL,
+    base_url        TEXT,
+    supports_vision INTEGER NOT NULL DEFAULT 0,
+    enabled         INTEGER NOT NULL DEFAULT 1,
+    source          TEXT NOT NULL DEFAULT 'manual',
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Subject-to-model assignment, future-proof for tenant/user/group control
+CREATE TABLE IF NOT EXISTS runtime_model_assignments (
+    subject_type    TEXT NOT NULL,
+    subject_id      TEXT NOT NULL,
+    model_name      TEXT NOT NULL,
+    is_default      INTEGER NOT NULL DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (subject_type, subject_id, model_name),
+    FOREIGN KEY (model_name) REFERENCES runtime_models(name) DEFERRABLE INITIALLY DEFERRED
+);
 """
 
 # Indexes for performance
@@ -149,6 +177,9 @@ CREATE INDEX IF NOT EXISTS idx_memory_scope ON memory_entries(layer, scope_id);
 CREATE INDEX IF NOT EXISTS idx_memory_layer_key ON memory_entries(layer, scope_id, key);
 CREATE INDEX IF NOT EXISTS idx_memory_tags ON memory_entries(tags);
 CREATE INDEX IF NOT EXISTS idx_compaction_scope ON compaction_hints(scope_layer, scope_id);
+CREATE INDEX IF NOT EXISTS idx_runtime_models_enabled ON runtime_models(enabled);
+CREATE INDEX IF NOT EXISTS idx_runtime_models_source ON runtime_models(source);
+CREATE INDEX IF NOT EXISTS idx_runtime_model_assignments_subject ON runtime_model_assignments(subject_type, subject_id);
 """
 
 
@@ -261,6 +292,8 @@ def health_check() -> dict:
         "memory_entries",
         "session_promotions",
         "compaction_hints",
+        "runtime_models",
+        "runtime_model_assignments",
     ]
 
     conn = get_connection()

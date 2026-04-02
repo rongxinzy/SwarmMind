@@ -8,7 +8,8 @@ import os
 from pathlib import Path
 
 from swarmmind.runtime.errors import RuntimeConfigError
-from swarmmind.runtime.models import RuntimeInstance, RuntimeProfile
+from swarmmind.runtime.catalog import list_enabled_runtime_models, sync_env_runtime_model
+from swarmmind.runtime.models import RuntimeInstance, RuntimeModel, RuntimeProfile
 from swarmmind.runtime.profile import resolve_default_runtime_profile
 
 logger = logging.getLogger(__name__)
@@ -25,22 +26,34 @@ def _yaml_quote(value: str) -> str:
     return f'"{escaped}"'
 
 
-def _render_config(profile: RuntimeProfile, deer_flow_home: Path) -> str:
+def _render_model_lines(model: RuntimeModel) -> list[str]:
+    lines = [
+        f"  - name: {_yaml_quote(model.name)}",
+        f"    display_name: {_yaml_quote(model.display_name or model.name)}",
+        f"    use: {_yaml_quote(model.model_class)}",
+        f"    model: {_yaml_quote(model.model)}",
+        f"    api_key: {_yaml_quote(f'${model.api_key_env_var}')}",
+        "    max_tokens: 4096",
+    ]
+    if model.base_url:
+        lines.append(f"    base_url: {_yaml_quote(model.base_url)}")
+    if model.supports_vision:
+        lines.append("    supports_vision: true")
+    return lines
+
+
+def _render_config(profile: RuntimeProfile, deer_flow_home: Path, models: list[RuntimeModel]) -> str:
+    ordered_models = sorted(
+        models,
+        key=lambda model: (0 if model.name == profile.model_name else 1, model.name),
+    )
     lines = [
         "config_version: 3",
         "",
         "models:",
-        f"  - name: {_yaml_quote(profile.model_name)}",
-        f"    display_name: {_yaml_quote(profile.model_name)}",
-        f"    use: {_yaml_quote(profile.model_class)}",
-        f"    model: {_yaml_quote(profile.model_name)}",
-        f"    api_key: {_yaml_quote(f'${profile.api_key_env_var}')}",
-        "    max_tokens: 4096",
     ]
-    if profile.base_url:
-        lines.append(f"    base_url: {_yaml_quote(profile.base_url)}")
-    if profile.supports_vision:
-        lines.append("    supports_vision: true")
+    for model in ordered_models:
+        lines.extend(_render_model_lines(model))
 
     lines.extend(
         [
@@ -101,7 +114,9 @@ def _render_config(profile: RuntimeProfile, deer_flow_home: Path) -> str:
 
 def ensure_default_runtime_instance() -> RuntimeInstance:
     """Create and export the single local DeerFlow runtime bundle for MVP use."""
+    sync_env_runtime_model()
     profile = resolve_default_runtime_profile()
+    runtime_models = list_enabled_runtime_models()
     runtime_root = _runtime_root()
     deer_flow_home = runtime_root / "home"
     config_path = runtime_root / "config.yaml"
@@ -110,7 +125,7 @@ def ensure_default_runtime_instance() -> RuntimeInstance:
     runtime_root.mkdir(parents=True, exist_ok=True)
     deer_flow_home.mkdir(parents=True, exist_ok=True)
 
-    config_path.write_text(_render_config(profile, deer_flow_home), encoding="utf-8")
+    config_path.write_text(_render_config(profile, deer_flow_home, runtime_models), encoding="utf-8")
     if not extensions_config_path.exists():
         extensions_config_path.write_text(
             json.dumps({"mcpServers": {}, "skills": {}}, indent=2),

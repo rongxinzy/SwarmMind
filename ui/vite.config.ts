@@ -19,6 +19,7 @@ export default defineConfig({
       "/strategy": "http://localhost:8000",
       "/dispatch": "http://localhost:8000",
       "/health": "http://localhost:8000",
+      "/models": "http://localhost:8000",
       "/chat/stream": "http://localhost:8000",
       "/chat": "http://localhost:8000",
       "/conversations": "http://localhost:8000",

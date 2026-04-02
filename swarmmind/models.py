@@ -226,6 +226,23 @@ class ConversationRuntimeOptions(BaseModel):
     subagent_enabled: bool
 
 
+class RuntimeModelOption(BaseModel):
+    name: str
+    provider: str
+    model: str
+    display_name: str | None = None
+    description: str | None = None
+    supports_vision: bool = False
+    is_default: bool = False
+
+
+class RuntimeModelCatalogResponse(BaseModel):
+    models: list[RuntimeModelOption]
+    default_model: str | None = None
+    subject_type: str
+    subject_id: str
+
+
 class SendMessageRequest(BaseModel):
     content: str
     mode: ConversationMode | None = None

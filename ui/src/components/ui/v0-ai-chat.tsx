@@ -47,6 +47,21 @@ interface StoredMessage {
   created_at?: string;
 }
 
+interface RuntimeModelOption {
+  name: string;
+  provider: string;
+  model: string;
+  display_name?: string | null;
+  description?: string | null;
+  supports_vision: boolean;
+  is_default: boolean;
+}
+
+interface RuntimeModelCatalogResponse {
+  models: RuntimeModelOption[];
+  default_model?: string | null;
+}
+
 interface RuntimeTask {
   id: string;
   title: string;
@@ -162,7 +177,7 @@ const MODE_OPTIONS: Array<{
 ];
 
 const DEFAULT_MODE: ConversationMode = "pro";
-const DEFAULT_MODEL = "qwen3.5-plus";
+const DEFAULT_MODEL = "";
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -249,13 +264,6 @@ function statusLabel(phase: RuntimeState["phase"]) {
   if (phase === "error") return "失败";
   return "待开始";
 }
-
-const MODEL_OPTIONS = [
-  { id: "qwen3.5-plus", label: "Qwen 3.5 Plus" },
-  { id: "qwen3.5-turbo", label: "Qwen 3.5 Turbo" },
-  { id: "deepseek-r1", label: "DeepSeek R1" },
-  { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-];
 
 function ModePicker({
   selected,
@@ -366,24 +374,35 @@ function ModePicker({
 }
 
 function ModelPicker({
+  models,
   selected,
   onSelect,
+  isLoading,
 }: {
+  models: RuntimeModelOption[];
   selected: string;
   onSelect: (id: string) => void;
+  isLoading: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const current = MODEL_OPTIONS.find((m) => m.id === selected) ?? MODEL_OPTIONS[0];
+  const current = models.find((model) => model.name === selected) ?? models[0];
+  const currentLabel = current?.display_name || current?.name || (isLoading ? "加载模型..." : "未配置模型");
+  const isDisabled = isLoading || models.length <= 1;
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (!isDisabled) {
+            setOpen((prev) => !prev);
+          }
+        }}
+        disabled={isDisabled}
         className="flex h-8 items-center gap-1.5 rounded-md px-2 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
       >
         <Sparkles className="size-3.5" />
-        <span className="max-w-[100px] truncate">{current.label}</span>
+        <span className="max-w-[140px] truncate">{currentLabel}</span>
       </button>
 
       <AnimatePresence>
@@ -397,23 +416,23 @@ function ModelPicker({
               transition={{ type: "spring", stiffness: 500, damping: 30, mass: 0.8 }}
               className="absolute bottom-full left-0 z-50 mb-2 w-[180px] overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-md"
             >
-              {MODEL_OPTIONS.map((model) => (
+              {models.map((model) => (
                 <button
-                  key={model.id}
+                  key={model.name}
                   type="button"
                   onClick={() => {
-                    onSelect(model.id);
+                    onSelect(model.name);
                     setOpen(false);
                   }}
                   className={cn(
                     "flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-[13px] transition-colors",
-                    model.id === selected
+                    model.name === selected
                       ? "bg-accent text-foreground font-medium"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
                   )}
                 >
                   <Sparkles className="size-3.5 shrink-0" />
-                  <span className="truncate">{model.label}</span>
+                  <span className="truncate">{model.display_name || model.name}</span>
                 </button>
               ))}
             </motion.div>
@@ -480,6 +499,9 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMode, setSelectedMode] = useState<ConversationMode>(DEFAULT_MODE);
   const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
+  const [defaultModel, setDefaultModel] = useState(DEFAULT_MODEL);
+  const [modelOptions, setModelOptions] = useState<RuntimeModelOption[]>([]);
+  const [isModelsLoading, setIsModelsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -491,7 +513,32 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
     setError(null);
     setInput("");
     setSelectedMode(DEFAULT_MODE);
-    setSelectedModel(DEFAULT_MODEL);
+    setSelectedModel(defaultModel);
+  }, [defaultModel]);
+
+  const fetchModels = useCallback(async () => {
+    setIsModelsLoading(true);
+    try {
+      const response = await fetch("/models");
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = (await response.json()) as RuntimeModelCatalogResponse;
+      const nextModels = data.models ?? [];
+      const nextDefaultModel = data.default_model ?? nextModels[0]?.name ?? DEFAULT_MODEL;
+      setModelOptions(nextModels);
+      setDefaultModel(nextDefaultModel);
+      setSelectedModel((current) => {
+        if (current && nextModels.some((model) => model.name === current)) {
+          return current;
+        }
+        return nextDefaultModel;
+      });
+    } catch (requestError) {
+      console.error("Failed to fetch runtime models:", requestError);
+    } finally {
+      setIsModelsLoading(false);
+    }
   }, []);
 
   const fetchConversations = useCallback(async () => {
@@ -531,6 +578,10 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
   }, []);
 
   useEffect(() => {
+    void fetchModels();
+  }, [fetchModels]);
+
+  useEffect(() => {
     void fetchConversations();
   }, [fetchConversations]);
 
@@ -551,6 +602,16 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, runtime]);
+
+  useEffect(() => {
+    if (selectedModel) {
+      return;
+    }
+    if (!defaultModel) {
+      return;
+    }
+    setSelectedModel(defaultModel);
+  }, [defaultModel, selectedModel]);
 
   const lastAssistantMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "assistant" && message.content.trim().length > 0),
@@ -735,14 +796,22 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
 
   const streamConversation = useCallback(
     async (nextConversationId: string, text: string, mode: ConversationMode, modelName: string) => {
+      const payload: {
+        content: string;
+        mode: ConversationMode;
+        model_name?: string;
+      } = {
+        content: text,
+        mode,
+      };
+      if (modelName) {
+        payload.model_name = modelName;
+      }
+
       const response = await fetch(`/conversations/${nextConversationId}/messages/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: text,
-          mode,
-          model_name: modelName,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok || !response.body) {
@@ -929,7 +998,12 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
               )}
             </div>
             <div className="flex items-center gap-1.5">
-              <ModelPicker selected={selectedModel} onSelect={setSelectedModel} />
+              <ModelPicker
+                models={modelOptions}
+                selected={selectedModel}
+                onSelect={setSelectedModel}
+                isLoading={isModelsLoading}
+              />
               <Button
                 onClick={() => void handleSubmit()}
                 disabled={!input.trim() || isLoading}

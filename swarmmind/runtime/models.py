@@ -20,6 +20,29 @@ class RuntimeProfile:
 
 
 @dataclass(frozen=True)
+class RuntimeModel:
+    """Catalog entry for a DeerFlow-compatible model."""
+
+    name: str
+    provider: str
+    model: str
+    model_class: str
+    api_key_env_var: str
+    display_name: str | None = None
+    description: str | None = None
+    base_url: str | None = None
+    supports_vision: bool = False
+    source: str = "manual"
+
+
+@dataclass(frozen=True)
+class RuntimeSelectableModel(RuntimeModel):
+    """Model entry visible to a specific subject with default selection metadata."""
+
+    is_default: bool = False
+
+
+@dataclass(frozen=True)
 class RuntimeInstance:
     """Provisioned DeerFlow Runtime Instance metadata."""
 
