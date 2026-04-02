@@ -760,6 +760,12 @@ export function V0Chat({ conversationId, draftResetToken, onConversationCreated,
         return;
 
       case "assistant_final":
+        setIsLoading(false);
+        setRuntime((previous) => ({
+          ...previous,
+          phase: "completed",
+          label: "本轮会话已完成",
+        }));
         setMessages((previous) => {
           const exactIndex = previous.findIndex((message) => message.id === event.message.id);
           if (exactIndex !== -1) {
