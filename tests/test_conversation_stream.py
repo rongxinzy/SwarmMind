@@ -8,7 +8,7 @@ import pytest
 
 from swarmmind.api import supervisor
 from swarmmind.db import get_connection, init_db, seed_default_agents
-from swarmmind.models import GoalRequest, SendMessageRequest
+from swarmmind.models import ConversationMode, GoalRequest, SendMessageRequest
 
 
 @pytest.fixture(autouse=True)
@@ -21,10 +21,14 @@ def setup_db(tmp_path, monkeypatch):
 
 
 class FakeGeneralAgent:
-    def __init__(self, *args, **kwargs):
-        pass
+    init_calls: list[dict] = []
+    stream_runtime_options: list[object] = []
 
-    def stream_events(self, goal: str, ctx=None):
+    def __init__(self, *args, **kwargs):
+        self.__class__.init_calls.append(kwargs)
+
+    def stream_events(self, goal: str, ctx=None, runtime_options=None):
+        self.__class__.stream_runtime_options.append(runtime_options)
         yield {
             "type": "assistant_reasoning",
             "message_id": "reasoning-1",
@@ -68,6 +72,13 @@ class FakeGeneralAgent:
         return "这是 DeerFlow 流式返回的最终回答。", ["[search]: 找到了 5 个相关来源"]
 
 
+@pytest.fixture(autouse=True)
+def reset_fake_general_agent():
+    FakeGeneralAgent.init_calls = []
+    FakeGeneralAgent.stream_runtime_options = []
+    yield
+
+
 def _conversation_message_count(conversation_id: str) -> int:
     conn = get_connection()
     try:
@@ -97,7 +108,7 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     raw_lines = list(
         supervisor._stream_conversation_message(
             conversation.id,
-            SendMessageRequest(content="帮我分析 CRM MVP 应该怎么做", reasoning=True),
+            SendMessageRequest(content="帮我分析 CRM MVP 应该怎么做", mode=ConversationMode.ULTRA),
         ),
     )
     events = [json.loads(line) for line in raw_lines]
@@ -138,3 +149,105 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     assert title_event["conversation"]["title"] == "CRM 探索"
     assert title_event["conversation"]["title_status"] == "generated"
     assert _conversation_message_count(conversation.id) == 2
+    assert FakeGeneralAgent.stream_runtime_options[-1].mode == ConversationMode.ULTRA
+
+
+@pytest.mark.parametrize(
+    ("message_request", "expected_mode", "expected_thinking", "expected_plan", "expected_subagents"),
+    [
+        (
+            SendMessageRequest(content="flash", mode=ConversationMode.FLASH),
+            ConversationMode.FLASH,
+            False,
+            False,
+            False,
+        ),
+        (
+            SendMessageRequest(content="thinking", mode=ConversationMode.THINKING),
+            ConversationMode.THINKING,
+            True,
+            False,
+            False,
+        ),
+        (
+            SendMessageRequest(content="pro", mode=ConversationMode.PRO),
+            ConversationMode.PRO,
+            True,
+            True,
+            False,
+        ),
+        (
+            SendMessageRequest(content="ultra", mode=ConversationMode.ULTRA),
+            ConversationMode.ULTRA,
+            True,
+            True,
+            True,
+        ),
+        (
+            SendMessageRequest(content="legacy-thinking", reasoning=True),
+            ConversationMode.THINKING,
+            True,
+            False,
+            False,
+        ),
+        (
+            SendMessageRequest(content="legacy-flash", reasoning=False),
+            ConversationMode.FLASH,
+            False,
+            False,
+            False,
+        ),
+    ],
+)
+def test_resolve_runtime_options(message_request, expected_mode, expected_thinking, expected_plan, expected_subagents):
+    runtime_options = supervisor._resolve_runtime_options(message_request)
+
+    assert runtime_options.mode == expected_mode
+    assert runtime_options.thinking_enabled is expected_thinking
+    assert runtime_options.plan_mode is expected_plan
+    assert runtime_options.subagent_enabled is expected_subagents
+
+
+def test_flash_mode_suppresses_reasoning_and_team_events(monkeypatch):
+    monkeypatch.setattr(supervisor, "GeneralAgent", FakeGeneralAgent)
+    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
+
+    conversation = supervisor.create_conversation(
+        GoalRequest(goal="快速给我一版摘要"),
+    )
+
+    raw_lines = list(
+        supervisor._stream_conversation_message(
+            conversation.id,
+            SendMessageRequest(content="快速给我一版摘要", mode=ConversationMode.FLASH),
+        ),
+    )
+    events = [json.loads(line) for line in raw_lines]
+
+    assert not any(event["type"] == "thinking" for event in events)
+    assert not any(event["type"] == "team_task" for event in events)
+    assert not any(event["type"] == "team_activity" for event in events)
+    assert any(event["type"] == "assistant_final" for event in events)
+    assert FakeGeneralAgent.stream_runtime_options[-1].mode == ConversationMode.FLASH
+
+
+def test_reasoning_compatibility_uses_thinking_mode_without_team_events(monkeypatch):
+    monkeypatch.setattr(supervisor, "GeneralAgent", FakeGeneralAgent)
+    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
+
+    conversation = supervisor.create_conversation(
+        GoalRequest(goal="帮我展开分析"),
+    )
+
+    raw_lines = list(
+        supervisor._stream_conversation_message(
+            conversation.id,
+            SendMessageRequest(content="帮我展开分析", reasoning=True),
+        ),
+    )
+    events = [json.loads(line) for line in raw_lines]
+
+    assert any(event["type"] == "thinking" for event in events)
+    assert not any(event["type"] == "team_task" for event in events)
+    assert not any(event["type"] == "team_activity" for event in events)
+    assert FakeGeneralAgent.stream_runtime_options[-1].mode == ConversationMode.THINKING

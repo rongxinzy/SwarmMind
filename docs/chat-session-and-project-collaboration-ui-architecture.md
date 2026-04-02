@@ -282,7 +282,8 @@ ChatSession
 更合理的方向是：
 
 - `POST /conversations` 只创建会话壳
-- `POST /conversations/{id}/messages` 在首轮 assistant 响应完成后再尝试生成标题
+- `POST /conversations/{id}/messages/stream` 作为用户主路径，在首轮 assistant 响应完成后再尝试生成标题
+- `POST /conversations/{id}/messages` 仅保留给内部兼容、脚本和测试场景
 - 标题写回 `conversations` 表，未来再平滑迁移到正式 `ChatSessionStore`
 
 这意味着我们当前数据库至少应从“只有 `title` 文本字段”，升级为“有标题状态语义”的结构。

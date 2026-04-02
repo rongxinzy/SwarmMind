@@ -28,6 +28,8 @@ from swarmmind.models import (
     ApproveRequest,
     Conversation,
     ConversationListResponse,
+    ConversationMode,
+    ConversationRuntimeOptions,
     DispatchResponse,
     GoalRequest,
     MemoryContext,
@@ -52,6 +54,29 @@ from swarmmind.agents.general_agent import GeneralAgent
 logger = logging.getLogger(__name__)
 
 NEW_CONVERSATION_TITLE = "New Conversation"
+
+MODE_RUNTIME_MAP: dict[ConversationMode, dict[str, bool]] = {
+    ConversationMode.FLASH: {
+        "thinking_enabled": False,
+        "plan_mode": False,
+        "subagent_enabled": False,
+    },
+    ConversationMode.THINKING: {
+        "thinking_enabled": True,
+        "plan_mode": False,
+        "subagent_enabled": False,
+    },
+    ConversationMode.PRO: {
+        "thinking_enabled": True,
+        "plan_mode": True,
+        "subagent_enabled": False,
+    },
+    ConversationMode.ULTRA: {
+        "thinking_enabled": True,
+        "plan_mode": True,
+        "subagent_enabled": True,
+    },
+}
 
 # ---- Pydantic models ----
 
@@ -443,10 +468,60 @@ def _persist_assistant_message(conversation_id: str, content: str) -> Message:
         conn.close()
 
 
-def _translate_general_agent_event(event: dict) -> list[str]:
+def _normalize_model_name(model_name: str | None) -> str | None:
+    if model_name is None:
+        return None
+
+    value = model_name.strip()
+    return value or None
+
+
+def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOptions:
+    effective_mode = body.mode
+    if effective_mode is None:
+        effective_mode = ConversationMode.THINKING if body.reasoning else ConversationMode.FLASH
+
+    runtime_flags = MODE_RUNTIME_MAP[effective_mode]
+    return ConversationRuntimeOptions(
+        mode=effective_mode,
+        model_name=_normalize_model_name(body.model_name),
+        thinking_enabled=runtime_flags["thinking_enabled"],
+        plan_mode=runtime_flags["plan_mode"],
+        subagent_enabled=runtime_flags["subagent_enabled"],
+    )
+
+
+def _general_agent_status_labels(runtime_options: ConversationRuntimeOptions) -> tuple[str, str]:
+    if runtime_options.mode == ConversationMode.ULTRA:
+        return (
+            "Agent Team 正在判断这轮探索需要怎样的协作方式",
+            "Agent Team 正在协作处理你的问题",
+        )
+    if runtime_options.mode == ConversationMode.PRO:
+        return (
+            "正在规划这轮任务的执行方式",
+            "正在按规划生成结果",
+        )
+    if runtime_options.mode == ConversationMode.THINKING:
+        return (
+            "正在分析你的问题",
+            "正在整理深入回复",
+        )
+    return (
+        "正在准备快速回复",
+        "正在快速生成结果",
+    )
+
+
+def _translate_general_agent_event(
+    event: dict,
+    runtime_options: ConversationRuntimeOptions,
+) -> list[str]:
     event_type = event.get("type")
 
     if event_type == "assistant_reasoning":
+        if not runtime_options.thinking_enabled:
+            return []
         content = event.get("content")
         if isinstance(content, str) and content.strip():
             return [
@@ -471,6 +546,8 @@ def _translate_general_agent_event(event: dict) -> list[str]:
         return []
 
     if event_type == "assistant_tool_calls":
+        if not runtime_options.subagent_enabled:
+            return []
         tool_calls = event.get("tool_calls")
         if not isinstance(tool_calls, list):
             return []
@@ -515,6 +592,8 @@ def _translate_general_agent_event(event: dict) -> list[str]:
         return lines
 
     if event_type == "tool_result":
+        if not runtime_options.subagent_enabled:
+            return []
         tool_name = str(event.get("tool_name") or "unknown")
         tool_call_id = event.get("tool_call_id")
         content = str(event.get("content") or "").strip()
@@ -700,10 +779,10 @@ def get_conversation_messages(conversation_id: str):
         conn.close()
 
 
-@app.post("/conversations/{conversation_id}/messages")
+@app.post("/conversations/{conversation_id}/messages", include_in_schema=False)
 def send_message(conversation_id: str, body: SendMessageRequest):
     """
-    Send a user message and get an AI response.
+    Internal compatibility endpoint for non-streaming conversation turns.
 
     Routing logic:
     1. Try dispatch() to route to a specialized agent
@@ -737,6 +816,7 @@ def send_message(conversation_id: str, body: SendMessageRequest):
         user_id="supervisor",
         session_id=conversation_id,
     )
+    runtime_options = _resolve_runtime_options(body)
 
     # Route through ContextBroker — use lightweight check first to avoid creating orphaned proposals
     situation_tag = derive_situation_tag(body.content)
@@ -747,8 +827,10 @@ def send_message(conversation_id: str, body: SendMessageRequest):
         try:
             general_agent = GeneralAgent(
                 deer_flow_config_path=DEER_FLOW_CONFIG_PATH,
-                thinking_enabled=body.reasoning,
-                subagent_enabled=True,
+                default_model=runtime_options.model_name,
+                thinking_enabled=runtime_options.thinking_enabled,
+                subagent_enabled=runtime_options.subagent_enabled,
+                plan_mode=runtime_options.plan_mode,
             )
             # Use dispatch() with override to get a proper pending proposal routed to GeneralAgent
             dispatch_result = dispatch(
@@ -774,7 +856,10 @@ def send_message(conversation_id: str, body: SendMessageRequest):
 
             # Execute with GeneralAgent
             completed_proposal = general_agent.act(
-                body.content, proposal_id, ctx=memory_ctx
+                body.content,
+                proposal_id,
+                ctx=memory_ctx,
+                runtime_options=runtime_options,
             )
             ai_response = completed_proposal.description
         except Exception as e:
@@ -815,11 +900,21 @@ def send_message(conversation_id: str, body: SendMessageRequest):
                 # Fallback: use GeneralAgent (DeerFlow)
                 agent = GeneralAgent(
                     deer_flow_config_path=DEER_FLOW_CONFIG_PATH,
-                    thinking_enabled=body.reasoning,
-                    subagent_enabled=True,
+                    default_model=runtime_options.model_name,
+                    thinking_enabled=runtime_options.thinking_enabled,
+                    subagent_enabled=runtime_options.subagent_enabled,
+                    plan_mode=runtime_options.plan_mode,
                 )
 
-            completed_proposal = agent.act(body.content, proposal_id, ctx=memory_ctx)
+            if isinstance(agent, GeneralAgent):
+                completed_proposal = agent.act(
+                    body.content,
+                    proposal_id,
+                    ctx=memory_ctx,
+                    runtime_options=runtime_options,
+                )
+            else:
+                completed_proposal = agent.act(body.content, proposal_id, ctx=memory_ctx)
             ai_response = completed_proposal.description
         except Exception as e:
             logger.error("Agent execution error: %s", e)
@@ -902,6 +997,8 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
         user_id="supervisor",
         session_id=conversation_id,
     )
+    runtime_options = _resolve_runtime_options(body)
+    routing_label, running_label = _general_agent_status_labels(runtime_options)
 
     ai_response = ""
     situation_tag = derive_situation_tag(body.content)
@@ -912,13 +1009,15 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
             yield _serialize_stream_event(
                 "status",
                 phase="routing",
-                label="Agent Team 正在判断这轮探索需要怎样的协作方式",
+                label=routing_label,
             )
 
             general_agent = GeneralAgent(
                 deer_flow_config_path=DEER_FLOW_CONFIG_PATH,
-                thinking_enabled=body.reasoning,
-                subagent_enabled=True,
+                default_model=runtime_options.model_name,
+                thinking_enabled=runtime_options.thinking_enabled,
+                subagent_enabled=runtime_options.subagent_enabled,
+                plan_mode=runtime_options.plan_mode,
             )
 
             dispatch_result = dispatch(
@@ -944,10 +1043,14 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
             yield _serialize_stream_event(
                 "status",
                 phase="running",
-                label="Agent Team 正在协作处理你的问题",
+                label=running_label,
             )
 
-            stream = general_agent.stream_events(body.content, ctx=memory_ctx)
+            stream = general_agent.stream_events(
+                body.content,
+                ctx=memory_ctx,
+                runtime_options=runtime_options,
+            )
             while True:
                 try:
                     event = next(stream)
@@ -955,7 +1058,7 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
                     ai_response, _tool_results = stop.value
                     break
 
-                for line in _translate_general_agent_event(event):
+                for line in _translate_general_agent_event(event, runtime_options):
                     yield line
 
         else:
@@ -1001,11 +1104,21 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
             else:
                 agent = GeneralAgent(
                     deer_flow_config_path=DEER_FLOW_CONFIG_PATH,
-                    thinking_enabled=body.reasoning,
-                    subagent_enabled=True,
+                    default_model=runtime_options.model_name,
+                    thinking_enabled=runtime_options.thinking_enabled,
+                    subagent_enabled=runtime_options.subagent_enabled,
+                    plan_mode=runtime_options.plan_mode,
                 )
 
-            completed_proposal = agent.act(body.content, proposal_id, ctx=memory_ctx)
+            if isinstance(agent, GeneralAgent):
+                completed_proposal = agent.act(
+                    body.content,
+                    proposal_id,
+                    ctx=memory_ctx,
+                    runtime_options=runtime_options,
+                )
+            else:
+                completed_proposal = agent.act(body.content, proposal_id, ctx=memory_ctx)
             ai_response = completed_proposal.description
 
             yield _serialize_stream_event(
@@ -1084,11 +1197,13 @@ def send_message_stream(conversation_id: str, body: SendMessageRequest):
     )
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, include_in_schema=False)
 async def chat(request: ChatRequest):
     """
-    Chat endpoint — Phase 1 uses render_status() for stateless LLM queries.
-    Does not create proposals or invoke agents (reserved for Phase 2).
+    Internal non-streaming chat endpoint for compatibility and simple callers.
+
+    User-facing chat surfaces should use ``/chat/stream`` or
+    ``/conversations/{conversation_id}/messages/stream``.
     """
     try:
         # Run blocking LLM call in thread pool to avoid blocking the event loop

@@ -9,10 +9,15 @@ import {
 import {
   ArrowUp,
   Brain,
+  ChevronDown,
   Copy,
+  GraduationCap,
+  Lightbulb,
   Loader2,
   Paperclip,
+  Rocket,
   Sparkles,
+  Zap,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +27,7 @@ import { cn } from "@/lib/utils";
 
 interface V0ChatProps {
   conversationId?: string;
+  draftResetToken?: number;
   onConversationCreated?: (id: string) => void;
   onConversationsChange?: (items: ConversationRecord[]) => void;
 }
@@ -109,12 +115,54 @@ type ChatMessage = StoredMessage & {
   isStreaming?: boolean;
 };
 
+type ConversationMode = "flash" | "thinking" | "pro" | "ultra";
+
 const QUICK_PROMPTS = [
   "帮我整理本周项目进展，输出 3 条重点结论。",
   "生成一版 CRM MVP 范围说明，控制在一页内。",
   "把下面的会议讨论改写成正式纪要。",
   "总结当前续费风险，并给出 3 条行动建议。",
 ];
+
+const MODE_OPTIONS: Array<{
+  id: ConversationMode;
+  label: string;
+  description: string;
+  accentClassName: string;
+  icon: typeof Zap;
+}> = [
+  {
+    id: "flash",
+    label: "Flash",
+    description: "最快回复，不展开推理",
+    accentClassName: "from-[#cfe5ff] via-[#e8f3ff] to-white text-[#184a88] border-[#b9d3f5]",
+    icon: Zap,
+  },
+  {
+    id: "thinking",
+    label: "Thinking",
+    description: "保留推理过程，单轮深入分析",
+    accentClassName: "from-[#ece4ff] via-[#f6f0ff] to-white text-[#5f38a6] border-[#d9c8ff]",
+    icon: Lightbulb,
+  },
+  {
+    id: "pro",
+    label: "Pro",
+    description: "默认模式，先规划再执行",
+    accentClassName: "from-[#dff5eb] via-[#eefbf4] to-white text-[#0d6b4b] border-[#bfe7d3]",
+    icon: GraduationCap,
+  },
+  {
+    id: "ultra",
+    label: "Ultra",
+    description: "启用完整协作流程",
+    accentClassName: "from-[#fff0bd] via-[#fff8df] to-white text-[#8a5a00] border-[#ecd48a]",
+    icon: Rocket,
+  },
+];
+
+const DEFAULT_MODE: ConversationMode = "pro";
+const DEFAULT_MODEL = "qwen3.5-plus";
 
 function generateId() {
   return Math.random().toString(36).slice(2, 10);
@@ -208,6 +256,114 @@ const MODEL_OPTIONS = [
   { id: "deepseek-r1", label: "DeepSeek R1" },
   { id: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
 ];
+
+function ModePicker({
+  selected,
+  onSelect,
+}: {
+  selected: ConversationMode;
+  onSelect: (id: ConversationMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = MODE_OPTIONS.find((mode) => mode.id === selected) ?? MODE_OPTIONS[0];
+  const CurrentIcon = current.icon;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={cn(
+          "group flex h-8 items-center gap-1.5 rounded-full border bg-gradient-to-r px-2.5 text-left shadow-[0_10px_24px_-20px_rgba(15,23,42,0.4)] transition-all hover:border-border hover:shadow-[0_12px_24px_-20px_rgba(15,23,42,0.28)]",
+          current.accentClassName,
+        )}
+      >
+        <span className="flex size-5 items-center justify-center rounded-full bg-white/80 shadow-sm">
+          <CurrentIcon className="size-3" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[11px] leading-4 font-semibold tracking-[0.02em]">
+            {current.label}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-3 shrink-0 transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 360, damping: 28, mass: 0.9 }}
+              className="absolute bottom-full left-0 z-50 mb-3 w-[320px] rounded-[22px] border border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(247,248,250,0.96))] p-3 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.35)] backdrop-blur"
+            >
+              <div className="mb-2 px-1">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Mode</p>
+                <p className="text-[13px] text-foreground">选择这轮临时会话的执行方式</p>
+              </div>
+              <div className="space-y-2">
+                {MODE_OPTIONS.map((mode, index) => {
+                  const Icon = mode.icon;
+                  const isSelected = mode.id === selected;
+
+                  return (
+                    <motion.button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => {
+                        onSelect(mode.id);
+                        setOpen(false);
+                      }}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className={cn(
+                        "flex w-full items-start gap-3 rounded-[18px] border bg-white/70 px-3.5 py-3 text-left transition-all",
+                        isSelected
+                          ? cn("shadow-[0_14px_30px_-22px_rgba(15,23,42,0.45)]", mode.accentClassName)
+                          : "border-border/70 text-foreground hover:border-border hover:bg-white",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full border bg-white/80 shadow-sm",
+                          isSelected ? "border-white/70" : "border-border/70",
+                        )}
+                      >
+                        <Icon className="size-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="text-[13px] font-semibold">{mode.label}</span>
+                          {isSelected ? (
+                            <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em]">
+                              Active
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="mt-1 block text-[12px] leading-5 opacity-80">
+                          {mode.description}
+                        </span>
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function ModelPicker({
   selected,
@@ -316,16 +472,27 @@ function MessageBubble({
   );
 }
 
-export function V0Chat({ conversationId, onConversationCreated, onConversationsChange }: V0ChatProps) {
+export function V0Chat({ conversationId, draftResetToken, onConversationCreated, onConversationsChange }: V0ChatProps) {
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [runtime, setRuntime] = useState<RuntimeState>(createEmptyRuntime());
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("qwen3.5-plus");
+  const [selectedMode, setSelectedMode] = useState<ConversationMode>(DEFAULT_MODE);
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
   const [error, setError] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<string | undefined>(conversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const resetDraftState = useCallback(() => {
+    setCurrentConversationId(undefined);
+    setMessages([]);
+    setRuntime(createEmptyRuntime());
+    setError(null);
+    setInput("");
+    setSelectedMode(DEFAULT_MODE);
+    setSelectedModel(DEFAULT_MODEL);
+  }, []);
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -378,11 +545,8 @@ export function V0Chat({ conversationId, onConversationCreated, onConversationsC
       return;
     }
 
-    setCurrentConversationId(undefined);
-    setMessages([]);
-    setRuntime(createEmptyRuntime());
-    setError(null);
-  }, [conversationId, loadMessages]);
+    resetDraftState();
+  }, [conversationId, loadMessages, resetDraftState, draftResetToken]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -570,11 +734,15 @@ export function V0Chat({ conversationId, onConversationCreated, onConversationsC
   }, []);
 
   const streamConversation = useCallback(
-    async (nextConversationId: string, text: string) => {
+    async (nextConversationId: string, text: string, mode: ConversationMode, modelName: string) => {
       const response = await fetch(`/conversations/${nextConversationId}/messages/stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text, reasoning: true }),
+        body: JSON.stringify({
+          content: text,
+          mode,
+          model_name: modelName,
+        }),
       });
 
       if (!response.ok || !response.body) {
@@ -638,7 +806,7 @@ export function V0Chat({ conversationId, onConversationCreated, onConversationsC
 
       try {
         const nextConversationId = currentConversationId ?? (await createConversation(text.slice(0, 60)));
-        await streamConversation(nextConversationId, text);
+        await streamConversation(nextConversationId, text, selectedMode, selectedModel);
         await fetchConversations();
       } catch (requestError) {
         setIsLoading(false);
@@ -652,10 +820,11 @@ export function V0Chat({ conversationId, onConversationCreated, onConversationsC
         }));
       }
     },
-    [createConversation, currentConversationId, fetchConversations, input, isLoading, streamConversation],
+    [createConversation, currentConversationId, fetchConversations, input, isLoading, selectedMode, selectedModel, streamConversation],
   );
 
   const isEmpty = messages.length === 0 && !isLoading;
+  const currentModeOption = MODE_OPTIONS.find((mode) => mode.id === selectedMode) ?? MODE_OPTIONS[0];
 
   return (
     <div className="flex h-[calc(100vh-65px)] flex-col bg-background md:h-screen">
@@ -666,10 +835,16 @@ export function V0Chat({ conversationId, onConversationCreated, onConversationsC
             <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10">
               <Sparkles className="size-6 text-primary" />
             </div>
-            <h2 className="mt-5 text-[22px] font-semibold text-foreground">开始对话</h2>
+            <h2 className="mt-5 text-[22px] font-semibold text-foreground">临时会话</h2>
             <p className="mt-1.5 text-[14px] text-muted-foreground">
-              用自然语言描述任务，直接获得结果
+              从这里快速探索、生成和试跑想法。首次发送成功后才会创建正式会话。
             </p>
+
+            <div className="mt-4 rounded-full border border-border bg-card px-4 py-2 text-[12px] text-muted-foreground">
+              当前模式 <span className="font-medium text-foreground">{currentModeOption.label}</span>
+              <span className="mx-2 text-border">/</span>
+              {currentModeOption.description}
+            </div>
 
             <div className="mt-8 w-full max-w-[560px]">
               <p className="mb-3 text-[13px] font-medium text-muted-foreground">快速开始</p>
@@ -737,6 +912,7 @@ export function V0Chat({ conversationId, onConversationCreated, onConversationsC
           />
           <div className="flex items-center justify-between border-t border-border px-4 py-2.5">
             <div className="flex items-center gap-1">
+              <ModePicker selected={selectedMode} onSelect={setSelectedMode} />
               <Button variant="ghost" size="icon-xs" disabled className="text-muted-foreground" title="上传附件">
                 <Paperclip className="size-4" />
               </Button>

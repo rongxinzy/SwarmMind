@@ -19,7 +19,7 @@ from swarmmind.agents.base import BaseAgent
 from swarmmind.config import DEER_FLOW_CONFIG_PATH
 from swarmmind.context_broker import update_proposal_result
 from swarmmind.db import get_connection
-from swarmmind.models import ActionProposal, MemoryContext
+from swarmmind.models import ActionProposal, ConversationRuntimeOptions, MemoryContext
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,8 @@ class GeneralAgent(BaseAgent):
         deer_flow_config_path: str | None = None,
         default_model: str | None = None,
         thinking_enabled: bool = True,
-        subagent_enabled: bool = True,
+        subagent_enabled: bool = False,
+        plan_mode: bool = False,
     ):
         # Initialize BaseAgent (sets self.memory, loads system_prompt from DB)
         super().__init__(agent_id="general", domain="general")
@@ -46,12 +47,14 @@ class GeneralAgent(BaseAgent):
         self._default_model = default_model
         self._thinking_enabled = thinking_enabled
         self._subagent_enabled = subagent_enabled
+        self._plan_mode = plan_mode
 
         self._client: DeerFlowClient = DeerFlowClient(
             config_path=self._config_path,
             model_name=default_model,
             thinking_enabled=thinking_enabled,
             subagent_enabled=subagent_enabled,
+            plan_mode=plan_mode,
         )
 
     @property
@@ -64,6 +67,7 @@ class GeneralAgent(BaseAgent):
         goal: str,
         action_proposal_id: str,
         ctx: MemoryContext | None = None,
+        runtime_options: ConversationRuntimeOptions | None = None,
     ) -> ActionProposal:
         """Execute a goal using DeerFlow and update the proposal.
 
@@ -76,7 +80,11 @@ class GeneralAgent(BaseAgent):
         )
 
         try:
-            final_text, tool_results = self._run_deerflow_turn(goal, ctx=ctx)
+            final_text, tool_results = self._run_deerflow_turn(
+                goal,
+                ctx=ctx,
+                runtime_options=runtime_options,
+            )
         except Exception as e:
             logger.error("DeerFlow stream error: %s", e)
             self._create_rejected_proposal(
@@ -148,6 +156,7 @@ class GeneralAgent(BaseAgent):
         self,
         goal: str,
         ctx: MemoryContext | None = None,
+        runtime_options: ConversationRuntimeOptions | None = None,
     ) -> Generator[dict[str, Any], None, tuple[str, list[str]]]:
         """Yield structured runtime events for a DeerFlow-backed turn.
 
@@ -155,11 +164,13 @@ class GeneralAgent(BaseAgent):
         without exposing DeerFlow's raw internal terms directly to the user.
         """
         thread_id = ctx.session_id if ctx and ctx.session_id else str(uuid.uuid4())
+        effective_runtime = self._resolve_runtime_options(runtime_options)
         config = self._client._get_runnable_config(
             thread_id,
-            model_name=self._default_model,
-            thinking_enabled=self._thinking_enabled,
-            subagent_enabled=self._subagent_enabled,
+            model_name=effective_runtime.model_name,
+            thinking_enabled=effective_runtime.thinking_enabled,
+            plan_mode=effective_runtime.plan_mode,
+            subagent_enabled=effective_runtime.subagent_enabled,
         )
         self._client._ensure_agent(config)
 
@@ -237,11 +248,12 @@ class GeneralAgent(BaseAgent):
         self,
         goal: str,
         ctx: MemoryContext | None = None,
+        runtime_options: ConversationRuntimeOptions | None = None,
     ) -> tuple[str, list[str]]:
         final_text = ""
         tool_results: list[str] = []
 
-        stream = self.stream_events(goal, ctx=ctx)
+        stream = self.stream_events(goal, ctx=ctx, runtime_options=runtime_options)
         while True:
             try:
                 next(stream)
@@ -250,6 +262,21 @@ class GeneralAgent(BaseAgent):
                 break
 
         return final_text, tool_results
+
+    def _resolve_runtime_options(
+        self,
+        runtime_options: ConversationRuntimeOptions | None = None,
+    ) -> ConversationRuntimeOptions:
+        if runtime_options is not None:
+            return runtime_options
+
+        return ConversationRuntimeOptions(
+            mode="thinking" if self._thinking_enabled else "flash",
+            model_name=self._default_model,
+            thinking_enabled=self._thinking_enabled,
+            plan_mode=self._plan_mode,
+            subagent_enabled=self._subagent_enabled,
+        )
 
     @staticmethod
     def _extract_reasoning(message: AIMessage) -> str | None:

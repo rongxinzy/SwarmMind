@@ -208,8 +208,25 @@ class MessageListResponse(BaseModel):
     total: int
 
 
+class ConversationMode(str, Enum):
+    FLASH = "flash"
+    THINKING = "thinking"
+    PRO = "pro"
+    ULTRA = "ultra"
+
+
+class ConversationRuntimeOptions(BaseModel):
+    mode: ConversationMode
+    model_name: str | None = None
+    thinking_enabled: bool
+    plan_mode: bool
+    subagent_enabled: bool
+
+
 class SendMessageRequest(BaseModel):
     content: str
+    mode: ConversationMode | None = None
+    model_name: str | None = None
     reasoning: bool = False  # Whether to enable LLM reasoning/thinking mode
 
 

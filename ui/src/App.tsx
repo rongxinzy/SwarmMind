@@ -126,6 +126,7 @@ export default function App() {
   const [activeView, setActiveView] = useState<SidebarView>("workbench")
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined)
   const [recentConversations, setRecentConversations] = useState<ConversationRecord[]>([])
+  const [draftResetToken, setDraftResetToken] = useState(0)
 
   const fetchRecentConversations = useCallback(async () => {
     try {
@@ -152,14 +153,20 @@ export default function App() {
   }, [fetchRecentConversations])
 
   const handleViewChange = (view: SidebarView) => {
-    setActiveView(view)
-    if (view !== "chat") {
+    if (view === "chat") {
       setActiveConversationId(undefined)
+      setDraftResetToken((current) => current + 1)
+      setActiveView("chat")
+      return
     }
+
+    setActiveView(view)
+    setActiveConversationId(undefined)
   }
 
   const handleStartChat = () => {
     setActiveConversationId(undefined)
+    setDraftResetToken((current) => current + 1)
     setActiveView("chat")
   }
 
@@ -204,6 +211,7 @@ export default function App() {
         return (
           <V0Chat
             conversationId={activeConversationId}
+            draftResetToken={draftResetToken}
             onConversationCreated={(id) => {
               setActiveConversationId(id)
             }}
