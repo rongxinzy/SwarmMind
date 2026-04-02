@@ -16,7 +16,7 @@
   <img src="https://img.shields.io/badge/Python-3.11+-blue.svg?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/License-Apache--2.0-green.svg?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Phase-1-orange.svg?style=flat-square" alt="Phase">
-  <img src="https://img.shields.io/badge/Phase-2a-dev-yellow.svg?style=flat-square" alt="Phase 2a">
+  <img src="https://img.shields.io/badge/Phase-2a--dev-yellow.svg?style=flat-square" alt="Phase 2a">
   <img src="https://img.shields.io/badge/AI%20Native-OS-black.svg?style=flat-square" alt="AI Native OS">
   <img src="https://img.shields.io/badge/Architecture-Context%20Broker-purple.svg?style=flat-square" alt="Architecture">
 
