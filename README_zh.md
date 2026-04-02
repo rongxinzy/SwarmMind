@@ -13,7 +13,7 @@
   <a href="https://github.com/rongxinzy/SwarmMind/actions/workflows/ci.yml">
     <img src="https://github.com/rongxinzy/SwarmMind/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI">
   </a>
-  <img src="https://img.shields.io/badge/Python-3.11+-blue.svg?style=flat-square&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Python-3.12+-blue.svg?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/License-Apache--2.0-green.svg?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Phase-1-orange.svg?style=flat-square" alt="Phase">
   <img src="https://img.shields.io/badge/Phase-2a--dev-yellow.svg?style=flat-square" alt="Phase 2a">
