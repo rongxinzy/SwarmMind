@@ -235,6 +235,24 @@ If a semantic color looks like a Bootstrap default swatch, it is too pure.
 - Never theme an entire page around a single mode color.
 - Keep one dominant accent visible per area.
 
+### 7.4 Dark Mode Mapping
+
+Dark mode should not be a literal inversion of the warm light theme.
+
+Rules:
+
+- preserve the calm, human tone of the warm chassis
+- avoid sepia-heavy dark browns that feel muddy or low-contrast
+- allow dark neutrals to move slightly toward neutral or cool gray for legibility
+- keep semantic accents desaturated in dark mode as well
+- protect text contrast first, warmth second
+
+Target feeling:
+
+- more charcoal-paper than black glass
+- more neutral ink than brown tint
+- still calm and supervised, never neon or cyber-themed
+
 ## 8. Border Radius and Shadow
 
 ### 8.1 Radius System
@@ -395,7 +413,21 @@ Avoid:
 - avoid glassmorphism and heavy blur as a visual identity
 - pinned bars, sticky composers, and utility overlays may use low-opacity blur if it improves separation from moving content
 
-### 13.4 Message Bubbles
+### 13.4 Iconography
+
+Icon language must match the typography.
+
+Rules:
+
+- default to linear icons with restrained geometry
+- prefer a consistent `1.5px`-style stroke feel across the product
+- corners and joins should feel aligned with Geist's modern, rational skeleton
+- use monochrome icons by default; state color enters only when it clarifies meaning
+- do not mix unrelated icon families within the same product surface
+
+If an icon looks softer, rounder, or more decorative than the surrounding type, it is the wrong icon.
+
+### 13.5 Message Bubbles
 
 - user bubble: slightly stronger tint, clearly authored by the user
 - assistant response: neutral-first, optimized for reading
@@ -462,6 +494,14 @@ Rules:
 - controls beneath the textarea should feel secondary to the text entry area
 - sticky separation may use a subtle warm tint, restrained shadow, and very low blur
 - composer should feel lifted from the transcript without becoming a floating gadget
+
+Focus state:
+
+- never rely on the browser default saturated blue outline
+- focus should be expressed through one calm primary cue and one secondary cue only
+- recommended pair: slightly stronger border contrast plus a soft local ring or shadow
+- focus styling must stay within the warm-neutral system, not break page tone
+- the focused composer should feel clearer and more intentional, not louder
 
 ### 14.5 Mode Picker
 
