@@ -3,9 +3,11 @@
 import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
+  Building2,
   BookOpenText,
   Bot,
   Clock3,
+  ChevronRight,
   FolderKanban,
   History,
   Home,
@@ -13,7 +15,6 @@ import {
   Loader2,
   Menu,
   PenSquare,
-  Plus,
   Sparkles,
   Trash2,
   X,
@@ -36,7 +37,7 @@ export type SidebarView =
 
 export const VIEW_LABELS: Record<SidebarView, string> = {
   workbench: "工作台",
-  chat: "新建",
+  chat: "对话",
   teams: "Agent Team",
   skills: "技能中心",
   assets: "资源库",
@@ -54,7 +55,7 @@ const projectItems = [
 
 const primaryItems: Array<{ value: SidebarView; label: string; icon: React.ReactNode }> = [
   { value: "workbench", label: "工作台", icon: <Home className="size-4" /> },
-  { value: "chat", label: "新建", icon: <PenSquare className="size-4" /> },
+  { value: "chat", label: "对话", icon: <PenSquare className="size-4" /> },
 ]
 
 const capabilityItems: Array<{ value: SidebarView; label: string; icon: React.ReactNode }> = [
@@ -70,8 +71,24 @@ const utilityItems: Array<{ value: SidebarView; label: string; icon: React.React
   { value: "schedules", label: "定时任务", icon: <Clock3 className="size-4" /> },
 ]
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <p className="px-3 text-[12px] leading-[18px] text-muted-foreground">{children}</p>
+function projectMetaClassName(meta: string) {
+  if (meta === "进行中") return "text-[#61788b]"
+  if (meta === "待审批") return "text-[#846d4c]"
+  return "text-muted-foreground"
+}
+
+function SectionLabel({
+  children,
+  className,
+}: {
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <p className={cn("px-3 text-[11px] leading-4 font-medium tracking-[0.08em] text-muted-foreground/88", className)}>
+      {children}
+    </p>
+  )
 }
 
 function NavButton({
@@ -92,10 +109,15 @@ function NavButton({
       variant="ghost"
       onClick={onClick}
       className={cn(
-        "h-9 w-full justify-start rounded-md px-3 text-left font-normal",
-        active ? "bg-white text-foreground" : "text-muted-foreground hover:bg-white hover:text-foreground",
+        "relative min-h-11 w-full justify-start rounded-xl border px-3.5 text-left font-normal transition-[background-color,border-color,color,box-shadow]",
+        active
+          ? "border-sidebar-border/60 bg-white/84 text-foreground shadow-[0_10px_20px_-24px_rgba(56,42,28,0.2)]"
+          : "border-transparent text-muted-foreground hover:border-sidebar-border/45 hover:bg-white/72 hover:text-foreground",
       )}
     >
+      {active ? (
+        <span className="absolute left-1.5 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#71879a]" />
+      ) : null}
       <span className={cn("mr-2 text-muted-foreground", active && "text-foreground")}>{icon}</span>
       <span className="flex-1 truncate text-[14px] leading-[22px]">{label}</span>
       {badge ? <span className="text-[12px] leading-[18px] text-muted-foreground">{badge}</span> : null}
@@ -112,6 +134,37 @@ function formatConversationTime(value?: string) {
     month: "numeric",
     day: "numeric",
   }).format(date)
+}
+
+function SidebarHeader({
+  onClose,
+}: {
+  onClose?: () => void
+}) {
+  return (
+    <div className="border-b border-sidebar-border/80 px-4 py-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-sidebar-border/68 bg-white/76 text-foreground">
+            <Sparkles className="size-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-semibold tracking-[-0.02em] text-foreground">
+              SwarmMind
+            </p>
+            <p className="mt-0.5 truncate text-[11px] leading-4 tracking-[0.08em] text-muted-foreground">
+              SUPERVISED WORK SURFACE
+            </p>
+          </div>
+        </div>
+        {onClose ? (
+          <Button variant="icon" size="icon-sm" onClick={onClose} className="shrink-0 rounded-xl">
+            <X className="size-4" />
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
 interface SidebarProps {
@@ -164,23 +217,11 @@ export function Sidebar({
     }
   }
 
-  const sidebarContent = (
-    <div className="flex h-full flex-col bg-sidebar">
-      <div className="relative px-4 pt-4 pb-3">
-        <span className="block text-center text-[14px] font-semibold tracking-tight text-foreground">SwarmMind</span>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={() => handleSelect("chat")}
-          className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          title="新建生成任务"
-        >
-          <Plus className="size-4" />
-        </Button>
-      </div>
-
+  const sidebarContent = (options?: { onClose?: () => void }) => (
+    <div className="flex h-full flex-col bg-[linear-gradient(180deg,rgba(247,247,245,0.98),rgba(243,243,241,0.97))] text-sidebar-foreground">
+      <SidebarHeader onClose={options?.onClose} />
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-6">
+        <div className="space-y-7">
           <div className="space-y-1">
             {primaryItems.map((item) => (
               <NavButton
@@ -193,7 +234,7 @@ export function Sidebar({
             ))}
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <SectionLabel>工作模块</SectionLabel>
             <div className="space-y-1">
               {capabilityItems.map((item) => (
@@ -208,31 +249,28 @@ export function Sidebar({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between px-3">
-              <SectionLabel>项目列表</SectionLabel>
-              <Button variant="ghost" size="icon-xs" onClick={() => handleSelect("projects")}>
-                <Plus className="size-3.5" />
-              </Button>
+              <SectionLabel className="px-0">项目列表</SectionLabel>
             </div>
-            <div className="space-y-1 rounded-lg border border-border bg-white p-2">
+            <div className="space-y-1">
               {projectItems.map((project) => (
                 <Button
                   key={project.label}
                   variant="ghost"
                   onClick={() => handleSelect("projects")}
-                  className="h-auto w-full justify-start rounded-md px-2.5 py-2"
+                  className="h-auto min-h-11 w-full justify-start rounded-2xl border border-transparent px-3 py-2.5 hover:border-sidebar-border/45 hover:bg-white/72"
                 >
                   <div className="min-w-0 flex-1 text-left">
-                    <p className="truncate text-[14px] leading-[22px] text-foreground">{project.label}</p>
-                    <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">{project.meta}</p>
+                    <p className="truncate text-[14px] leading-[22px] tracking-[-0.01em] text-foreground">{project.label}</p>
+                    <p className={cn("mt-0.5 text-[11px] leading-4 tracking-[0.04em]", projectMetaClassName(project.meta))}>{project.meta}</p>
                   </div>
                 </Button>
               ))}
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <SectionLabel>最近与自动化</SectionLabel>
             <div className="space-y-1">
               {utilityItems.map((item) => (
@@ -246,18 +284,20 @@ export function Sidebar({
               ))}
             </div>
 
-            <div className="rounded-lg border border-border bg-white p-2">
-              <p className="px-1 py-1 text-[12px] leading-[18px] text-muted-foreground">最近会话</p>
+            <div className="space-y-1.5 pt-1">
+              <p className="px-3 text-[11px] leading-4 font-medium tracking-[0.08em] text-muted-foreground/88">
+                最近会话
+              </p>
               {recentConversations.length > 0 ? (
                 recentConversations.slice(0, 4).map((conversation) => (
-                  <div key={conversation.id} className="group mt-1 flex items-center gap-1">
+                  <div key={conversation.id} className="group flex items-center gap-1">
                     <Button
                       variant="ghost"
                       onClick={() => handleSelectConversation(conversation.id)}
-                      className="h-auto min-w-0 flex-1 justify-start rounded-md px-2.5 py-2"
+                      className="h-auto min-h-11 min-w-0 flex-1 justify-start rounded-2xl border border-transparent px-3 py-2.5 hover:border-sidebar-border/45 hover:bg-white/72"
                     >
                       <div className="min-w-0 flex-1 text-left">
-                        <p className="truncate text-[14px] leading-[22px] text-foreground">{conversation.title}</p>
+                        <p className="truncate text-[14px] leading-[22px] tracking-[-0.01em] text-foreground">{conversation.title}</p>
                         <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">
                           {formatConversationTime(conversation.updated_at)}
                         </p>
@@ -266,13 +306,13 @@ export function Sidebar({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon-sm"
                       disabled={deletingConversationId === conversation.id}
                       onClick={(event) => {
                         event.stopPropagation()
                         void handleDeleteConversation(conversation.id)
                       }}
-                      className="shrink-0 text-muted-foreground opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                      className="size-10 shrink-0 rounded-xl text-muted-foreground opacity-100 transition-opacity hover:bg-white/80 hover:text-destructive md:size-9 md:opacity-0 md:group-hover:opacity-100"
                       title="删除会话"
                     >
                       {deletingConversationId === conversation.id ? (
@@ -284,7 +324,7 @@ export function Sidebar({
                   </div>
                 ))
               ) : (
-                <div className="px-2.5 py-3 text-[12px] leading-[18px] text-muted-foreground">
+                <div className="px-3 py-3 text-[12px] leading-[18px] text-muted-foreground">
                   还没有最近会话。
                 </div>
               )}
@@ -293,17 +333,23 @@ export function Sidebar({
         </div>
       </nav>
 
-      <div className="px-3 pb-3 pt-1">
+      <div className="border-t border-sidebar-border/80 px-3 pb-3 pt-3">
         <button
           type="button"
-          className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-sidebar-accent"
+          className="flex w-full items-center gap-3 rounded-[18px] border border-transparent px-2.5 py-2 text-left transition-[background-color,border-color,color] hover:border-sidebar-border/45 hover:bg-white/72"
         >
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-medium tracking-wide text-background">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sidebar-border/65 bg-white/88 text-[10px] font-medium tracking-[0.08em] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
             KL
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] leading-5 font-medium text-foreground">Kr Li</p>
-            <p className="truncate text-[11px] leading-4 text-muted-foreground">容芯开源组</p>
+            <p className="truncate text-[13px] leading-5 font-medium tracking-[-0.01em] text-foreground">Keran Li</p>
+            <div className="mt-px flex min-w-0 items-center gap-1.5 text-[11px] leading-4 tracking-[0.04em] text-muted-foreground">
+              <Building2 className="size-3 shrink-0" />
+              <span className="truncate">容芯开源组</span>
+            </div>
+          </div>
+          <div className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground/75 transition-colors group-hover/button:text-foreground">
+            <ChevronRight className="size-3.5" />
           </div>
         </button>
       </div>
@@ -327,22 +373,16 @@ export function Sidebar({
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 24, stiffness: 280 }}
-              className="fixed inset-y-0 left-0 z-50 w-[236px] border-r border-sidebar-border bg-sidebar md:hidden"
+              className="fixed inset-y-0 left-0 z-50 w-[248px] border-r border-sidebar-border bg-sidebar md:hidden"
             >
-              <div className="relative px-4 pt-4 pb-3">
-                <span className="block text-[14px] font-semibold tracking-tight text-foreground">SwarmMind</span>
-                <Button variant="icon" size="icon-sm" onClick={() => setIsOpen(false)} className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <X className="size-4" />
-                </Button>
-              </div>
-              {sidebarContent}
+              {sidebarContent({ onClose: () => setIsOpen(false) })}
             </motion.div>
           </>
         ) : null}
       </AnimatePresence>
 
-      <aside className="fixed inset-y-0 left-0 hidden w-[236px] border-r border-sidebar-border bg-sidebar md:block">
-        {sidebarContent}
+      <aside className="fixed inset-y-0 left-0 hidden w-[248px] border-r border-sidebar-border bg-sidebar md:block">
+        {sidebarContent()}
       </aside>
 
       <div className="fixed left-0 right-0 top-0 z-30 border-b border-sidebar-border bg-background md:hidden">

@@ -6,35 +6,35 @@
 
 @layer base {
   :root {
-    --background: 36 24% 97%;
+    --background: 48 10% 98%;
     --foreground: 24 14% 14%;
-    --card: 36 27% 99%;
+    --card: 48 8% 100%;
     --card-foreground: 24 14% 14%;
-    --popover: 36 27% 99%;
+    --popover: 48 8% 100%;
     --popover-foreground: 24 14% 14%;
-    --primary: 212 38% 90%;
-    --primary-foreground: 214 30% 26%;
-    --secondary: 34 18% 94%;
+    --primary: 210 25% 89%;
+    --primary-foreground: 212 31% 28%;
+    --secondary: 40 7% 96%;
     --secondary-foreground: 24 14% 14%;
-    --muted: 34 16% 94%;
+    --muted: 40 6% 96%;
     --muted-foreground: 24 8% 42%;
-    --accent: 34 18% 94%;
+    --accent: 40 7% 96%;
     --accent-foreground: 24 14% 14%;
     --destructive: 12 45% 92%;
     --destructive-foreground: 10 42% 40%;
-    --border: 30 14% 86%;
-    --input: 36 17% 95%;
-    --ring: 212 38% 70%;
+    --border: 32 9% 87%;
+    --input: 40 7% 97%;
+    --ring: 210 23% 67%;
     --radius: 10px;
 
-    --sidebar: 34 18% 95%;
+    --sidebar: 40 6% 96%;
     --sidebar-foreground: 24 14% 14%;
-    --sidebar-primary: 212 38% 90%;
-    --sidebar-primary-foreground: 214 30% 26%;
-    --sidebar-accent: 36 27% 99%;
+    --sidebar-primary: 210 25% 89%;
+    --sidebar-primary-foreground: 212 31% 28%;
+    --sidebar-accent: 48 8% 99%;
     --sidebar-accent-foreground: 24 14% 14%;
-    --sidebar-border: 30 14% 86%;
-    --sidebar-ring: 212 38% 70%;
+    --sidebar-border: 32 8% 86%;
+    --sidebar-ring: 210 23% 67%;
 
     --status-running: 211 32% 40%;
     --status-running-bg: 210 41% 93%;
@@ -196,7 +196,7 @@
   }
 
   .hero-gradient {
-    background: linear-gradient(135deg, #efe6d7, #e7ebe1);
+    background: linear-gradient(135deg, #f3f2ee, #eef1ef);
   }
 
   .section-kicker {
@@ -208,7 +208,7 @@
   }
 
   .skeleton-line {
-    background: linear-gradient(90deg, #eee8df 25%, #f7f3ec 37%, #eee8df 63%);
+    background: linear-gradient(90deg, #eceae5 25%, #f7f7f4 37%, #eceae5 63%);
     background-size: 400% 100%;
     animation: shimmer 1.6s ease infinite;
   }
@@ -224,5 +224,103 @@
     border-radius: 999px;
     background: #8e8377;
     animation: chat-dot-bounce 1.05s infinite ease-in-out;
+  }
+
+  .assistant-markdown [data-streamdown="code-block"] {
+    margin: 1rem 0;
+    padding: 0;
+    gap: 0.35rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .assistant-markdown [data-streamdown="code-block-header"] {
+    height: auto;
+    padding-inline: 0.2rem;
+    color: hsl(var(--muted-foreground) / 0.82);
+    font-size: 11px;
+    line-height: 1rem;
+    letter-spacing: 0.06em;
+  }
+
+  .assistant-markdown [data-streamdown="code-block-header"] span {
+    margin-left: 0;
+  }
+
+  .assistant-markdown [data-streamdown="code-block-actions"] {
+    gap: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .assistant-markdown [data-streamdown="code-block"]:hover [data-streamdown="code-block-actions"],
+  .assistant-markdown [data-streamdown="code-block"]:focus-within [data-streamdown="code-block-actions"] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .assistant-markdown [data-streamdown="code-block-copy-button"],
+  .assistant-markdown [data-streamdown="code-block-download-button"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 28px;
+    width: 28px;
+    padding: 0;
+    border: 1px solid hsl(var(--border) / 0.74);
+    border-radius: 999px;
+    background: hsl(var(--background) / 0.94);
+    color: hsl(var(--muted-foreground));
+    box-shadow: 0 10px 20px -18px rgba(56, 42, 28, 0.2);
+    line-height: 0;
+    overflow: hidden;
+  }
+
+  .assistant-markdown [data-streamdown="code-block-copy-button"]:hover,
+  .assistant-markdown [data-streamdown="code-block-download-button"]:hover {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+  }
+
+  .assistant-markdown [data-streamdown="code-block-copy-button"] svg,
+  .assistant-markdown [data-streamdown="code-block-download-button"] svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .assistant-markdown [data-streamdown="code-block-body"] {
+    border: 1px solid hsl(var(--border) / 0.82);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(247, 247, 245, 0.94));
+    padding: 1rem 1.125rem;
+    box-shadow: 0 12px 28px -28px rgba(56, 42, 28, 0.22);
+  }
+
+  .assistant-markdown [data-streamdown="code-block-body"] pre {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .assistant-markdown [data-streamdown="code-block-body"] code {
+    font-size: 0.95rem;
+    line-height: 1.8;
+  }
+
+  .assistant-markdown :not(pre) > code {
+    border-radius: 8px;
+    background: hsl(var(--secondary));
+    padding: 0.1rem 0.4rem;
   }
 }

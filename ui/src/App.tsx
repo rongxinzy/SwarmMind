@@ -39,7 +39,7 @@ const viewDescriptions: Record<SidebarView, string> = {
 const viewActions: Record<SidebarView, { primary: string; secondary: string }> =
   {
     workbench: { primary: "新建项目", secondary: "查看审批" },
-    chat: { primary: "开始生成", secondary: "查看最近" },
+    chat: { primary: "新建对话", secondary: "查看最近" },
     teams: { primary: "新建 Team", secondary: "查看模板" },
     skills: { primary: "配置能力", secondary: "查看绑定" },
     assets: { primary: "查看产物", secondary: "导出目录" },
@@ -181,15 +181,7 @@ export default function App() {
   }, [fetchRecentConversations]);
 
   const handleViewChange = (view: SidebarView) => {
-    if (view === "chat") {
-      setActiveConversationId(undefined);
-      setDraftResetToken((current) => current + 1);
-      setActiveView("chat");
-      return;
-    }
-
     setActiveView(view);
-    setActiveConversationId(undefined);
   };
 
   const handleStartChat = () => {
@@ -355,7 +347,7 @@ export default function App() {
 
       <main
         className={cn(
-          "flex flex-col md:ml-[236px]",
+          "flex flex-col md:ml-[248px]",
           activeView === "chat"
             ? "h-[100dvh] min-h-0 overflow-hidden"
             : "min-h-screen",

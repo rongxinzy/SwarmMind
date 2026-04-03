@@ -163,7 +163,7 @@ const MODE_OPTIONS: Array<{
     label: "Flash",
     description: "最快回复，不展开推理",
     accentClassName:
-      "from-[#e8eef3] via-[#f5f6f4] to-[#f7f3ec] text-[#46586b] border-[#d4dde3]",
+      "from-[#e5edf3] via-[#f7f8f7] to-[#fbfbfa] text-[#46586b] border-[#d2dce3]",
     icon: Zap,
   },
   {
@@ -171,7 +171,7 @@ const MODE_OPTIONS: Array<{
     label: "Thinking",
     description: "保留推理过程，单轮深入分析",
     accentClassName:
-      "from-[#edeaf4] via-[#f7f5f9] to-[#f7f3ec] text-[#5c516b] border-[#ddd6e6]",
+      "from-[#efeaf3] via-[#f8f7f9] to-[#fbfbfa] text-[#5c516b] border-[#ddd7e4]",
     icon: Lightbulb,
   },
   {
@@ -179,7 +179,7 @@ const MODE_OPTIONS: Array<{
     label: "Pro",
     description: "先规划再执行",
     accentClassName:
-      "from-[#e8efe8] via-[#f4f7f2] to-[#f7f3ec] text-[#48604f] border-[#d5e0d4]",
+      "from-[#e9efe8] via-[#f5f7f4] to-[#fbfbfa] text-[#48604f] border-[#d4ded3]",
     icon: GraduationCap,
   },
   {
@@ -187,7 +187,7 @@ const MODE_OPTIONS: Array<{
     label: "Ultra",
     description: "启用完整协作流程",
     accentClassName:
-      "from-[#f2ead8] via-[#f8f5ed] to-[#f7f3ec] text-[#6d5a3e] border-[#e0d3bd]",
+      "from-[#f1ece2] via-[#f9f7f1] to-[#fbfbfa] text-[#6d5a3e] border-[#dfd4c3]",
     icon: Rocket,
   },
 ];
@@ -333,7 +333,7 @@ function ModePicker({
         onClick={() => setOpen((prev) => !prev)}
         aria-label={`当前执行模式：${current.label}`}
         className={cn(
-          "group flex min-h-11 items-center gap-2 rounded-full border bg-gradient-to-r px-3 text-left shadow-[0_12px_24px_-22px_rgba(56,42,28,0.28)] transition-all hover:border-border hover:shadow-[0_14px_24px_-22px_rgba(56,42,28,0.24)] focus-visible:border-[#cabba8] focus-visible:ring-4 focus-visible:ring-[#ebe0d2]/80",
+          "group flex min-h-11 items-center gap-2 rounded-full border bg-gradient-to-r px-3 text-left shadow-[0_12px_24px_-22px_rgba(56,42,28,0.22)] transition-all hover:border-border hover:shadow-[0_14px_24px_-22px_rgba(56,42,28,0.18)] focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80",
           current.accentClassName,
         )}
       >
@@ -370,7 +370,7 @@ function ModePicker({
                 damping: 28,
                 mass: 0.9,
               }}
-              className="absolute bottom-full left-0 z-50 mb-2.5 w-[286px] rounded-[20px] border border-border/80 bg-[linear-gradient(180deg,rgba(252,249,244,0.96),rgba(247,242,234,0.92))] p-2.5 shadow-[0_24px_54px_-34px_rgba(56,42,28,0.35)] backdrop-blur-md"
+              className="absolute bottom-full left-0 z-50 mb-2.5 w-[286px] rounded-[20px] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(250,250,248,0.94))] p-2.5 shadow-[0_24px_54px_-34px_rgba(56,42,28,0.22)] backdrop-blur-md"
             >
               <div className="mb-1.5 px-1">
                 <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
@@ -479,7 +479,7 @@ function ModelPicker({
         }}
         disabled={isDisabled}
         title={loadError ?? undefined}
-        className="flex min-h-11 items-center gap-2 rounded-xl border border-transparent bg-transparent px-3 text-[12px] tracking-[0.04em] text-muted-foreground transition-colors hover:border-border/70 hover:bg-background/70 hover:text-foreground focus-visible:border-[#cabba8] focus-visible:ring-4 focus-visible:ring-[#ebe0d2]/80"
+        className="flex min-h-11 items-center gap-2 rounded-xl border border-transparent bg-transparent px-3 text-[12px] tracking-[0.04em] text-muted-foreground transition-colors hover:border-border/70 hover:bg-background/70 hover:text-foreground focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80"
       >
         <Sparkles className="size-3.5" />
         <span className="max-w-[140px] truncate">{currentLabel}</span>
@@ -502,7 +502,7 @@ function ModelPicker({
                 damping: 30,
                 mass: 0.8,
               }}
-              className="absolute bottom-full left-0 z-50 mb-2 w-[220px] overflow-hidden rounded-[18px] border border-border/80 bg-[linear-gradient(180deg,rgba(252,249,244,0.98),rgba(247,242,234,0.94))] p-1.5 shadow-[0_20px_44px_-32px_rgba(56,42,28,0.34)] backdrop-blur-md"
+              className="absolute bottom-full left-0 z-50 mb-2 w-[220px] overflow-hidden rounded-[18px] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,250,248,0.95))] p-1.5 shadow-[0_20px_44px_-32px_rgba(56,42,28,0.2)] backdrop-blur-md"
             >
               {models.map((model) => (
                 <button
@@ -541,6 +541,8 @@ function MessageBubble({
   isMessageStreaming?: boolean;
 }) {
   const isUser = message.role === "user";
+  const hasCodeBlock = !isUser && message.content.includes("```");
+  const shouldShowMessageCopy = message.content.trim().length > 0 && (isUser || !hasCodeBlock);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -576,15 +578,17 @@ function MessageBubble({
         className={cn(
           "relative max-w-[90%]",
           isUser
-            ? "rounded-[24px] border border-[#d8d0c4] bg-[#f4efe7] px-[18px] py-[13px] text-[#2f2924] shadow-[0_12px_28px_-24px_rgba(73,56,41,0.34)]"
+            ? "rounded-[24px] border border-[#d7d2ca] bg-[#f4f2ef] px-[18px] py-[13px] text-[#2f2924] shadow-[0_12px_28px_-24px_rgba(73,56,41,0.2)]"
             : "px-1 py-1 md:px-2",
         )}
       >
-        {message.content.trim().length > 0 ? (
+        {shouldShowMessageCopy ? (
           <div
             className={cn(
-              "absolute opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100",
-              isUser ? "-right-1 -top-1" : "right-2 top-0",
+              "absolute transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100",
+              isUser
+                ? "-right-1 -top-1 opacity-100"
+                : "right-2 top-1 opacity-80",
             )}
           >
             <Button
@@ -594,7 +598,12 @@ function MessageBubble({
               onClick={() => {
                 void handleCopy();
               }}
-              className="h-8 w-8 rounded-full border border-border/70 bg-white/92 text-muted-foreground shadow-sm backdrop-blur hover:bg-white hover:text-foreground md:h-7 md:w-7"
+              className={cn(
+                "h-8 w-8 rounded-full text-muted-foreground backdrop-blur md:h-7 md:w-7",
+                isUser
+                  ? "border border-border/70 bg-white/92 shadow-sm hover:bg-white hover:text-foreground"
+                  : "border border-transparent bg-background/72 shadow-none hover:border-border/50 hover:bg-background/92 hover:text-foreground",
+              )}
               title={copied ? "已复制" : "复制消息"}
             >
               {copied ? (
@@ -619,7 +628,7 @@ function MessageBubble({
               {message.content}
             </div>
           ) : (
-            <div className="prose prose-sm max-w-none px-[18px] py-2 font-[var(--font-body)] text-[14px] leading-[24px] tracking-[-0.003em] text-foreground prose-headings:mt-0 prose-headings:mb-3 prose-headings:font-sans prose-headings:tracking-[-0.02em] prose-p:my-2 prose-p:font-body prose-p:leading-[24px] prose-pre:my-4 prose-pre:mx-0 prose-pre:rounded-[18px] prose-pre:border prose-pre:border-border/80 prose-pre:bg-[#f6f1e8] prose-pre:px-4 prose-pre:py-3 prose-code:font-mono prose-code:text-[#5e5043] prose-li:font-body prose-ul:my-3 prose-ul:pl-5 prose-ol:my-3 prose-ol:pl-5 prose-li:my-1">
+            <div className="assistant-markdown prose prose-sm max-w-none px-[18px] py-2 font-[var(--font-body)] text-[14px] leading-[24px] tracking-[-0.003em] text-foreground prose-headings:mt-0 prose-headings:mb-3 prose-headings:font-sans prose-headings:tracking-[-0.02em] prose-p:my-2 prose-p:font-body prose-p:leading-[24px] prose-pre:my-0 prose-pre:mx-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0 prose-code:font-mono prose-code:text-[#5e5043] prose-li:font-body prose-ul:my-3 prose-ul:pl-5 prose-ol:my-3 prose-ol:pl-5 prose-li:my-1">
               <Streamdown
                 mode={isMessageStreaming ? "streaming" : "static"}
                 remarkPlugins={
@@ -701,9 +710,9 @@ function ReasoningPanel({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="mb-3 rounded-[14px] border border-border/80 bg-secondary/80"
+      className="mb-4 rounded-[14px] bg-secondary/52 ring-1 ring-border/55"
     >
-      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] leading-[18px] text-muted-foreground transition-colors hover:text-foreground">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[12px] leading-[18px] text-muted-foreground transition-colors hover:text-foreground">
         <Brain className="size-3.5 shrink-0" />
         <span className="flex-1">{triggerContent}</span>
         <ChevronDown
@@ -715,7 +724,7 @@ function ReasoningPanel({
       </CollapsibleTrigger>
 
       <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-        <div className="border-t border-border/70 px-3 py-2 text-[12px] leading-[18px] text-muted-foreground">
+        <div className="border-t border-border/55 px-3.5 py-2.5 text-[12px] leading-[18px] text-muted-foreground">
           <Streamdown
             mode={isStreaming ? "streaming" : "static"}
             remarkPlugins={staticRemarkPlugins}
@@ -764,7 +773,7 @@ function MessageListSkeleton() {
       </div>
 
       <div className="flex justify-start">
-        <div className="w-full max-w-[520px] rounded-2xl border border-border/70 bg-[#f8f4ed] px-4 py-4">
+        <div className="w-full max-w-[520px] rounded-2xl border border-border/70 bg-[#f7f6f3] px-4 py-4">
           <div className="space-y-2">
             <div className="skeleton-line h-3.5 w-[120px] rounded-full" />
             <div className="skeleton-line h-4 rounded-full" />
@@ -1574,9 +1583,14 @@ export function V0Chat({
       </div>
 
       {/* Pinned bottom: status + composer as unified container */}
-      <div className="sticky bottom-0 z-20 border-t border-border/60 bg-background/92 shadow-[0_-16px_38px_-32px_rgba(56,42,28,0.26)] backdrop-blur-md supports-[backdrop-filter]:bg-background/78">
-        <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-3">
-          <div className="rounded-[24px] border border-border/80 bg-[linear-gradient(180deg,rgba(252,249,244,0.94),rgba(247,242,234,0.92))] shadow-[0_18px_40px_-34px_rgba(56,42,28,0.4)] backdrop-blur-md transition-[border-color,box-shadow] focus-within:border-[#cabba8] focus-within:shadow-[0_24px_46px_-34px_rgba(88,67,45,0.34)] focus-within:ring-[3px] focus-within:ring-[#ebe0d2]/90">
+      <div className="sticky bottom-0 z-20">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-14 -translate-y-full bg-gradient-to-b from-transparent via-background/78 to-background/94"
+        />
+        <div className="relative bg-background/88 backdrop-blur-md supports-[backdrop-filter]:bg-background/72">
+          <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-3">
+            <div className="rounded-[24px] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(250,250,248,0.94))] shadow-[0_18px_40px_-34px_rgba(56,42,28,0.22)] backdrop-blur-md transition-[border-color,box-shadow] focus-within:border-[#bec8d0] focus-within:shadow-[0_24px_46px_-34px_rgba(88,67,45,0.2)] focus-within:ring-[3px] focus-within:ring-[#e7ecef]/90">
             {/* Mode indicator accent bar */}
             <div className="overflow-hidden rounded-t-[24px]">
               <div
@@ -1594,7 +1608,7 @@ export function V0Chat({
             </div>
             {(runtime.phase !== "idle" || error) && (
               <div
-                className="border-b border-border/70 bg-secondary/65 px-5 py-2.5"
+                className="border-b border-border/70 bg-secondary/72 px-5 py-2.5"
                 aria-live="polite"
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1677,7 +1691,7 @@ export function V0Chat({
                     onClick={() => void handleSubmit()}
                     disabled={!input.trim() || isComposerDisabled}
                     size="icon-sm"
-                    className="size-11 rounded-xl shadow-[0_14px_24px_-18px_rgba(73,56,41,0.5)]"
+                    className="size-11 rounded-xl shadow-[0_14px_24px_-18px_rgba(49,73,90,0.28)]"
                   >
                     {isLoading ? (
                       <Loader2 className="size-4 animate-spin" />
@@ -1687,6 +1701,7 @@ export function V0Chat({
                   </Button>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
