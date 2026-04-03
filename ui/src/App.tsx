@@ -1,12 +1,28 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react"
-import { BookOpenText, Bot, Clock3, FolderKanban, History, Library, Search, Sparkles } from "lucide-react"
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import {
+  BookOpenText,
+  Bot,
+  Clock3,
+  FolderKanban,
+  History,
+  Library,
+  Search,
+  Sparkles,
+} from "lucide-react";
 
-import { Workbench } from "@/components/workbench"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Sidebar, SidebarView, VIEW_LABELS } from "@/components/ui/sidebar"
-import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat"
+import { Workbench } from "@/components/workbench";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Sidebar, SidebarView, VIEW_LABELS } from "@/components/ui/sidebar";
+import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat";
+import { cn } from "@/lib/utils";
 
 const viewDescriptions: Record<SidebarView, string> = {
   workbench: "减少选择成本，让用户更快产出结构化结果。",
@@ -18,19 +34,20 @@ const viewDescriptions: Record<SidebarView, string> = {
   projects: "项目空间承接执行边界、审批节奏和交付结果。",
   recent: "快速回到最近任务、结果和生成上下文。",
   schedules: "周期性生成、汇总和提醒统一纳入工作流调度。",
-}
+};
 
-const viewActions: Record<SidebarView, { primary: string; secondary: string }> = {
-  workbench: { primary: "新建项目", secondary: "查看审批" },
-  chat: { primary: "开始生成", secondary: "查看最近" },
-  teams: { primary: "新建 Team", secondary: "查看模板" },
-  skills: { primary: "配置能力", secondary: "查看绑定" },
-  assets: { primary: "查看产物", secondary: "导出目录" },
-  knowledge: { primary: "连接知识源", secondary: "查看权限" },
-  projects: { primary: "新建项目", secondary: "查看模板" },
-  recent: { primary: "继续任务", secondary: "查看全部" },
-  schedules: { primary: "新建任务", secondary: "查看日志" },
-}
+const viewActions: Record<SidebarView, { primary: string; secondary: string }> =
+  {
+    workbench: { primary: "新建项目", secondary: "查看审批" },
+    chat: { primary: "开始生成", secondary: "查看最近" },
+    teams: { primary: "新建 Team", secondary: "查看模板" },
+    skills: { primary: "配置能力", secondary: "查看绑定" },
+    assets: { primary: "查看产物", secondary: "导出目录" },
+    knowledge: { primary: "连接知识源", secondary: "查看权限" },
+    projects: { primary: "新建项目", secondary: "查看模板" },
+    recent: { primary: "继续任务", secondary: "查看全部" },
+    schedules: { primary: "新建任务", secondary: "查看日志" },
+  };
 
 function PlaceholderView({
   icon,
@@ -38,10 +55,10 @@ function PlaceholderView({
   description,
   action,
 }: {
-  icon: ReactNode
-  title: string
-  description: string
-  action: string
+  icon: ReactNode;
+  title: string;
+  description: string;
+  action: string;
 }) {
   return (
     <div className="px-4 pb-6 pt-4 md:px-6 md:pb-8">
@@ -74,7 +91,7 @@ function PlaceholderView({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function PageHeader({
@@ -82,9 +99,9 @@ function PageHeader({
   onPrimaryAction,
   onSecondaryAction,
 }: {
-  activeView: SidebarView
-  onPrimaryAction: () => void
-  onSecondaryAction: () => void
+  activeView: SidebarView;
+  onPrimaryAction: () => void;
+  onSecondaryAction: () => void;
 }) {
   return (
     <header className="sticky top-[65px] z-20 border-b border-border bg-background md:top-0">
@@ -107,116 +124,129 @@ function PageHeader({
           <div className="flex flex-col gap-3 lg:min-w-[420px]">
             <div className="relative w-full xl:max-w-[420px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input readOnly value="" placeholder="搜索项目、结果、知识与历史记录" className="pl-9" />
+              <Input
+                readOnly
+                value=""
+                placeholder="搜索项目、结果、知识与历史记录"
+                className="pl-9"
+              />
             </div>
             <div className="flex flex-wrap gap-2 xl:justify-end">
               <Button variant="outline" onClick={onSecondaryAction}>
                 {viewActions[activeView].secondary}
               </Button>
-              <Button onClick={onPrimaryAction}>{viewActions[activeView].primary}</Button>
+              <Button onClick={onPrimaryAction}>
+                {viewActions[activeView].primary}
+              </Button>
             </div>
           </div>
         </div>
       </div>
     </header>
-  )
+  );
 }
 
 export default function App() {
-  const [activeView, setActiveView] = useState<SidebarView>("workbench")
-  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined)
-  const [recentConversations, setRecentConversations] = useState<ConversationRecord[]>([])
-  const [draftResetToken, setDraftResetToken] = useState(0)
+  const [activeView, setActiveView] = useState<SidebarView>("workbench");
+  const [activeConversationId, setActiveConversationId] = useState<
+    string | undefined
+  >(undefined);
+  const [recentConversations, setRecentConversations] = useState<
+    ConversationRecord[]
+  >([]);
+  const [draftResetToken, setDraftResetToken] = useState(0);
 
   const fetchRecentConversations = useCallback(async () => {
     try {
-      const response = await fetch("/conversations")
+      const response = await fetch("/conversations");
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = (await response.json()) as { items: ConversationRecord[] }
+      const data = (await response.json()) as { items: ConversationRecord[] };
       setRecentConversations(
         [...data.items].sort((left, right) => {
-          const leftTime = new Date(left.updated_at).getTime()
-          const rightTime = new Date(right.updated_at).getTime()
-          return rightTime - leftTime
+          const leftTime = new Date(left.updated_at).getTime();
+          const rightTime = new Date(right.updated_at).getTime();
+          return rightTime - leftTime;
         }),
-      )
+      );
     } catch (error) {
-      console.error("Failed to fetch recent conversations:", error)
+      console.error("Failed to fetch recent conversations:", error);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    void fetchRecentConversations()
-  }, [fetchRecentConversations])
+    void fetchRecentConversations();
+  }, [fetchRecentConversations]);
 
   const handleViewChange = (view: SidebarView) => {
     if (view === "chat") {
-      setActiveConversationId(undefined)
-      setDraftResetToken((current) => current + 1)
-      setActiveView("chat")
-      return
+      setActiveConversationId(undefined);
+      setDraftResetToken((current) => current + 1);
+      setActiveView("chat");
+      return;
     }
 
-    setActiveView(view)
-    setActiveConversationId(undefined)
-  }
+    setActiveView(view);
+    setActiveConversationId(undefined);
+  };
 
   const handleStartChat = () => {
-    setActiveConversationId(undefined)
-    setDraftResetToken((current) => current + 1)
-    setActiveView("chat")
-  }
+    setActiveConversationId(undefined);
+    setDraftResetToken((current) => current + 1);
+    setActiveView("chat");
+  };
 
   const handleSelectConversation = (conversationId: string) => {
-    setActiveConversationId(conversationId)
-    setActiveView("chat")
-  }
+    setActiveConversationId(conversationId);
+    setActiveView("chat");
+  };
 
   const handleDeleteConversation = useCallback(
     async (conversationId: string) => {
       const response = await fetch(`/conversations/${conversationId}`, {
         method: "DELETE",
-      })
+      });
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        throw new Error(`HTTP ${response.status}`);
       }
 
-      setRecentConversations((previous) => previous.filter((conversation) => conversation.id !== conversationId))
+      setRecentConversations((previous) =>
+        previous.filter((conversation) => conversation.id !== conversationId),
+      );
 
       if (activeConversationId === conversationId) {
-        setActiveConversationId(undefined)
-        setDraftResetToken((current) => current + 1)
-        setActiveView("chat")
+        setActiveConversationId(undefined);
+        setDraftResetToken((current) => current + 1);
+        setActiveView("chat");
       }
     },
     [activeConversationId],
-  )
+  );
 
   const handlePrimaryAction = () => {
     if (activeView === "chat") {
-      handleStartChat()
-      return
+      handleStartChat();
+      return;
     }
 
     if (activeView === "workbench" || activeView === "projects") {
-      handleViewChange("projects")
-      return
+      handleViewChange("projects");
+      return;
     }
 
     if (activeView === "recent") {
-      handleViewChange("chat")
+      handleViewChange("chat");
     }
-  }
+  };
 
   const handleSecondaryAction = () => {
     if (activeView === "workbench" || activeView === "chat") {
-      handleViewChange("recent")
+      handleViewChange("recent");
     }
-  }
+  };
 
   const renderContent = () => {
     switch (activeView) {
@@ -227,18 +257,18 @@ export default function App() {
             onOpenProjects={() => handleViewChange("projects")}
             onOpenApprovals={() => handleViewChange("recent")}
           />
-        )
+        );
       case "chat":
         return (
           <V0Chat
             conversationId={activeConversationId}
             draftResetToken={draftResetToken}
             onConversationCreated={(id) => {
-              setActiveConversationId(id)
+              setActiveConversationId(id);
             }}
             onConversationsChange={setRecentConversations}
           />
-        )
+        );
       case "teams":
         return (
           <PlaceholderView
@@ -247,7 +277,7 @@ export default function App() {
             description="为项目挂载可复用 Team，并在这里统一查看配置与治理边界。"
             action="新建 Team"
           />
-        )
+        );
       case "skills":
         return (
           <PlaceholderView
@@ -256,7 +286,7 @@ export default function App() {
             description="统一管理 MCP 与技能绑定，避免能力散落在不同页面里。"
             action="配置能力"
           />
-        )
+        );
       case "assets":
         return (
           <PlaceholderView
@@ -265,7 +295,7 @@ export default function App() {
             description="管理报告、摘要、导出文件和可复用模板。"
             action="查看产物"
           />
-        )
+        );
       case "knowledge":
         return (
           <PlaceholderView
@@ -274,7 +304,7 @@ export default function App() {
             description="连接企业知识源，并把引用范围纳入工作流控制。"
             action="连接知识源"
           />
-        )
+        );
       case "projects":
         return (
           <PlaceholderView
@@ -283,7 +313,7 @@ export default function App() {
             description="项目空间用于承接结构化执行、审批、结果沉淀与复用。"
             action="新建项目"
           />
-        )
+        );
       case "recent":
         return (
           <PlaceholderView
@@ -292,7 +322,7 @@ export default function App() {
             description="快速回到最近的生成任务、项目和输出结果。"
             action="继续任务"
           />
-        )
+        );
       case "schedules":
         return (
           <PlaceholderView
@@ -301,14 +331,19 @@ export default function App() {
             description="配置周期生成、汇总与提醒，使企业任务自动化可交付。"
             action="新建任务"
           />
-        )
+        );
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen page-shell">
+    <div
+      className={cn(
+        "page-shell",
+        activeView === "chat" ? "h-[100dvh] overflow-hidden" : "min-h-screen",
+      )}
+    >
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
@@ -318,7 +353,14 @@ export default function App() {
         pageTitle={VIEW_LABELS[activeView]}
       />
 
-      <main className="flex min-h-screen flex-col md:ml-[236px]">
+      <main
+        className={cn(
+          "flex flex-col md:ml-[236px]",
+          activeView === "chat"
+            ? "h-[100dvh] min-h-0 overflow-hidden"
+            : "min-h-screen",
+        )}
+      >
         {activeView !== "chat" && (
           <PageHeader
             activeView={activeView}
@@ -326,8 +368,16 @@ export default function App() {
             onSecondaryAction={handleSecondaryAction}
           />
         )}
-        <div className={activeView === "chat" ? "flex flex-1 flex-col pt-[65px] md:pt-0" : "flex-1 pt-[65px] md:pt-0"}>{renderContent()}</div>
+        <div
+          className={
+            activeView === "chat"
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden pt-[65px] md:pt-0"
+              : "flex-1 pt-[65px] md:pt-0"
+          }
+        >
+          {renderContent()}
+        </div>
       </main>
     </div>
-  )
+  );
 }
