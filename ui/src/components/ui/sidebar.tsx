@@ -85,7 +85,7 @@ function SectionLabel({
   className?: string
 }) {
   return (
-    <p className={cn("px-3 text-[11px] leading-4 font-medium tracking-[0.08em] text-muted-foreground/88", className)}>
+    <p className={cn("px-3 text-[10px] leading-4 font-medium tracking-[0.1em] text-muted-foreground/90 uppercase", className)}>
       {children}
     </p>
   )
@@ -109,18 +109,18 @@ function NavButton({
       variant="ghost"
       onClick={onClick}
       className={cn(
-        "relative min-h-11 w-full justify-start rounded-xl border px-3.5 text-left font-normal transition-[background-color,border-color,color,box-shadow]",
+        "relative min-h-10 w-full justify-start rounded-md border px-3 py-2 text-left font-normal transition-colors",
         active
-          ? "border-sidebar-border/60 bg-white/84 text-foreground shadow-[0_10px_20px_-24px_rgba(56,42,28,0.2)]"
-          : "border-transparent text-muted-foreground hover:border-sidebar-border/45 hover:bg-white/72 hover:text-foreground",
+          ? "border-sidebar-border bg-sidebar-accent text-foreground"
+          : "border-transparent text-muted-foreground hover:border-sidebar-border/60 hover:bg-sidebar-accent/60 hover:text-foreground",
       )}
     >
       {active ? (
         <span className="absolute left-1.5 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#71879a]" />
       ) : null}
       <span className={cn("mr-2 text-muted-foreground", active && "text-foreground")}>{icon}</span>
-      <span className="flex-1 truncate text-[14px] leading-[22px]">{label}</span>
-      {badge ? <span className="text-[12px] leading-[18px] text-muted-foreground">{badge}</span> : null}
+      <span className="flex-1 truncate text-[13px] leading-5">{label}</span>
+      {badge ? <span className="text-[11px] leading-4 text-muted-foreground">{badge}</span> : null}
     </Button>
   )
 }
@@ -145,7 +145,7 @@ function SidebarHeader({
     <div className="border-b border-sidebar-border/80 px-4 py-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-sidebar-border/68 bg-white/76 text-foreground">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-sidebar-border bg-sidebar-accent text-foreground">
             <Sparkles className="size-4" />
           </div>
           <div className="min-w-0">
@@ -218,10 +218,10 @@ export function Sidebar({
   }
 
   const sidebarContent = (options?: { onClose?: () => void }) => (
-    <div className="flex h-full flex-col bg-[linear-gradient(180deg,rgba(247,247,245,0.98),rgba(243,243,241,0.97))] text-sidebar-foreground">
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <SidebarHeader onClose={options?.onClose} />
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-7">
+        <div className="space-y-6">
           <div className="space-y-1">
             {primaryItems.map((item) => (
               <NavButton
@@ -259,7 +259,7 @@ export function Sidebar({
                   key={project.label}
                   variant="ghost"
                   onClick={() => handleSelect("projects")}
-                  className="h-auto min-h-11 w-full justify-start rounded-2xl border border-transparent px-3 py-2.5 hover:border-sidebar-border/45 hover:bg-white/72"
+                  className="h-auto min-h-10 w-full justify-start rounded-md border border-transparent px-3 py-2 hover:border-sidebar-border/60 hover:bg-sidebar-accent/60"
                 >
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate text-[14px] leading-[22px] tracking-[-0.01em] text-foreground">{project.label}</p>
@@ -294,11 +294,11 @@ export function Sidebar({
                     <Button
                       variant="ghost"
                       onClick={() => handleSelectConversation(conversation.id)}
-                      className="h-auto min-h-11 min-w-0 flex-1 justify-start rounded-2xl border border-transparent px-3 py-2.5 hover:border-sidebar-border/45 hover:bg-white/72"
+                      className="h-auto min-h-10 min-w-0 flex-1 justify-start rounded-md border border-transparent px-3 py-2 hover:border-sidebar-border/60 hover:bg-sidebar-accent/60"
                     >
                       <div className="min-w-0 flex-1 text-left">
-                        <p className="truncate text-[14px] leading-[22px] tracking-[-0.01em] text-foreground">{conversation.title}</p>
-                        <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">
+                        <p className="truncate text-[13px] leading-5 tracking-[-0.01em] text-foreground">{conversation.title}</p>
+                        <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
                           {formatConversationTime(conversation.updated_at)}
                         </p>
                       </div>
@@ -312,7 +312,7 @@ export function Sidebar({
                         event.stopPropagation()
                         void handleDeleteConversation(conversation.id)
                       }}
-                      className="size-10 shrink-0 rounded-xl text-muted-foreground opacity-100 transition-opacity hover:bg-white/80 hover:text-destructive md:size-9 md:opacity-0 md:group-hover:opacity-100"
+                      className="size-10 shrink-0 rounded-lg text-muted-foreground opacity-100 transition-colors hover:border-sidebar-border/60 hover:bg-sidebar-accent hover:text-destructive md:size-9 md:opacity-0 md:group-hover:opacity-100"
                       title="删除会话"
                     >
                       {deletingConversationId === conversation.id ? (
@@ -336,14 +336,14 @@ export function Sidebar({
       <div className="border-t border-sidebar-border/80 px-3 pb-3 pt-3">
         <button
           type="button"
-          className="flex w-full items-center gap-3 rounded-[18px] border border-transparent px-2.5 py-2 text-left transition-[background-color,border-color,color] hover:border-sidebar-border/45 hover:bg-white/72"
+          className="flex w-full items-center gap-3 rounded-md border border-sidebar-border/70 bg-sidebar-accent/55 px-2.5 py-2 text-left transition-colors hover:bg-sidebar-accent"
         >
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sidebar-border/65 bg-white/88 text-[10px] font-medium tracking-[0.08em] text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+          <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-[10px] font-medium tracking-[0.08em] text-foreground">
             KL
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] leading-5 font-medium tracking-[-0.01em] text-foreground">Keran Li</p>
-            <div className="mt-px flex min-w-0 items-center gap-1.5 text-[11px] leading-4 tracking-[0.04em] text-muted-foreground">
+            <p className="truncate text-[12px] leading-5 font-medium tracking-[-0.01em] text-foreground">Keran Li</p>
+            <div className="mt-px flex min-w-0 items-center gap-1.5 text-[10px] leading-4 tracking-[0.08em] text-muted-foreground">
               <Building2 className="size-3 shrink-0" />
               <span className="truncate">容芯开源组</span>
             </div>

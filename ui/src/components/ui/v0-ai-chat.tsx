@@ -329,15 +329,15 @@ function ModePicker({
         onClick={() => setOpen((prev) => !prev)}
         aria-label={`当前执行模式：${current.label}`}
         className={cn(
-          "group flex min-h-11 items-center gap-2 rounded-xl border px-3.5 py-2 text-left shadow-[0_4px_12px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.02)] transition-colors hover:border-border focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80",
+          "group flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors hover:border-border focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80",
           current.accentClassName,
         )}
       >
-        <span className="flex size-6 items-center justify-center rounded-md border border-black/5 bg-white/80">
+        <span className="flex size-6 items-center justify-center rounded-md border border-black/5 bg-background">
           <CurrentIcon className="size-3" />
         </span>
         <span className="min-w-0">
-          <span className="block text-[11px] leading-4 font-semibold tracking-[0.04em]">
+          <span className="block text-[10px] leading-4 font-semibold tracking-[0.08em]">
             {current.label}
           </span>
         </span>
@@ -366,10 +366,10 @@ function ModePicker({
                 damping: 28,
                 mass: 0.9,
               }}
-              className="absolute bottom-full left-0 z-50 mb-2.5 w-[286px] rounded-2xl border border-border bg-card p-2 shadow-[0_10px_24px_-18px_rgba(56,42,28,0.16)]"
+              className="absolute bottom-full left-0 z-50 mb-2.5 w-[286px] rounded-[18px] border border-border bg-card p-2"
             >
               <div className="mb-1.5 px-1">
-                <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
                   执行模式
                 </p>
                 <p className="text-[12px] text-foreground">
@@ -396,12 +396,12 @@ function ModePicker({
                         "flex w-full items-start gap-2.5 rounded-[14px] border px-3 py-2.5 text-left transition-colors",
                         isSelected
                           ? cn("bg-card", mode.accentClassName)
-                          : "border-border bg-background text-foreground hover:border-border hover:bg-card",
+                          : "border-border bg-background text-foreground hover:border-border hover:bg-secondary",
                       )}
                     >
                       <span
                         className={cn(
-                          "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-white/80",
+                          "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-background",
                           isSelected ? "border-black/5" : "border-border/80",
                         )}
                       >
@@ -465,7 +465,7 @@ function ModelPicker({
         }}
         disabled={isDisabled}
         title={loadError ?? undefined}
-        className="flex min-h-11 items-center gap-2 rounded-xl border border-transparent bg-transparent px-3 text-[12px] tracking-[0.04em] text-muted-foreground transition-colors hover:border-border hover:bg-background hover:text-foreground focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80"
+        className="flex min-h-10 items-center gap-2 rounded-md border border-transparent bg-transparent px-3 text-[11px] tracking-[0.08em] text-muted-foreground transition-colors hover:border-border hover:bg-secondary hover:text-foreground focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80"
       >
         <Sparkles className="size-3.5" />
         <span className="max-w-[140px] truncate">{currentLabel}</span>
@@ -488,7 +488,7 @@ function ModelPicker({
                 damping: 30,
                 mass: 0.8,
               }}
-              className="absolute bottom-full left-0 z-50 mb-2 w-[220px] overflow-hidden rounded-[18px] border border-border bg-card p-1.5 shadow-[0_10px_24px_-18px_rgba(56,42,28,0.16)]"
+              className="absolute bottom-full left-0 z-50 mb-2 w-[220px] overflow-hidden rounded-[16px] border border-border bg-card p-1.5"
             >
               {models.map((model) => (
                 <button
@@ -558,14 +558,14 @@ function MessageBubble({
     <div
       className={cn(
         "group flex w-full",
-        isUser ? "justify-end" : "justify-start",
+        isUser ? "justify-end" : "justify-start md:pr-8",
       )}
     >
       <div
         className={cn(
           "relative max-w-[90%]",
           isUser
-            ? "rounded-[18px] border border-[#d8d1c8] bg-[#f3efea] px-[18px] py-[13px] text-[#2f2924]"
+            ? "rounded-[20px] border border-[#d8d1c8] bg-[#f1ece5] px-[18px] py-[13px] text-[#2f2924]"
             : "px-1 py-1 md:px-2",
         )}
       >
@@ -588,8 +588,8 @@ function MessageBubble({
               className={cn(
                 "h-8 w-8 rounded-[10px] text-muted-foreground md:h-7 md:w-7",
                 isUser
-                  ? "border border-border bg-white hover:bg-white hover:text-foreground"
-                  : "border border-transparent bg-background hover:border-border hover:bg-background hover:text-foreground",
+                  ? "border border-border bg-card hover:bg-card hover:text-foreground"
+                  : "border border-transparent bg-background hover:border-border hover:bg-secondary hover:text-foreground",
               )}
               title={copied ? "已复制" : "复制消息"}
             >
@@ -615,7 +615,7 @@ function MessageBubble({
               {message.content}
             </div>
           ) : (
-            <div className="assistant-markdown prose prose-sm max-w-none px-[18px] py-2 font-[var(--font-body)] text-[14px] leading-[24px] tracking-[-0.003em] text-foreground prose-headings:mt-0 prose-headings:mb-3 prose-headings:font-sans prose-headings:tracking-[-0.02em] prose-p:my-2 prose-p:font-body prose-p:leading-[24px] prose-pre:my-0 prose-pre:mx-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0 prose-code:font-mono prose-code:text-[#5e5043] prose-li:font-body prose-ul:my-3 prose-ul:pl-5 prose-ol:my-3 prose-ol:pl-5 prose-li:my-1">
+            <div className="assistant-markdown prose prose-sm max-w-none px-[12px] py-1 font-[var(--font-body)] text-[14px] leading-[24px] tracking-[-0.003em] text-foreground prose-headings:font-sans prose-pre:my-0 prose-pre:mx-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0 prose-code:font-mono">
               <Streamdown
                 mode={isMessageStreaming ? "streaming" : "static"}
                 remarkPlugins={
@@ -697,9 +697,9 @@ function ReasoningPanel({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="mb-4 rounded-[14px] border border-border bg-[#f8f7f4]"
+      className="mb-4 rounded-[14px] border border-border bg-secondary"
     >
-      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[12px] leading-[18px] text-muted-foreground transition-colors hover:text-foreground">
+      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] leading-4 tracking-[0.04em] text-muted-foreground transition-colors hover:text-foreground">
         <Brain className="size-3.5 shrink-0" />
         <span className="flex-1">{triggerContent}</span>
         <ChevronDown
@@ -711,7 +711,7 @@ function ReasoningPanel({
       </CollapsibleTrigger>
 
       <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-        <div className="border-t border-border px-3.5 py-2.5 text-[12px] leading-[18px] text-muted-foreground">
+        <div className="border-t border-border px-3 py-2 text-[12px] leading-[18px] text-muted-foreground">
           <Streamdown
             mode={isStreaming ? "streaming" : "static"}
             remarkPlugins={staticRemarkPlugins}
@@ -743,7 +743,7 @@ function StreamingDots({ className }: { className?: string }) {
 
 function MessageListSkeleton() {
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-8 px-6 py-6">
+    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7 px-6 py-6">
       <div className="flex justify-end">
         <div className="w-full max-w-[420px] space-y-2">
           <div className="skeleton-line h-4 rounded-full" />
@@ -1419,24 +1419,24 @@ export function V0Chat({
           {isConversationLoading ? (
             <MessageListSkeleton />
           ) : isEmpty ? (
-            <div className="flex flex-1 flex-col px-6 pt-16">
+            <div className="flex flex-1 flex-col px-6 pt-14">
               <div className="mx-auto w-full max-w-[560px]">
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  className="mb-8"
+                  className="mb-7"
                 >
-                  <div className="inline-flex size-10 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground">
+                  <div className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
                     <Sparkles className="size-4 text-[#6c6259]" />
                   </div>
                   <p className="mt-5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
                     Exploratory Session
                   </p>
-                  <h2 className="mt-2 text-[30px] leading-[38px] font-semibold tracking-[-0.02em] text-foreground">
+                  <h2 className="mt-2 text-[28px] leading-[36px] font-semibold tracking-[-0.02em] text-foreground">
                     临时会话
                   </h2>
-                  <p className="mt-2 max-w-[440px] text-[15px] leading-relaxed text-muted-foreground">
+                  <p className="mt-2 max-w-[440px] text-[14px] leading-[22px] text-muted-foreground">
                     用一个明确任务开始探索。首次发送成功后，系统才会创建正式会话记录。
                   </p>
                 </motion.div>
@@ -1472,23 +1472,23 @@ export function V0Chat({
                         setInput(prompt);
                         void handleSubmit(prompt);
                       }}
-                      className="group flex items-start gap-3 rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-[#c6cec6] hover:bg-[#fcfcfb]"
+                      className="group flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3.5 text-left transition-colors hover:border-[#c6cec6] hover:bg-secondary"
                     >
                       <span
                         className={cn(
-                          "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border border-black/5 transition-colors",
+                          "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-black/5 transition-colors",
                           i === 0
-                            ? "bg-[#e7edf2] text-[#49617a]"
+                            ? "bg-[#e2e8ee] text-[#49617a]"
                             : i === 1
-                              ? "bg-[#f0e9dc] text-[#756046]"
+                              ? "bg-[#ece3d6] text-[#756046]"
                               : i === 2
-                                ? "bg-[#efebf4] text-[#66597c]"
-                                : "bg-[#e9efea] text-[#4c6554]",
+                                ? "bg-[#eae6ef] text-[#66597c]"
+                                : "bg-[#e4ebe4] text-[#4c6554]",
                         )}
                       >
                         <Icon className="size-4" />
                       </span>
-                      <span className="text-[13px] leading-snug text-muted-foreground group-hover:text-foreground">
+                      <span className="text-[13px] leading-[20px] text-muted-foreground group-hover:text-foreground">
                         {prompt}
                       </span>
                     </motion.button>
@@ -1497,7 +1497,7 @@ export function V0Chat({
               </div>
             </div>
           ) : (
-            <div className="mx-auto flex w-full max-w-[760px] flex-col gap-4 px-6 py-6">
+            <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5 px-6 py-6">
               <AnimatePresence initial={false}>
                 {messages.map((message) => (
                   <motion.div
@@ -1526,7 +1526,7 @@ export function V0Chat({
                     transition={{ duration: 0.2 }}
                     className="flex justify-start"
                   >
-                    <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5">
+                    <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2">
                       <StreamingDots />
                       <span className="text-[13px] text-muted-foreground">
                         正在生成回复
@@ -1554,7 +1554,7 @@ export function V0Chat({
                 onClick={() => scrollToLatest("smooth")}
                 aria-label="回到最新"
                 title="回到最新"
-                className="pointer-events-auto size-10 rounded-full border-border bg-background shadow-[0_4px_12px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.02)] hover:bg-background"
+                className="pointer-events-auto size-10 rounded-full border-border bg-card shadow-none hover:bg-card"
               >
                 <ArrowDown className="size-3.5" />
               </Button>
@@ -1565,9 +1565,9 @@ export function V0Chat({
 
       {/* Pinned bottom: status + composer as unified container */}
       <div className="sticky bottom-0 z-20">
-        <div className="relative border-t border-border/60 bg-background/96">
-          <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-3">
-            <div className="rounded-[18px] border border-border bg-card shadow-[0_4px_12px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.02)] transition-[border-color,box-shadow] focus-within:border-[#bec8d0] focus-within:ring-[3px] focus-within:ring-[#e7ecef]/80">
+        <div className="relative border-t border-border/70 bg-background">
+          <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-2.5">
+            <div className="rounded-[14px] border border-border bg-card transition-[border-color,box-shadow] focus-within:border-[#bec8d0] focus-within:ring-[3px] focus-within:ring-[#e7ecef]/80">
               {(runtime.phase !== "idle" || error) && (
                 <div
                   className="border-b border-border bg-secondary px-5 py-2.5"
@@ -1604,10 +1604,10 @@ export function V0Chat({
                         ? "输入问题或任务..."
                         : "当前没有可用模型，暂时无法开始会话"
                   }
-                  className="min-h-[104px] resize-none border-none bg-white px-5 py-4 text-[15px] leading-[24px] tracking-[-0.003em] focus-visible:ring-0"
+                  className="min-h-[100px] resize-none border-none bg-card px-5 py-4 text-[15px] leading-[24px] tracking-[-0.003em] focus-visible:ring-0"
                   disabled={isComposerDisabled}
                 />
-                <div className="flex flex-col gap-2 border-t border-border bg-[#fbfbfa] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 border-t border-border bg-secondary/70 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <ModePicker
                       selected={selectedMode}
@@ -1617,7 +1617,7 @@ export function V0Chat({
                       variant="ghost"
                       size="icon-sm"
                       disabled
-                      className="size-11 rounded-xl border border-transparent text-muted-foreground hover:border-border hover:bg-background"
+                      className="size-10 rounded-md border border-transparent text-muted-foreground hover:border-border hover:bg-card"
                       title="上传附件"
                     >
                       <Paperclip className="size-4" />
@@ -1626,7 +1626,7 @@ export function V0Chat({
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        className="size-11 rounded-xl border border-transparent text-muted-foreground hover:border-border hover:bg-background"
+                        className="size-10 rounded-md border border-transparent text-muted-foreground hover:border-border hover:bg-card"
                         onClick={() =>
                           navigator.clipboard.writeText(
                             lastAssistantMessage.content,
@@ -1653,7 +1653,7 @@ export function V0Chat({
                       onClick={() => void handleSubmit()}
                       disabled={!input.trim() || isComposerDisabled}
                       size="icon-sm"
-                      className="size-11 rounded-xl shadow-none"
+                      className="size-10 rounded-md shadow-none"
                     >
                       {isLoading ? (
                         <Loader2 className="size-4 animate-spin" />

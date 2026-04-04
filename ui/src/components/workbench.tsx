@@ -110,11 +110,11 @@ function SectionTitle({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex size-9 items-center justify-center rounded-md bg-secondary text-foreground">
+      <div className="mt-0.5 flex size-8 items-center justify-center rounded-md border border-border bg-secondary text-foreground">
         {icon}
       </div>
       <div>
-        <h2 className="text-[20px] leading-7 font-semibold text-foreground">{title}</h2>
+        <h2 className="text-[18px] leading-7 font-semibold tracking-[-0.01em] text-foreground">{title}</h2>
         <p className="mt-1 text-[14px] leading-[22px] text-muted-foreground">{description}</p>
       </div>
     </div>
@@ -134,14 +134,18 @@ function FunctionCard({
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <div
-        className="flex size-10 items-center justify-center rounded-md"
-        style={{ backgroundColor: tone }}
-      >
-        {icon}
+      <div className="flex items-start gap-3">
+        <div
+          className="flex size-9 shrink-0 items-center justify-center rounded-md border border-black/5"
+          style={{ backgroundColor: tone }}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
+          <p className="mt-1 text-[13px] leading-[20px] text-muted-foreground">{description}</p>
+        </div>
       </div>
-      <h3 className="mt-4 text-[16px] leading-6 font-semibold text-foreground">{title}</h3>
-      <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">{description}</p>
     </div>
   )
 }
@@ -157,16 +161,16 @@ function StepCard({
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <p className="text-[12px] leading-[18px] text-muted-foreground">{step}</p>
-      <h3 className="mt-2 text-[16px] leading-6 font-semibold text-foreground">{title}</h3>
-      <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">{detail}</p>
+      <p className="text-[11px] leading-4 tracking-[0.08em] text-muted-foreground">{step}</p>
+      <h3 className="mt-2 text-[15px] leading-6 font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
+      <p className="mt-1.5 text-[13px] leading-[20px] text-muted-foreground">{detail}</p>
     </div>
   )
 }
 
 function ResultAction({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <Button variant="outline" size="sm">
+    <Button variant="outline" size="sm" className="h-8 rounded-md px-2.5 text-[12px]">
       {icon}
       {label}
     </Button>
@@ -185,11 +189,11 @@ function ListRow({
   tone: Tone
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card px-4 py-3.5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[14px] leading-[22px] font-medium text-foreground">{title}</p>
-          <p className="mt-1 text-[12px] leading-[18px] text-muted-foreground">{detail}</p>
+          <p className="text-[14px] leading-[22px] font-medium tracking-[-0.01em] text-foreground">{title}</p>
+          <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">{detail}</p>
         </div>
         <ToneBadge tone={tone}>{meta}</ToneBadge>
       </div>
@@ -214,41 +218,47 @@ export function Workbench({
 }) {
   return (
     <div className="px-4 pb-6 pt-4 md:px-6 md:pb-8">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6">
-        <section className="hero-gradient rounded-lg border border-border p-6">
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5">
+        <section className="rounded-lg border border-border bg-secondary/65 p-6">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-start">
             <div>
-              <p className="text-[12px] leading-[18px] text-muted-foreground">Enterprise AI Workspace</p>
-              <h1 className="mt-3 text-[28px] leading-9 font-semibold text-foreground">
+              <p className="text-[11px] leading-4 tracking-[0.08em] text-muted-foreground uppercase">Enterprise AI Workspace</p>
+              <h1 className="mt-3 text-[28px] leading-9 font-semibold tracking-[-0.02em] text-foreground">
                 强结构、强引导、强结果
               </h1>
-              <p className="mt-3 max-w-2xl text-[14px] leading-[22px] text-muted-foreground">
+              <p className="mt-3 max-w-[620px] text-[14px] leading-[22px] text-muted-foreground">
                 首页不再鼓励自由发散，而是直接进入结构化生成流程，让用户更快得到可编辑、可导出、可复用的结果。
               </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button onClick={onStartChat}>开始生成</Button>
+                <Button variant="outline" onClick={onOpenProjects}>
+                  保存为项目
+                </Button>
+              </div>
             </div>
 
-            <div className="rounded-lg border border-border bg-white p-4">
-              <p className="field-label">工作流摘要</p>
-              <div className="mt-3 space-y-2">
-                <div className="flex items-center justify-between text-[14px] leading-[22px]">
+            <div className="rounded-lg border border-border bg-card p-4">
+              <p className="text-[10px] leading-4 tracking-[0.1em] text-muted-foreground uppercase">工作流摘要</p>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between gap-4 text-[14px] leading-[22px]">
                   <span className="text-muted-foreground">当前重点</span>
-                  <span className="text-foreground">销售复盘报告</span>
+                  <span className="font-medium text-foreground">销售复盘报告</span>
                 </div>
-                <div className="flex items-center justify-between text-[14px] leading-[22px]">
+                <div className="flex items-center justify-between gap-4 text-[14px] leading-[22px]">
                   <span className="text-muted-foreground">待审批</span>
-                  <span className="text-foreground">2 项</span>
+                  <span className="font-medium text-foreground">2 项</span>
                 </div>
-                <div className="flex items-center justify-between text-[14px] leading-[22px]">
+                <div className="flex items-center justify-between gap-4 text-[14px] leading-[22px]">
                   <span className="text-muted-foreground">可导出结果</span>
-                  <span className="text-foreground">7 份</span>
+                  <span className="font-medium text-foreground">7 份</span>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.9fr)]">
-          <div className="space-y-6">
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_320px]">
+          <div className="space-y-5">
             <Card>
               <CardHeader>
                 <SectionTitle
@@ -257,7 +267,7 @@ export function Workbench({
                   description="用表单收集关键信息，再由 AI 处理，不再只给一个大输入框。"
                 />
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <label className="field-label">主题</label>
@@ -277,7 +287,7 @@ export function Workbench({
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-border bg-secondary p-4">
+                <div className="rounded-lg border border-border bg-secondary/80 p-4">
                   <p className="field-label">补充说明</p>
                   <ul className="mt-3 list-disc space-y-1 pl-5">
                     <OutputListItem>强调北区和华东区的增长差异</OutputListItem>
@@ -286,7 +296,7 @@ export function Workbench({
                   </ul>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 pt-1">
                   <Button onClick={onStartChat}>开始生成</Button>
                   <Button variant="outline" onClick={onOpenProjects}>
                     保存为项目
@@ -303,7 +313,7 @@ export function Workbench({
                   description="统一的 4 步流程，减少学习成本。"
                 />
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {steps.map((step) => (
                   <StepCard key={step.step} step={step.step} title={step.title} detail={step.detail} />
                 ))}
@@ -318,8 +328,8 @@ export function Workbench({
                   description="结果以可读、可编辑、可导出的结构展示。"
                 />
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border border-border bg-secondary p-4">
+              <CardContent className="space-y-5">
+                <div className="rounded-lg border border-border bg-secondary/80 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <ToneBadge tone="running">Generating</ToneBadge>
                     <span className="text-[12px] leading-[18px] text-muted-foreground">结果正在补充区域分析章节</span>
@@ -331,18 +341,18 @@ export function Workbench({
                   </div>
                 </div>
 
-                <div className="rounded-lg border border-border bg-card p-4 fade-up">
+                <div className="rounded-lg border border-border bg-card px-4 py-3.5 fade-up">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="text-[16px] leading-6 font-semibold text-foreground">Q2 销售复盘报告</h3>
-                      <p className="mt-1 text-[12px] leading-[18px] text-muted-foreground">
+                      <h3 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-foreground">Q2 销售复盘报告</h3>
+                      <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">
                         结构化输出，已自动生成摘要、列表与关键结论。
                       </p>
                     </div>
                     <ToneBadge tone="done">Success</ToneBadge>
                   </div>
 
-                  <div className="mt-4 space-y-4">
+                  <div className="mt-4 space-y-3.5">
                     <div>
                       <p className="text-[14px] leading-[22px] font-medium text-foreground">执行摘要</p>
                       <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">
@@ -361,7 +371,7 @@ export function Workbench({
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 pt-1">
                   <ResultAction icon={<PencilLine className="size-4" />} label="编辑" />
                   <ResultAction icon={<Copy className="size-4" />} label="复制" />
                   <ResultAction icon={<Download className="size-4" />} label="导出 PDF / docx" />
@@ -371,7 +381,7 @@ export function Workbench({
             </Card>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-5">
             <Card>
               <CardHeader>
                 <SectionTitle
@@ -380,7 +390,7 @@ export function Workbench({
                   description="用户第一眼就知道能做什么。"
                 />
               </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+              <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 {functionCards.map((card) => (
                   <FunctionCard
                     key={card.title}
@@ -401,7 +411,7 @@ export function Workbench({
                   description="聚焦需要继续推进的结构化结果。"
                 />
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-2.5">
                 {recentTasks.map((item) => (
                   <ListRow
                     key={item.title}
@@ -425,9 +435,9 @@ export function Workbench({
                   description="最近使用过的任务主题与结果上下文。"
                 />
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-1.5">
                 {recentHistory.map((item) => (
-                  <div key={item} className="rounded-lg border border-border bg-card px-4 py-3">
+                  <div key={item} className="rounded-lg border border-border bg-card px-4 py-2.5">
                     <p className="text-[14px] leading-[22px] text-foreground">{item}</p>
                   </div>
                 ))}
@@ -442,8 +452,8 @@ export function Workbench({
                   description="让用户始终感觉自己在控制 AI。"
                 />
               </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="rounded-lg border border-border bg-secondary p-4">
+              <CardContent className="space-y-1.5">
+                <div className="rounded-lg border border-border bg-secondary/80 p-4">
                   <p className="field-label">提供能力</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5">
                     <OutputListItem>修改输入后重新生成</OutputListItem>

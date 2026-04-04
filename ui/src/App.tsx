@@ -65,25 +65,25 @@ function PlaceholderView({
       <Card>
         <CardHeader className="border-b border-border">
           <div className="flex items-start gap-4">
-            <div className="flex size-10 items-center justify-center rounded-md bg-secondary text-foreground">
+            <div className="flex size-9 items-center justify-center rounded-md border border-border bg-secondary text-foreground">
               {icon}
             </div>
             <div className="space-y-1.5">
-              <CardTitle className="text-[20px] leading-7">{title}</CardTitle>
+              <CardTitle className="text-[18px] leading-7 tracking-[-0.01em]">{title}</CardTitle>
               <CardDescription>{description}</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 pt-4 lg:grid-cols-2">
-          <div className="rounded-lg border border-border bg-secondary p-4">
+          <div className="rounded-lg border border-border bg-secondary/80 p-4">
             <p className="field-label">模块状态</p>
             <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">
               当前页面已完成结构定义，下一步会接入真实数据、编辑操作和导出流程。
             </p>
           </div>
-          <div className="rounded-lg border border-border bg-background p-4">
+          <div className="rounded-lg border border-border bg-card p-4">
             <p className="field-label">下一步</p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2 pt-1">
               <Button>{action}</Button>
               <Button variant="outline">查看相关文档</Button>
             </div>
@@ -108,21 +108,21 @@ function PageHeader({
       <div className="flex flex-col gap-4 px-4 py-4 md:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-2">
-            <div className="text-[12px] leading-[18px] tracking-[0.04em] text-muted-foreground">
+            <div className="text-[10px] leading-4 tracking-[0.1em] text-muted-foreground uppercase">
               SwarmMind / {VIEW_LABELS[activeView]}
             </div>
             <div className="space-y-1">
               <h1 className="font-heading text-[28px] leading-9 font-semibold tracking-[-0.02em] text-foreground">
                 {VIEW_LABELS[activeView]}
               </h1>
-              <p className="max-w-2xl text-[14px] leading-[22px] text-muted-foreground">
+              <p className="max-w-2xl text-[13px] leading-5 text-muted-foreground">
                 {viewDescriptions[activeView]}
               </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 lg:min-w-[420px]">
-            <div className="relative w-full xl:max-w-[420px]">
+            <div className="relative w-full xl:max-w-[400px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 readOnly
@@ -131,7 +131,7 @@ function PageHeader({
                 className="pl-9"
               />
             </div>
-            <div className="flex flex-wrap gap-2 xl:justify-end">
+            <div className="flex flex-wrap gap-2 pt-1 xl:justify-end">
               <Button variant="outline" onClick={onSecondaryAction}>
                 {viewActions[activeView].secondary}
               </Button>
