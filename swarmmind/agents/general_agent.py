@@ -32,6 +32,8 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
     def __init__(self, *args, system_prompt: str, **kwargs):
         super().__init__(*args, **kwargs)
         self._swarmmind_system_prompt = system_prompt
+        # Note: ClarificationMiddleware is already added by DeerFlow's _build_middlewares
+        # No need to add it again here to avoid duplicates
 
     def _ensure_agent(self, config):
         """Create the underlying DeerFlow agent with SwarmMind branding."""
@@ -58,9 +60,16 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
         )
         system_prompt = rewrite_swarmmind_identity_prompt(base_prompt, self._swarmmind_system_prompt)
 
+        # Get tools with subagent support if enabled
+        tools = self._get_tools(model_name=model_name, subagent_enabled=subagent_enabled)
+        logger.info("Tools loaded: count=%d, subagent_enabled=%s", len(tools), subagent_enabled)
+        if subagent_enabled:
+            tool_names = [t.name if hasattr(t, 'name') else str(t) for t in tools]
+            logger.info("Available tools: %s", tool_names)
+        
         kwargs: dict[str, Any] = {
             "model": deerflow_client_module.create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
-            "tools": self._get_tools(model_name=model_name, subagent_enabled=subagent_enabled),
+            "tools": tools,
             "middleware": deerflow_client_module._build_middlewares(
                 config,
                 model_name=model_name,
@@ -255,7 +264,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
             state,
             config=config,
             context=runtime_context,
-            stream_mode=["messages", "values"],
+            stream_mode=["messages", "values", "custom"],
         ):
             if mode_tag == "messages":
                 msg_chunk, _metadata = chunk
@@ -292,6 +301,27 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                         "content": accumulated_content,
                     }
 
+            elif mode_tag == "custom":
+                # Handle custom events from task_tool (task_started, task_running, task_completed, task_failed)
+                event = chunk
+                logger.debug("Custom event received: %s", event)
+                if isinstance(event, dict) and event.get("type") in (
+                    "task_started",
+                    "task_running",
+                    "task_completed",
+                    "task_failed",
+                ):
+                    logger.info("Task event: type=%s, task_id=%s", event.get("type"), event.get("task_id"))
+                    yield {
+                        "type": "custom_event",
+                        "event_type": event["type"],
+                        "task_id": event.get("task_id"),
+                        "description": event.get("description"),
+                        "message": event.get("message"),
+                        "result": event.get("result"),
+                        "error": event.get("error"),
+                    }
+
             elif mode_tag == "values":
                 messages = chunk.get("messages", [])
                 turn_anchor_index = next(
@@ -319,6 +349,8 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                     if isinstance(msg, AIMessage):
                         # Tool calls (only from values mode for completeness)
                         if msg.tool_calls:
+                            tool_names = [tc.get("name") for tc in msg.tool_calls]
+                            logger.info("AI tool calls: %s", tool_names)
                             yield {
                                 "type": "assistant_tool_calls",
                                 "message_id": msg_id,
@@ -340,6 +372,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                     elif isinstance(msg, ToolMessage):
                         tool_name = getattr(msg, "name", None) or "unknown"
                         tool_content = self._client._extract_text(msg.content)
+                        logger.info("Tool result: name=%s, content_preview=%s", tool_name, tool_content[:100] if tool_content else "(empty)")
                         if tool_content:
                             tool_results.append(f"[{tool_name}]: {tool_content[:200]}")
 

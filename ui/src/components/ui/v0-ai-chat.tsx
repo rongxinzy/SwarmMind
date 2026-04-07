@@ -4,12 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 import remarkGfm from "remark-gfm";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@radix-ui/react-collapsible";
-import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowDown,
@@ -29,9 +23,16 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shimmer } from "@/components/ui/shimmer";
+// Shimmer now imported from ai-elements/reasoning
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { Reasoning, ReasoningTrigger, ReasoningContent } from "@/components/ai-elements/reasoning";
+import { ArtifactsProvider } from "@/components/workspace/artifacts/context";
+import { ClarificationCard } from "@/components/workspace/messages/clarification-card";
+import { FilesIcon, XIcon } from "lucide-react";
+import { SubtasksProvider, useUpdateSubtask, useSubtaskContext } from "@/core/tasks/context";
+import { SubtaskCard } from "@/components/workspace/messages/subtask-card";
+import { parseClarificationContent } from "@/core/messages/clarification";
 
 interface V0ChatProps {
   conversationId?: string;
@@ -70,13 +71,6 @@ interface RuntimeModelCatalogResponse {
   default_model?: string | null;
 }
 
-interface RuntimeTask {
-  id: string;
-  title: string;
-  status: "running" | "completed" | "failed";
-  detail?: string;
-}
-
 interface RuntimeActivity {
   id: string;
   label: string;
@@ -87,7 +81,6 @@ interface RuntimeActivity {
 interface RuntimeState {
   phase: "idle" | "accepted" | "routing" | "running" | "completed" | "error";
   label: string;
-  tasks: RuntimeTask[];
   activities: RuntimeActivity[];
 }
 
@@ -112,12 +105,6 @@ type StreamEvent =
   | { type: "assistant_message"; message_id: string; content: string }
   | { type: "assistant_final"; message: StreamEventAssistantMessage }
   | {
-      type: "team_task";
-      task: Partial<RuntimeTask> & {
-        id: string;
-      };
-    }
-  | {
       type: "team_activity";
       activity: {
         id: string;
@@ -126,6 +113,13 @@ type StreamEvent =
         detail?: string | null;
       };
     }
+  // Task events for SubtaskCard (DeerFlow compatible)
+  | { type: "task_started"; task: { id: string; description: string; status: "in_progress" } }
+  | { type: "task_running"; task: { id: string; message?: unknown } }
+  | { type: "task_completed"; task: { id: string; result?: string; status: "completed" } }
+  | { type: "task_failed"; task: { id: string; error?: string; status: "failed" } }
+  // Clarification request from AI
+  | { type: "clarification_request"; clarification: { id: string; content: string } }
   | {
       type: "title";
       conversation: ConversationRecord;
@@ -209,7 +203,6 @@ function createEmptyRuntime(): RuntimeState {
   return {
     phase: "idle",
     label: "等待新的输入",
-    tasks: [],
     activities: [],
   };
 }
@@ -236,33 +229,6 @@ function sortConversations(items: ConversationRecord[]) {
     const right = new Date(b.updated_at).getTime();
     return right - left;
   });
-}
-
-function upsertTask(
-  tasks: RuntimeTask[],
-  patch: Partial<RuntimeTask> & { id: string },
-) {
-  const index = tasks.findIndex((task) => task.id === patch.id);
-  if (index === -1) {
-    return [
-      ...tasks,
-      {
-        id: patch.id,
-        title: patch.title ?? "新的处理步骤",
-        status: patch.status ?? "running",
-        detail: patch.detail,
-      },
-    ];
-  }
-
-  const next = [...tasks];
-  next[index] = {
-    ...next[index],
-    ...patch,
-    title: patch.title ?? next[index].title,
-    status: patch.status ?? next[index].status,
-  };
-  return next;
 }
 
 function upsertActivity(
@@ -603,10 +569,14 @@ function MessageBubble({
         ) : null}
 
         {!isUser && message.thinking ? (
-          <ReasoningPanel
-            thinking={message.thinking}
+          <Reasoning
             isStreaming={message.isReasoningStreaming}
-          />
+            defaultOpen={true}
+            className="mb-4"
+          >
+            <ReasoningTrigger />
+            <ReasoningContent>{message.thinking}</ReasoningContent>
+          </Reasoning>
         ) : null}
 
         {message.content ? (
@@ -637,90 +607,6 @@ function MessageBubble({
         )}
       </div>
     </div>
-  );
-}
-
-function ReasoningPanel({
-  thinking,
-  isStreaming = false,
-}: {
-  thinking: string;
-  isStreaming?: boolean;
-}) {
-  const [isOpen, setIsOpen] = useControllableState({
-    defaultProp: true,
-  });
-  const [hasAutoClosed, setHasAutoClosed] = useState(false);
-  const [durationSeconds, setDurationSeconds] = useState<number | undefined>(
-    undefined,
-  );
-  const [startTime, setStartTime] = useState<number | null>(null);
-
-  // Track duration when streaming starts/ends
-  useEffect(() => {
-    if (isStreaming) {
-      if (startTime === null) {
-        setStartTime(Date.now());
-      }
-    } else if (startTime !== null) {
-      setDurationSeconds(
-        Math.max(1, Math.ceil((Date.now() - startTime) / 1000)),
-      );
-      setStartTime(null);
-    }
-  }, [isStreaming, startTime]);
-
-  // Auto-close after streaming ends (once only)
-  useEffect(() => {
-    if (
-      !isStreaming &&
-      isOpen &&
-      !hasAutoClosed &&
-      durationSeconds !== undefined
-    ) {
-      const timer = window.setTimeout(() => {
-        setIsOpen(false);
-        setHasAutoClosed(true);
-      }, 1000);
-      return () => window.clearTimeout(timer);
-    }
-  }, [isStreaming, isOpen, hasAutoClosed, durationSeconds, setIsOpen]);
-
-  const triggerContent =
-    isStreaming || durationSeconds === undefined ? (
-      <Shimmer duration={1}>{"模型正在思考..."}</Shimmer>
-    ) : (
-      <span>{`思考完成，用时 ${durationSeconds} 秒`}</span>
-    );
-
-  return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className="mb-4 rounded-[14px] border border-border bg-secondary"
-    >
-      <CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] leading-4 tracking-[0.04em] text-muted-foreground transition-colors hover:text-foreground">
-        <Brain className="size-3.5 shrink-0" />
-        <span className="flex-1">{triggerContent}</span>
-        <ChevronDown
-          className={cn(
-            "size-3.5 shrink-0 transition-transform duration-200",
-            isOpen && "rotate-180",
-          )}
-        />
-      </CollapsibleTrigger>
-
-      <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
-        <div className="border-t border-border px-3 py-2 text-[12px] leading-[18px] text-muted-foreground">
-          <Streamdown
-            mode={isStreaming ? "streaming" : "static"}
-            remarkPlugins={staticRemarkPlugins}
-          >
-            {thinking}
-          </Streamdown>
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
   );
 }
 
@@ -773,12 +659,15 @@ function MessageListSkeleton() {
   );
 }
 
-export function V0Chat({
+// Internal component that uses useUpdateSubtask (must be inside SubtasksProvider)
+function V0ChatInner({
   conversationId,
   draftResetToken,
   onConversationCreated,
   onConversationsChange,
 }: V0ChatProps) {
+  const updateSubtask = useUpdateSubtask();
+  const { tasks } = useSubtaskContext();
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [runtime, setRuntime] = useState<RuntimeState>(createEmptyRuntime());
@@ -799,6 +688,11 @@ export function V0Chat({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
+  
+  // Clarification request state
+  const [pendingClarification, setPendingClarification] = useState<
+    { id: string; content: string } | null
+  >(null);
 
   const resetDraftState = useCallback(() => {
     setCurrentConversationId(undefined);
@@ -808,6 +702,7 @@ export function V0Chat({
     setError(null);
     setInput("");
     setSelectedMode(DEFAULT_MODE);
+    setPendingClarification(null);
     setSelectedModel(defaultModel);
     shouldStickToBottomRef.current = true;
     setShowScrollToLatest(false);
@@ -909,6 +804,7 @@ export function V0Chat({
     setError(null);
     shouldStickToBottomRef.current = true;
     setShowScrollToLatest(false);
+    setPendingClarification(null);
 
     try {
       const response = await fetch(
@@ -1239,18 +1135,6 @@ export function V0Chat({
         });
         return;
 
-      case "team_task":
-        setRuntime((previous) => ({
-          ...previous,
-          tasks: upsertTask(previous.tasks, {
-            id: event.task.id,
-            title: event.task.title,
-            status: event.task.status,
-            detail: event.task.detail,
-          }),
-        }));
-        return;
-
       case "team_activity":
         setRuntime((previous) => ({
           ...previous,
@@ -1274,6 +1158,47 @@ export function V0Chat({
         );
         return;
 
+      // New task events for SubtaskCard
+      case "task_started":
+        updateSubtask({
+          id: event.task.id,
+          description: event.task.description,
+          status: "in_progress",
+          subagent_type: "general-purpose",
+          prompt: "",
+        });
+        return;
+
+      case "task_running":
+        updateSubtask({
+          id: event.task.id,
+          latestMessage: event.task.message as Record<string, unknown> as never,
+        });
+        return;
+
+      case "task_completed":
+        updateSubtask({
+          id: event.task.id,
+          status: "completed",
+          result: event.task.result,
+        });
+        return;
+
+      case "task_failed":
+        updateSubtask({
+          id: event.task.id,
+          status: "failed",
+          error: event.task.error,
+        });
+        return;
+
+      case "clarification_request":
+        setPendingClarification({
+          id: event.clarification.id,
+          content: event.clarification.content,
+        });
+        return;
+
       case "done":
         setIsLoading(false);
         setMessages((previous) =>
@@ -1288,7 +1213,7 @@ export function V0Chat({
           ),
         );
     }
-  }, []);
+  }, [updateSubtask]);
 
   const streamConversation = useCallback(
     async (
@@ -1365,6 +1290,7 @@ export function V0Chat({
 
       setError(null);
       setIsLoading(true);
+      setPendingClarification(null); // Clear any pending clarification when sending new message
       shouldStickToBottomRef.current = true;
       setShowScrollToLatest(false);
       setRuntime({
@@ -1424,8 +1350,72 @@ export function V0Chat({
   const isEmpty = messages.length === 0 && !isLoading && !isConversationLoading;
   const isComposerDisabled = isLoading || isModelsLoading || !selectedModel;
 
+  // Handle clarification response from user
+  const handleClarificationRespond = useCallback(
+    async (response: string, toolCallId: string) => {
+      if (!currentConversationId) return;
+
+      try {
+        // Send clarification response to backend
+        const res = await fetch(
+          `/conversations/${currentConversationId}/clarification`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tool_call_id: toolCallId,
+              response,
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        // After sending clarification response, trigger a new message stream
+        // to resume the conversation
+        setIsLoading(true);
+        setRuntime((prev) => ({
+          ...prev,
+          phase: "running",
+          label: "正在继续处理...",
+        }));
+
+        // Resume streaming - the backend will pick up from where it left off
+        await streamConversation(
+          currentConversationId,
+          response,
+          selectedMode,
+          selectedModel
+        );
+      } catch (err) {
+        console.error("Failed to send clarification response:", err);
+        setError(
+          err instanceof Error ? err.message : "发送回复失败"
+        );
+        setIsLoading(false);
+      }
+    },
+    [currentConversationId, selectedMode, selectedModel, streamConversation]
+  );
+
+  // Artifacts state (simplified from DeerFlow)
+  const [artifacts, _setArtifacts] = useState<string[]>([]);
+  const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
+  const [artifactsOpen, setArtifactsOpen] = useState(false);
+
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
+    <ArtifactsProvider>
+      <ChatLayout
+        conversationId={currentConversationId}
+        artifacts={artifacts}
+        selectedArtifact={selectedArtifact}
+        onSelectArtifact={setSelectedArtifact}
+        artifactsOpen={artifactsOpen}
+        setArtifactsOpen={setArtifactsOpen}
+      >
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
       {/* Scrollable area: messages OR empty-state */}
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div
@@ -1516,23 +1506,101 @@ export function V0Chat({
           ) : (
             <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5 px-6 py-6">
               <AnimatePresence initial={false}>
-                {messages.map((message) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <MessageBubble
-                      key={message.id}
-                      message={message}
-                      isMessageStreaming={
-                        message.isStreaming || message.isReasoningStreaming
+                {messages.map((message) => {
+                  // Check if this is a clarification message from tool
+                  if (
+                    message.role === "assistant" &&
+                    message.content.includes("❓") ||
+                    message.content.includes("🤔") ||
+                    message.content.includes("🔀") ||
+                    message.content.includes("⚠️") ||
+                    message.content.includes("💡")
+                  ) {
+                    // Try to parse as clarification
+                    try {
+                      const parsed = parseClarificationContent(message.content);
+                      // Only render as clarification if it has the expected format
+                      if (parsed.question && parsed.clarificationType) {
+                        return (
+                          <ClarificationCard
+                            key={message.id}
+                            question={parsed.question}
+                            context={parsed.context}
+                            options={parsed.options}
+                            clarificationType={parsed.clarificationType}
+                            onRespond={(response) => {
+                              // Use message.id as tool_call_id fallback
+                              handleClarificationRespond(response, message.id);
+                            }}
+                          />
+                        );
                       }
-                    />
-                  </motion.div>
-                ))}
+                    } catch {
+                      // Fall through to normal rendering
+                    }
+                  }
+                  
+                  return (
+                    <motion.div
+                      key={message.id}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      <MessageBubble
+                        key={message.id}
+                        message={message}
+                        isMessageStreaming={
+                          message.isStreaming || message.isReasoningStreaming
+                        }
+                      />
+                    </motion.div>
+                  );
+                })}
               </AnimatePresence>
+              
+              {/* Render ClarificationCard if there's a pending clarification */}
+              {pendingClarification && (
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                  className="mt-4"
+                >
+                  {(() => {
+                    const parsed = parseClarificationContent(pendingClarification.content);
+                    return (
+                      <ClarificationCard
+                        question={parsed.question}
+                        context={parsed.context}
+                        options={parsed.options}
+                        clarificationType={parsed.clarificationType}
+                        onRespond={(response) => {
+                          handleClarificationRespond(response, pendingClarification.id);
+                          setPendingClarification(null); // Clear after response
+                        }}
+                      />
+                    );
+                  })()}
+                </motion.div>
+              )}
+              
+              {/* Render SubtaskCards for active tasks */}
+              {Object.values(tasks).length > 0 && (
+                <div className="flex flex-col gap-3 mt-4">
+                  <div className="text-muted-foreground text-sm">
+                    正在执行 {Object.values(tasks).length} 个子任务...
+                  </div>
+                  {Object.values(tasks).map((task) => (
+                    <SubtaskCard
+                      key={task.id}
+                      taskId={task.id}
+                      isLoading={isLoading}
+                    />
+                  ))}
+                </div>
+              )}
+              
               {isLoading &&
                 !messages.some(
                   (m) => m.content.trim().length > 0 && m.role === "assistant",
@@ -1685,6 +1753,160 @@ export function V0Chat({
           </div>
         </div>
       </div>
+    </div>
+    </ChatLayout>
+    </ArtifactsProvider>
+  );
+}
+
+// ============================================================================
+// V0Chat - Wrapper with SubtasksProvider
+// ============================================================================
+
+export function V0Chat(props: V0ChatProps) {
+  return (
+    <SubtasksProvider>
+      <V0ChatInner {...props} />
+    </SubtasksProvider>
+  );
+}
+
+// ============================================================================
+// ChatLayout - Two-panel layout with Artifacts (Simplified from DeerFlow)
+// ============================================================================
+
+interface ChatLayoutProps {
+  children: React.ReactNode;
+  conversationId?: string;
+  artifacts: string[];
+  selectedArtifact: string | null;
+  onSelectArtifact: (path: string | null) => void;
+  artifactsOpen: boolean;
+  setArtifactsOpen: (open: boolean) => void;
+}
+
+function ChatLayout({
+  children,
+  conversationId,
+  artifacts,
+  selectedArtifact,
+  onSelectArtifact,
+  artifactsOpen,
+  setArtifactsOpen,
+}: ChatLayoutProps) {
+  return (
+    <div className="flex h-full w-full">
+      {/* Left Panel - Chat */}
+      <div className={cn(
+        "relative flex flex-col h-full transition-all duration-300",
+        artifactsOpen ? "w-[60%]" : "w-full"
+      )}>
+        {children}
+      </div>
+
+      {/* Resize Handle - Only show when artifacts panel is open */}
+      {artifactsOpen && (
+        <div className="w-px bg-border hover:bg-border/80 cursor-col-resize" />
+      )}
+
+      {/* Right Panel - Artifacts */}
+      {artifactsOpen && (
+        <div className="w-[40%] min-w-[300px] max-w-[600px] bg-background border-l flex flex-col h-full">
+          {/* Artifacts Header */}
+          <div className="flex items-center justify-between border-b px-4 py-3">
+            <h3 className="font-medium text-sm">Artifacts</h3>
+            <div className="flex items-center gap-2">
+              {artifacts.length > 0 && (
+                <span className="text-muted-foreground text-xs">
+                  {artifacts.length} 个文件
+                </span>
+              )}
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setArtifactsOpen(false)}
+              >
+                <XIcon className="size-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Artifacts Content */}
+          <div className="flex-1 overflow-hidden">
+            {artifacts.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+                <FilesIcon className="size-12 text-muted-foreground/50 mb-4" />
+                <h4 className="text-sm font-medium mb-2">没有 Artifacts</h4>
+                <p className="text-muted-foreground text-xs max-w-[200px]">
+                  当 AI 生成文件时，它们将显示在这里
+                </p>
+              </div>
+            ) : selectedArtifact ? (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between border-b px-4 py-2 bg-muted/50">
+                  <span className="text-sm font-medium truncate max-w-[200px]">
+                    {selectedArtifact.split('/').pop()}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onSelectArtifact(null)}
+                  >
+                    返回列表
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-auto p-4">
+                  <iframe
+                    src={`/api/conversations/${conversationId}/artifacts${selectedArtifact}`}
+                    className="w-full h-full border rounded-lg"
+                    title={selectedArtifact}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="p-4">
+                <ArtifactFileListSimple
+                  files={artifacts}
+                  onSelect={onSelectArtifact}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Simplified Artifact File List for ChatLayout
+// ============================================================================
+
+interface ArtifactFileListSimpleProps {
+  files: string[];
+  onSelect: (path: string) => void;
+}
+
+function ArtifactFileListSimple({ files, onSelect }: ArtifactFileListSimpleProps) {
+  return (
+    <div className="flex flex-col gap-2">
+      {files.map((file) => (
+        <button
+          key={file}
+          onClick={() => onSelect(file)}
+          className="flex items-center gap-3 rounded-lg border p-3 text-left hover:bg-muted transition-colors"
+        >
+          <FilesIcon className="size-5 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {file.split('/').pop()}
+            </p>
+            <p className="text-xs text-muted-foreground truncate">
+              {file}
+            </p>
+          </div>
+        </button>
+      ))}
     </div>
   );
 }

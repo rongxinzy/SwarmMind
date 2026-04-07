@@ -251,11 +251,18 @@ def _migrate_conversation_title_columns(conn: sqlite3.Connection) -> None:
     )
 
 
-def get_connection() -> sqlite3.Connection:
-    """Get a SQLite connection with row factory."""
-    conn = sqlite3.connect(_get_db_path())
+def get_connection(timeout: float = 30.0) -> sqlite3.Connection:
+    """Get a SQLite connection with row factory and timeout.
+    
+    Args:
+        timeout: How long to wait for a lock before raising an error (seconds).
+                Default 30s to handle concurrent access during streaming.
+    """
+    conn = sqlite3.connect(_get_db_path(), timeout=timeout)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # Enable WAL mode for better concurrent read/write performance
+    conn.execute("PRAGMA journal_mode = WAL")
     return conn
 
 

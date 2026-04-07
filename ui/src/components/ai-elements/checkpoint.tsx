@@ -1,0 +1,52 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+// Note: Tooltip components available when needed
+import { cn } from "@/lib/utils";
+import { BookmarkIcon, type LucideProps } from "lucide-react";
+import type { ComponentProps, HTMLAttributes } from "react";
+
+export type CheckpointProps = HTMLAttributes<HTMLDivElement>;
+
+export const Checkpoint = ({
+  className,
+  children,
+  ...props
+}: CheckpointProps) => (
+  <div
+    className={cn("flex items-center gap-0.5 text-muted-foreground overflow-hidden", className)}
+    {...props}
+  >
+    {children}
+    <Separator />
+  </div>
+);
+
+export type CheckpointIconProps = LucideProps;
+
+export const CheckpointIcon = ({
+  className,
+  children,
+  ...props
+}: CheckpointIconProps) =>
+  children ?? (
+    <BookmarkIcon className={cn("size-4 shrink-0", className)} {...props} />
+  );
+
+export type CheckpointTriggerProps = ComponentProps<typeof Button> & {
+  tooltip?: string;
+};
+
+export const CheckpointTrigger = ({
+  children,
+  className,
+  variant = "ghost",
+  size = "sm",
+  tooltip: _tooltip,
+  ...props
+}: CheckpointTriggerProps) => (
+  <Button className={className} size={size} type="button" variant={variant} {...props}>
+    {children}
+  </Button>
+);

@@ -5,7 +5,7 @@ import logging
 import threading
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
@@ -743,11 +743,24 @@ def _translate_general_agent_event(
         return lines
 
     if event_type == "tool_result":
-        if not runtime_options.subagent_enabled:
-            return []
         tool_name = str(event.get("tool_name") or "unknown")
         tool_call_id = event.get("tool_call_id")
         content = str(event.get("content") or "").strip()
+
+        # Handle ask_clarification tool (available in all modes, not just subagent mode)
+        if tool_name == "ask_clarification":
+            return [
+                _serialize_stream_event(
+                    "clarification_request",
+                    clarification={
+                        "id": tool_call_id,
+                        "content": content,
+                    },
+                ),
+            ]
+
+        if not runtime_options.subagent_enabled:
+            return []
 
         if tool_name == "task":
             status, detail = _task_status_from_result(content)
@@ -774,6 +787,61 @@ def _translate_general_agent_event(
                 },
             ),
         ]
+
+    # Handle custom events from task_tool (task_started, task_running, task_completed, task_failed)
+    if event_type == "custom_event":
+        if not runtime_options.subagent_enabled:
+            return []
+
+        custom_event_type = event.get("event_type")
+        task_id = event.get("task_id")
+
+        if custom_event_type == "task_started":
+            return [
+                _serialize_stream_event(
+                    "task_started",
+                    task={
+                        "id": task_id,
+                        "description": event.get("description"),
+                        "status": "in_progress",
+                    },
+                ),
+            ]
+
+        if custom_event_type == "task_running":
+            return [
+                _serialize_stream_event(
+                    "task_running",
+                    task={
+                        "id": task_id,
+                        "message": event.get("message"),
+                    },
+                ),
+            ]
+
+        if custom_event_type == "task_completed":
+            return [
+                _serialize_stream_event(
+                    "task_completed",
+                    task={
+                        "id": task_id,
+                        "result": event.get("result"),
+                        "status": "completed",
+                    },
+                ),
+            ]
+
+        if custom_event_type == "task_failed":
+            return [
+                _serialize_stream_event(
+                    "task_failed",
+                    task={
+                        "id": task_id,
+                        "error": event.get("error"),
+                        "status": "failed",
+                    },
+                ),
+            ]
 
     return []
 
@@ -1190,22 +1258,34 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
             ctx=memory_ctx,
             runtime_options=runtime_options,
         )
+        event_count = 0
         while True:
             try:
                 event = next(stream)
+                event_count += 1
+                if event_count <= 5 or event_count % 10 == 0:
+                    logger.info("Stream event #%d: type=%s", event_count, event.get("type"))
             except StopIteration as stop:
                 ai_response, _tool_results = stop.value
+                logger.info("Stream completed: events=%d, response_length=%d", event_count, len(ai_response))
                 break
+            except Exception as stream_error:
+                logger.error("Stream event error: %s", stream_error, exc_info=True)
+                raise
 
-            for line in _translate_general_agent_event(event, runtime_options):
-                yield line
+            try:
+                for line in _translate_general_agent_event(event, runtime_options):
+                    yield line
+            except Exception as translate_error:
+                logger.error("Event translation error: %s, event=%s", translate_error, event)
+                raise
 
         if not ai_response.strip():
             ai_response = "本轮运行已完成，但没有生成可展示的最终回答。"
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Conversation stream error: %s", e)
+        logger.error("Conversation stream error: %s", e, exc_info=True)
         ai_response = _format_runtime_error(e)
         yield _serialize_stream_event(
             "status",
@@ -1259,6 +1339,58 @@ def send_message_stream(conversation_id: str, body: SendMessageRequest):
         _stream_conversation_message(conversation_id, body),
         media_type="application/x-ndjson",
     )
+
+
+class ClarificationResponseRequest(BaseModel):
+    tool_call_id: str
+    response: str
+
+
+@app.post("/conversations/{conversation_id}/clarification")
+def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest):
+    """Respond to a clarification request from the AI.
+    
+    This endpoint is called when the user responds to an ask_clarification tool call.
+    The response is added as a ToolMessage to the conversation history, and the
+    conversation is resumed.
+    """
+    # Validate conversation exists
+    get_conversation(conversation_id)
+    
+    # Persist the clarification response as a user message with tool_call_id
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        now = datetime.now(timezone.utc).isoformat()
+        message_id = str(uuid.uuid4())
+        
+        # Store as a special message that will be treated as a tool response
+        cursor.execute(
+            """
+            INSERT INTO messages (id, conversation_id, role, content, created_at, tool_call_id, name)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                message_id,
+                conversation_id,
+                "tool",
+                body.response,
+                now,
+                body.tool_call_id,
+                "ask_clarification_response",
+            ),
+        )
+        conn.commit()
+        
+        return {
+            "id": message_id,
+            "role": "tool",
+            "content": body.response,
+            "tool_call_id": body.tool_call_id,
+            "created_at": now,
+        }
+    finally:
+        conn.close()
 
 
 # ---- Run ----
