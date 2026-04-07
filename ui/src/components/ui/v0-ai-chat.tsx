@@ -1202,12 +1202,28 @@ export function V0Chat({
           const activeAssistantIndex = findActiveAssistantIndex(previous);
           if (activeAssistantIndex !== -1) {
             const next = [...previous];
+            // Update the primary active message with the final message data
             next[activeAssistantIndex] = {
               ...next[activeAssistantIndex],
               ...event.message,
               isStreaming: false,
               isReasoningStreaming: false,
             };
+            // Also clear streaming state from any other assistant messages
+            // (Ultra mode can create multiple messages with thinking state)
+            for (let i = 0; i < next.length; i++) {
+              if (
+                i !== activeAssistantIndex &&
+                next[i].role === "assistant" &&
+                (next[i].isStreaming || next[i].isReasoningStreaming)
+              ) {
+                next[i] = {
+                  ...next[i],
+                  isStreaming: false,
+                  isReasoningStreaming: false,
+                };
+              }
+            }
             return next;
           }
 
