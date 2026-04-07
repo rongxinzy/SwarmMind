@@ -5,14 +5,15 @@ Bridges SwarmMind control-plane calls to an embedded DeerFlow runtime instance.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import deerflow.client as deerflow_client_module
-from deerflow.client import DeerFlowClient
+from deerflow.client import DeerFlowClient, StreamEvent
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 
 from swarmmind.agents.base import BaseAgent
@@ -35,6 +36,96 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
         # Note: ClarificationMiddleware is already added by DeerFlow's _build_middlewares
         # No need to add it again here to avoid duplicates
 
+    async def astream(
+        self,
+        message: str,
+        *,
+        thread_id: str | None = None,
+        **kwargs,
+    ) -> AsyncGenerator[StreamEvent, None]:
+        """Async streaming version that properly handles async tools like task_tool.
+
+        This is needed because the sync stream() method cannot execute async tools
+        (they require ainvoke/ainvoke which only works in async context).
+        """
+        if thread_id is None:
+            thread_id = str(uuid.uuid4())
+
+        config = self._get_runnable_config(thread_id, **kwargs)
+        self._ensure_agent(config)
+
+        state: dict[str, Any] = {"messages": [HumanMessage(content=message)]}
+        context = {"thread_id": thread_id}
+        if self._agent_name:
+            context["agent_name"] = self._agent_name
+
+        seen_ids: set[str] = set()
+        cumulative_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+
+        async for chunk in self._agent.astream(state, config=config, context=context, stream_mode="values"):
+            messages = chunk.get("messages", [])
+
+            for msg in messages:
+                msg_id = getattr(msg, "id", None)
+                if msg_id and msg_id in seen_ids:
+                    continue
+                if msg_id:
+                    seen_ids.add(msg_id)
+
+                if isinstance(msg, AIMessage):
+                    # Track token usage from AI messages
+                    usage = getattr(msg, "usage_metadata", None)
+                    if usage:
+                        cumulative_usage["input_tokens"] += usage.get("input_tokens", 0) or 0
+                        cumulative_usage["output_tokens"] += usage.get("output_tokens", 0) or 0
+                        cumulative_usage["total_tokens"] += usage.get("total_tokens", 0) or 0
+
+                    if msg.tool_calls:
+                        yield StreamEvent(
+                            type="messages-tuple",
+                            data={
+                                "type": "ai",
+                                "content": "",
+                                "id": msg_id,
+                                "tool_calls": [{"name": tc["name"], "args": tc["args"], "id": tc.get("id")} for tc in msg.tool_calls],
+                            },
+                        )
+
+                    text = self._extract_text(msg.content)
+                    if text:
+                        event_data: dict[str, Any] = {"type": "ai", "content": text, "id": msg_id}
+                        if usage:
+                            event_data["usage_metadata"] = {
+                                "input_tokens": usage.get("input_tokens", 0) or 0,
+                                "output_tokens": usage.get("output_tokens", 0) or 0,
+                                "total_tokens": usage.get("total_tokens", 0) or 0,
+                            }
+                        yield StreamEvent(type="messages-tuple", data=event_data)
+
+                elif isinstance(msg, ToolMessage):
+                    yield StreamEvent(
+                        type="messages-tuple",
+                        data={
+                            "type": "tool",
+                            "content": self._extract_text(msg.content),
+                            "name": getattr(msg, "name", None),
+                            "tool_call_id": getattr(msg, "tool_call_id", None),
+                            "id": msg_id,
+                        },
+                    )
+
+            # Emit a values event for each state snapshot
+            yield StreamEvent(
+                type="values",
+                data={
+                    "title": chunk.get("title"),
+                    "messages": [self._serialize_message(m) for m in messages],
+                    "artifacts": chunk.get("artifacts", []),
+                },
+            )
+
+        yield StreamEvent(type="end", data={"usage": cumulative_usage})
+
     def _ensure_agent(self, config):
         """Create the underlying DeerFlow agent with SwarmMind branding."""
         cfg = config.get("configurable", {})
@@ -45,14 +136,19 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
             cfg.get("subagent_enabled"),
         )
 
+        logger.info("[DEBUG] _ensure_agent called: subagent_enabled=%s, cfg=%s", cfg.get("subagent_enabled"), cfg)
+
         if self._agent is not None and self._agent_config_key == key:
+            logger.info("[DEBUG] Using cached agent")
             return
 
         thinking_enabled = cfg.get("thinking_enabled", True)
         model_name = cfg.get("model_name")
         subagent_enabled = cfg.get("subagent_enabled", False)
         max_concurrent_subagents = cfg.get("max_concurrent_subagents", 3)
+        logger.info("[DEBUG] Creating new agent: subagent_enabled=%s", subagent_enabled)
 
+        logger.info("[DEBUG] apply_prompt_template: subagent_enabled=%s", subagent_enabled)
         base_prompt = deerflow_client_module.apply_prompt_template(
             subagent_enabled=subagent_enabled,
             max_concurrent_subagents=max_concurrent_subagents,
@@ -222,22 +318,19 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         finally:
             conn.close()
 
-    def stream_events(
+    async def _astream_events(
         self,
         goal: str,
         ctx: MemoryContext | None = None,
         runtime_options: ConversationRuntimeOptions | None = None,
-    ) -> Generator[dict[str, Any], None, tuple[str, list[str]]]:
-        """Yield structured runtime events for a DeerFlow-backed turn.
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """Async version: Yield structured runtime events for a DeerFlow-backed turn.
 
-        Uses dual stream mode ("messages" + "values"):
-        - "messages" mode provides token-level AIMessageChunk for real-time
-          thinking/content streaming.
-        - "values" mode provides complete state snapshots for tool calls,
-          tool results, and final text tracking.
+        Uses async stream mode to properly handle async tools like task_tool.
         """
         thread_id = ctx.session_id if ctx and ctx.session_id else str(uuid.uuid4())
         effective_runtime = self._resolve_runtime_options(runtime_options)
+        logger.info("[DEBUG] astream_events: subagent_enabled=%s", effective_runtime.subagent_enabled)
         config = self._client._get_runnable_config(
             thread_id,
             model_name=effective_runtime.model_name,
@@ -245,6 +338,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
             plan_mode=effective_runtime.plan_mode,
             subagent_enabled=effective_runtime.subagent_enabled,
         )
+        logger.info("[DEBUG] astream_events: config configurable=%s", config.get("configurable"))
         self._client._ensure_agent(config)
 
         current_user_message_id = str(uuid.uuid4())
@@ -260,7 +354,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         accumulated_reasoning = ""
         accumulated_content = ""
 
-        for mode_tag, chunk in self._client._agent.stream(
+        async for mode_tag, chunk in self._client._agent.astream(
             state,
             config=config,
             context=runtime_context,
@@ -388,7 +482,67 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         if not final_text and accumulated_content:
             final_text = accumulated_content
 
-        return final_text, tool_results
+        # Store results for the caller to retrieve
+        self._last_final_text = final_text
+        self._last_tool_results = tool_results
+
+    def stream_events(
+        self,
+        goal: str,
+        ctx: MemoryContext | None = None,
+        runtime_options: ConversationRuntimeOptions | None = None,
+    ) -> Generator[dict[str, Any], None, tuple[str, list[str]]]:
+        """Yield structured runtime events for a DeerFlow-backed turn.
+
+        Uses async stream mode internally to properly handle async tools like task_tool.
+        This bridges the async _astream_events with the sync generator interface.
+        Runs async code in a separate thread to avoid event loop conflicts.
+        """
+        import queue
+        import threading
+
+        result_queue: queue.Queue = queue.Queue()
+        exception_container = []
+
+        async def _run_async_stream():
+            """Run the async stream and put events into the queue."""
+            try:
+                async for event in self._astream_events(goal, ctx=ctx, runtime_options=runtime_options):
+                    result_queue.put(("event", event))
+            except Exception as e:
+                exception_container.append(e)
+            finally:
+                result_queue.put(("done", None))
+
+        def _run_in_thread():
+            """Run the async code in a new event loop in a separate thread."""
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(_run_async_stream())
+            finally:
+                loop.close()
+
+        # Start the async execution in a separate thread
+        thread = threading.Thread(target=_run_in_thread)
+        thread.start()
+
+        # Yield events as they become available
+        try:
+            while True:
+                item_type, event = result_queue.get()
+                if item_type == "done":
+                    break
+                if item_type == "event":
+                    yield event
+        finally:
+            thread.join()
+
+        # Re-raise any exception from the async execution
+        if exception_container:
+            raise exception_container[0]
+
+        return self._last_final_text, self._last_tool_results
 
     def _run_deerflow_turn(
         self,

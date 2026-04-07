@@ -629,17 +629,21 @@ def _format_runtime_error(exc: Exception) -> str:
 
 def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOptions:
     effective_mode = body.mode
+    logger.info("[DEBUG] _resolve_runtime_options: body.mode=%s, effective_mode=%s", body.mode, effective_mode)
     if effective_mode is None:
         effective_mode = ConversationMode.THINKING if body.reasoning else ConversationMode.FLASH
 
     runtime_flags = MODE_RUNTIME_MAP[effective_mode]
-    return ConversationRuntimeOptions(
+    logger.info("[DEBUG] _resolve_runtime_options: runtime_flags=%s", runtime_flags)
+    options = ConversationRuntimeOptions(
         mode=effective_mode,
         model_name=_resolve_model_name_for_request(body.model_name),
         thinking_enabled=runtime_flags["thinking_enabled"],
         plan_mode=runtime_flags["plan_mode"],
         subagent_enabled=runtime_flags["subagent_enabled"],
     )
+    logger.info("[DEBUG] _resolve_runtime_options: returning options with subagent_enabled=%s", options.subagent_enabled)
+    return options
 
 
 def _general_agent_status_labels(runtime_options: ConversationRuntimeOptions) -> tuple[str, str]:

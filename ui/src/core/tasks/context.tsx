@@ -42,8 +42,20 @@ export function useUpdateSubtask() {
   const { tasks, setTasks } = useSubtaskContext();
   const updateSubtask = useCallback(
     (task: Partial<Subtask> & { id: string }) => {
-      tasks[task.id] = { ...tasks[task.id], ...task } as Subtask;
-      if (task.latestMessage) {
+      const existingTask = tasks[task.id];
+      const updatedTask = { ...existingTask, ...task } as Subtask;
+      tasks[task.id] = updatedTask;
+
+      // Trigger re-render when:
+      // 1. New task is created (no existing task)
+      // 2. Task status changed
+      // 3. Task has latestMessage update
+      const shouldUpdate =
+        !existingTask ||
+        existingTask.status !== updatedTask.status ||
+        task.latestMessage !== undefined;
+
+      if (shouldUpdate) {
         setTasks({ ...tasks });
       }
     },
