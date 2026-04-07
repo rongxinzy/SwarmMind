@@ -79,14 +79,14 @@ class FakeDeerFlowRuntimeAdapter:
 def patched_backend() -> Iterator[None]:
     original_runtime_adapter = supervisor.DeerFlowRuntimeAdapter
     original_derive_situation_tag = supervisor.derive_situation_tag
-    original_title_generator = supervisor.generate_conversation_title_from_exchange
+    original_title_generator = supervisor._generate_title_with_deerflow
     original_db_path = os.environ.get("SWARMMIND_DB_PATH")
 
     with tempfile.TemporaryDirectory() as tempdir:
         os.environ["SWARMMIND_DB_PATH"] = os.path.join(tempdir, "smoke-test.db")
         supervisor.DeerFlowRuntimeAdapter = FakeDeerFlowRuntimeAdapter
         supervisor.derive_situation_tag = lambda _: "unknown"
-        supervisor.generate_conversation_title_from_exchange = lambda user_message, assistant_message: (
+        supervisor._generate_title_with_deerflow = lambda user_message, assistant_message: (
             f"Smoke {user_message[:12]}",
             "llm",
         )
@@ -95,7 +95,7 @@ def patched_backend() -> Iterator[None]:
         finally:
             supervisor.DeerFlowRuntimeAdapter = original_runtime_adapter
             supervisor.derive_situation_tag = original_derive_situation_tag
-            supervisor.generate_conversation_title_from_exchange = original_title_generator
+            supervisor._generate_title_with_deerflow = original_title_generator
             if original_db_path is None:
                 os.environ.pop("SWARMMIND_DB_PATH", None)
             else:

@@ -58,7 +58,7 @@ class TestConversationTitles:
         monkeypatch.setattr(context_broker, "derive_situation_tag", lambda _: "finance")
         monkeypatch.setattr(
             supervisor,
-            "generate_conversation_title_from_exchange",
+            "_generate_title_with_deerflow",
             lambda user_message, assistant_message: ("CRM MVP 模块边界", "llm"),
         )
 
@@ -90,7 +90,7 @@ class TestConversationTitles:
 
         monkeypatch.setattr(
             supervisor,
-            "generate_conversation_title_from_exchange",
+            "_generate_title_with_deerflow",
             fake_title_generator,
         )
 
@@ -122,7 +122,7 @@ class TestConversationTitles:
 
         monkeypatch.setattr(
             supervisor,
-            "generate_conversation_title_from_exchange",
+            "_generate_title_with_deerflow",
             fake_title_generator,
         )
 

@@ -107,7 +107,7 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
     monkeypatch.setattr(
         supervisor,
-        "generate_conversation_title_from_exchange",
+        "_generate_title_with_deerflow",
         lambda user_message, assistant_message: ("CRM 探索", "llm"),
     )
 

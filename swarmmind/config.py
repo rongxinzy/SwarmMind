@@ -48,3 +48,11 @@ DEER_FLOW_CONFIG_PATH = os.environ.get("DEER_FLOW_CONFIG_PATH", None)
 DEER_FLOW_HOME = os.environ.get("DEER_FLOW_HOME", None)
 DEER_FLOW_EXTENSIONS_CONFIG_PATH = os.environ.get("DEER_FLOW_EXTENSIONS_CONFIG_PATH", None)
 DEER_FLOW_SKILLS_PATH = os.environ.get("DEER_FLOW_SKILLS_PATH", None)
+
+# Disable TitleMiddleware in main thread (we generate title in isolated session)
+# This prevents title LLM calls from appearing in the user-facing message stream
+try:
+    from deerflow.config.title_config import set_title_config, TitleConfig
+    set_title_config(TitleConfig(enabled=False))
+except ImportError:
+    pass  # deerflow not installed

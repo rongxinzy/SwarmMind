@@ -44,7 +44,72 @@ from swarmmind.models import (
     StrategyResponse,
     SupervisorDecision,
 )
-from swarmmind.renderer import generate_conversation_title_from_exchange, render_status
+from swarmmind.renderer import render_status
+
+# Deferred import for deer-flow title generation (avoid circular imports)
+def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[str, str]:
+    """Generate title in isolated session using deer-flow's capabilities.
+    
+    This replicates TitleMiddleware's logic but executes in a separate thread/session,
+    preventing title generation from appearing in the main conversation stream.
+    """
+    try:
+        from deerflow.config.title_config import get_title_config
+        from deerflow.models import create_chat_model
+    except ImportError:
+        # Fallback to simple truncation if deerflow not available
+        title = user_msg[:50] if len(user_msg) <= 50 else user_msg[:47] + "..."
+        return title or "New Conversation", "fallback"
+    
+    config = get_title_config()
+    
+    # Normalize content (same as TitleMiddleware._normalize_content)
+    def _normalize(content: object) -> str:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts = [_normalize(item) for item in content]
+            return "\n".join(part for part in parts if part)
+        if isinstance(content, dict):
+            text_value = content.get("text")
+            if isinstance(text_value, str):
+                return text_value
+            nested = content.get("content")
+            if nested is not None:
+                return _normalize(nested)
+        return ""
+    
+    user_normalized = _normalize(user_msg)[:500]
+    assistant_normalized = _normalize(assistant_msg)[:500]
+    
+    # Build prompt using deer-flow's template
+    prompt = config.prompt_template.format(
+        max_words=config.max_words,
+        user_msg=user_normalized,
+        assistant_msg=assistant_normalized,
+    )
+    
+    # Create model with thinking disabled (title doesn't need reasoning)
+    model = create_chat_model(name=config.model_name, thinking_enabled=False)
+    
+    try:
+        # Execute in isolated session (no thread state pollution)
+        response = model.invoke(prompt)
+        
+        # Parse title (same as TitleMiddleware._parse_title)
+        title_content = _normalize(response.content).strip().strip('"').strip("'")
+        title = title_content[:config.max_chars] if len(title_content) > config.max_chars else title_content
+        
+        if title:
+            return title, "llm"
+    except Exception:
+        logger.exception("Title generation failed, using fallback")
+    
+    # Fallback to truncated user message
+    fallback_chars = min(config.max_chars, 50)
+    if len(user_normalized) > fallback_chars:
+        return user_normalized[:fallback_chars].rstrip() + "...", "fallback"
+    return user_normalized or "New Conversation", "fallback"
 from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
 from swarmmind.runtime import RuntimeConfigError, RuntimeExecutionError, RuntimeUnavailableError, ensure_default_runtime_instance
 from swarmmind.runtime.catalog import (
@@ -717,8 +782,8 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
     """
     Generate a conversation title after the first complete exchange.
 
-    This mirrors deer-flow's timing: wait until the first assistant response is
-    present, then persist the title into conversation metadata exactly once.
+    Uses deer-flow's title generation capabilities in an isolated session,
+    preventing title LLM calls from polluting the main conversation stream.
     """
     conn = get_connection()
     try:
@@ -753,7 +818,8 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
         if len(user_messages) != 1 or len(assistant_messages) < 1:
             return
 
-        title, source = generate_conversation_title_from_exchange(
+        # Generate title in isolated session using deer-flow capabilities
+        title, source = _generate_title_with_deerflow(
             user_messages[0],
             assistant_messages[0],
         )
