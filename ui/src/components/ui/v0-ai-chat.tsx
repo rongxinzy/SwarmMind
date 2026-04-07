@@ -1145,7 +1145,8 @@ export function V0Chat({
               ...next[index],
               content: event.content,
               isStreaming: true,
-              isReasoningStreaming: next[index].isReasoningStreaming,
+              // Thinking ends when assistant message starts streaming
+              isReasoningStreaming: false,
             };
             return next;
           }
@@ -1158,8 +1159,8 @@ export function V0Chat({
               id: event.message_id,
               content: event.content,
               isStreaming: true,
-              isReasoningStreaming:
-                next[activeAssistantIndex].isReasoningStreaming,
+              // Thinking ends when assistant message starts streaming
+              isReasoningStreaming: false,
             };
             return next;
           }
