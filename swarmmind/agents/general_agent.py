@@ -496,13 +496,17 @@ class DeerFlowRuntimeAdapter(BaseAgent):
 
         Uses async stream mode internally to properly handle async tools like task_tool.
         This bridges the async _astream_events with the sync generator interface.
-        Runs async code in a separate thread to avoid event loop conflicts.
+
+        IMPORTANT: Runs async code in the main thread's event loop to prevent httpx
+        client binding issues. Subagents create their own event loops in threads,
+        which can cause conflicts if the main client is bound to a different loop.
         """
         import queue
         import threading
 
         result_queue: queue.Queue = queue.Queue()
         exception_container = []
+        stop_event = threading.Event()
 
         async def _run_async_stream():
             """Run the async stream and put events into the queue."""
@@ -513,30 +517,52 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                 exception_container.append(e)
             finally:
                 result_queue.put(("done", None))
+                stop_event.set()
 
         def _run_in_thread():
-            """Run the async code in a new event loop in a separate thread."""
+            """Run the async code in a new event loop in a separate thread.
+
+            NOTE: We create a new event loop in this thread to isolate the
+            DeerFlow agent execution from any existing event loop. This is
+            necessary because subagents also create their own event loops,
+            and we need to avoid httpx client binding conflicts.
+            """
+            # Set the event loop policy to create new loops per-thread
             loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
             try:
-                asyncio.set_event_loop(loop)
                 loop.run_until_complete(_run_async_stream())
             finally:
+                # Clean up any remaining tasks
+                try:
+                    pending = asyncio.all_tasks(loop)
+                    if pending:
+                        for task in pending:
+                            task.cancel()
+                        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                except Exception:
+                    pass
                 loop.close()
 
         # Start the async execution in a separate thread
-        thread = threading.Thread(target=_run_in_thread)
+        thread = threading.Thread(target=_run_in_thread, name="deerflow-stream")
         thread.start()
 
         # Yield events as they become available
         try:
-            while True:
-                item_type, event = result_queue.get()
-                if item_type == "done":
-                    break
-                if item_type == "event":
-                    yield event
+            while not stop_event.is_set() or not result_queue.empty():
+                try:
+                    item_type, event = result_queue.get(timeout=0.1)
+                    if item_type == "done":
+                        break
+                    if item_type == "event":
+                        yield event
+                except queue.Empty:
+                    continue
         finally:
-            thread.join()
+            thread.join(timeout=5.0)
+            if thread.is_alive():
+                logger.warning("Stream thread did not terminate within timeout")
 
         # Re-raise any exception from the async execution
         if exception_container:
