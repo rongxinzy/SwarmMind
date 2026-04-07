@@ -1,6 +1,5 @@
 import type { Message } from "@langchain/langgraph-sdk";
 import { FileIcon, Loader2Icon } from "lucide-react";
-// import { useParams } from "next/navigation"; // TODO: Replace with react-router
 import { memo, useMemo, type ImgHTMLAttributes } from "react";
 import rehypeKatex from "rehype-katex";
 
@@ -118,14 +117,14 @@ function MessageContent_({
 }) {
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   const isHuman = message.type === "human";
-  const { thread_id } = useParams<{ thread_id: string }>();
+  const threadId = "default-thread";
   const components = useMemo(
     () => ({
       img: (props: ImgHTMLAttributes<HTMLImageElement>) => (
-        <MessageImage {...props} threadId={thread_id} maxWidth="90%" />
+        <MessageImage {...props} threadId={threadId} maxWidth="90%" />
       ),
     }),
-    [thread_id],
+    [threadId],
   );
 
   const rawContent = extractContentFromMessage(message);

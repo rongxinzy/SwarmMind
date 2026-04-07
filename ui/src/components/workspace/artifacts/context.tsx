@@ -30,6 +30,10 @@ interface ArtifactsContextValue {
   toggleOpen: () => void;
   addArtifact: (artifact: Artifact) => void;
   removeArtifact: (id: string) => void;
+  // Compatibility properties for message-group.tsx
+  autoOpen: boolean;
+  autoSelect: boolean;
+  select: (artifact: Artifact | null) => void;
 }
 
 // ============================================================================
@@ -109,6 +113,10 @@ export function ArtifactsProvider({
         toggleOpen,
         addArtifact,
         removeArtifact,
+        // Compatibility properties
+        autoOpen: false,
+        autoSelect: false,
+        select: selectArtifact,
       }}
     >
       {children}
