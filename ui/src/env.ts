@@ -1,7 +1,7 @@
 // Environment configuration
-// @ts-ignore - process may not be defined in browser
 export const env = {
   API_URL:
+     
     typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL
       ? process.env.NEXT_PUBLIC_API_URL
       : "http://localhost:8000",

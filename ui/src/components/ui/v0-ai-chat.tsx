@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 import remarkGfm from "remark-gfm";
@@ -485,7 +485,7 @@ function ModelPicker({
   );
 }
 
-function MessageBubble({
+const MessageBubble = memo(function MessageBubble({
   message,
   isMessageStreaming = false,
 }: {
@@ -608,7 +608,7 @@ function MessageBubble({
       </div>
     </div>
   );
-}
+});
 
 function StreamingDots({ className }: { className?: string }) {
   return (
@@ -1521,13 +1521,13 @@ function V0ChatInner({
               <AnimatePresence initial={false}>
                 {messages.map((message) => {
                   // Check if this is a clarification message from tool
+                  // Try to parse as clarification if message looks like it
                   if (
                     message.role === "assistant" &&
-                    message.content.includes("❓") ||
-                    message.content.includes("🤔") ||
-                    message.content.includes("🔀") ||
-                    message.content.includes("⚠️") ||
-                    message.content.includes("💡")
+                    (message.content.includes("需要") ||
+                     message.content.includes("?") ||
+                     message.content.includes("选择") ||
+                     message.content.includes("确认"))
                   ) {
                     // Try to parse as clarification
                     try {
