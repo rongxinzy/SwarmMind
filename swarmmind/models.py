@@ -7,12 +7,16 @@ from pydantic import BaseModel, Field
 
 
 class AgentStatus(str, Enum):
+    """Agent runtime status."""
+
     ACTIVE = "active"
     IDLE = "idle"
     ERROR = "error"
 
 
 class ProposalStatus(str, Enum):
+    """Status of an action proposal."""
+
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
@@ -20,12 +24,16 @@ class ProposalStatus(str, Enum):
 
 
 class SupervisorDecision(str, Enum):
+    """Human supervisor's decision on a proposal."""
+
     APPROVED = "approved"
     REJECTED = "rejected"
     TIMEOUT = "timeout"
 
 
 class Agent(BaseModel):
+    """Agent definition stored in the system."""
+
     agent_id: str
     domain: str
     system_prompt: str
@@ -33,6 +41,8 @@ class Agent(BaseModel):
 
 
 class WorkingMemoryEntry(BaseModel):
+    """Single entry in the working memory store."""
+
     key: str
     value: str
     domain_tags: str | None = None
@@ -41,6 +51,8 @@ class WorkingMemoryEntry(BaseModel):
 
 
 class StrategyEntry(BaseModel):
+    """Routing strategy for a specific situation."""
+
     situation_tag: str
     agent_id: str
     success_count: int = 0
@@ -48,6 +60,8 @@ class StrategyEntry(BaseModel):
 
 
 class ActionProposal(BaseModel):
+    """Action proposal awaiting human approval."""
+
     id: str
     agent_id: str
     description: str
@@ -60,6 +74,8 @@ class ActionProposal(BaseModel):
 
 
 class StrategyChangeProposal(BaseModel):
+    """Proposal to change routing strategy for a situation."""
+
     id: str
     situation_tag: str
     proposed_agent_id: str
@@ -69,6 +85,8 @@ class StrategyChangeProposal(BaseModel):
 
 
 class EventLogEntry(BaseModel):
+    """Audit log entry for dispatched goals."""
+
     id: int | None = None
     timestamp: datetime
     goal: str
@@ -84,6 +102,8 @@ class EventLogEntry(BaseModel):
 
 
 class MemoryLayer(str, Enum):
+    """Memory storage layers, from most persistent to most temporary."""
+
     USER_SOUL = "L4_user_soul"
     PROJECT = "L3_project"
     TEAM = "L2_team"
@@ -91,11 +111,15 @@ class MemoryLayer(str, Enum):
 
 
 class MemoryScope(BaseModel):
+    """Identifies a specific memory scope (layer + ID)."""
+
     layer: MemoryLayer
     scope_id: str
 
 
 class MemoryEntry(BaseModel):
+    """Single memory entry in the layered memory store."""
+
     id: str
     scope: MemoryScope
     key: str
@@ -133,6 +157,8 @@ class MemoryContext(BaseModel):
 
 
 class CompactionHint(BaseModel):
+    """Hint for when to compact/merge memory entries."""
+
     id: str
     scope_layer: str
     scope_id: str
@@ -146,19 +172,27 @@ class CompactionHint(BaseModel):
 
 
 class GoalRequest(BaseModel):
+    """Request to dispatch a goal."""
+
     goal: str = Field(..., max_length=2000)
 
 
 class ApproveRequest(BaseModel):
+    """Request to approve a proposal."""
+
     id: str
 
 
 class RejectRequest(BaseModel):
+    """Request to reject a proposal."""
+
     id: str
     reason: str | None = None
 
 
 class DispatchResponse(BaseModel):
+    """Response from dispatching a goal."""
+
     action_proposal_id: str
     agent_id: str
     status: str
@@ -166,16 +200,22 @@ class DispatchResponse(BaseModel):
 
 
 class PendingResponse(BaseModel):
+    """Response containing pending proposals."""
+
     items: list[ActionProposal]
     total: int
 
 
 class StatusResponse(BaseModel):
+    """Status response with LLM-generated summary."""
+
     summary: str  # LLM-generated prose summary
     goal: str
 
 
 class StrategyResponse(BaseModel):
+    """Response containing strategy table entries."""
+
     entries: list[StrategyEntry]
 
 
@@ -183,6 +223,8 @@ class StrategyResponse(BaseModel):
 
 
 class Conversation(BaseModel):
+    """Conversation record."""
+
     id: str
     title: str
     title_status: str = "pending"
@@ -196,6 +238,8 @@ class Conversation(BaseModel):
 
 
 class Message(BaseModel):
+    """Message within a conversation."""
+
     id: str
     conversation_id: str
     role: str  # 'user' | 'assistant'
@@ -204,16 +248,22 @@ class Message(BaseModel):
 
 
 class ConversationListResponse(BaseModel):
+    """Response containing list of conversations."""
+
     items: list[Conversation]
     total: int
 
 
 class MessageListResponse(BaseModel):
+    """Response containing list of messages."""
+
     items: list[Message]
     total: int
 
 
 class ConversationMode(str, Enum):
+    """Conversation runtime mode."""
+
     FLASH = "flash"
     THINKING = "thinking"
     PRO = "pro"
@@ -221,6 +271,8 @@ class ConversationMode(str, Enum):
 
 
 class ConversationRuntimeOptions(BaseModel):
+    """Runtime options for a conversation."""
+
     mode: ConversationMode
     model_name: str | None = None
     thinking_enabled: bool
@@ -229,6 +281,8 @@ class ConversationRuntimeOptions(BaseModel):
 
 
 class RuntimeModelOption(BaseModel):
+    """Available runtime model option."""
+
     name: str
     provider: str
     model: str
@@ -239,6 +293,8 @@ class RuntimeModelOption(BaseModel):
 
 
 class RuntimeModelCatalogResponse(BaseModel):
+    """Response containing available runtime models."""
+
     models: list[RuntimeModelOption]
     default_model: str | None = None
     subject_type: str
@@ -246,6 +302,8 @@ class RuntimeModelCatalogResponse(BaseModel):
 
 
 class SendMessageRequest(BaseModel):
+    """Request to send a message in a conversation."""
+
     content: str
     mode: ConversationMode | None = None
     model_name: str | None = None
@@ -253,5 +311,7 @@ class SendMessageRequest(BaseModel):
 
 
 class SendMessageResponse(BaseModel):
+    """Response containing user and assistant messages."""
+
     user_message: Message
     assistant_message: Message

@@ -17,7 +17,7 @@ class AgentError(Exception):
 class BaseAgent(ABC):
     """Base class for SwarmMind agents backed by the DeerFlow runtime."""
 
-    def __init__(self, agent_id: str, domain: str):
+    def __init__(self, agent_id: str, domain: str) -> None:
         self.agent_id = agent_id
         self.domain = domain
         self.memory = LayeredMemory(agent_id)

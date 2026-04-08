@@ -127,15 +127,11 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     assert any(event["type"] == "thinking" for event in events)
     assert any(event["type"] == "assistant_message" for event in events)
     assert any(
-        event["type"] == "team_task"
-        and event["task"]["id"] == "task-1"
-        and event["task"]["status"] == "running"
+        event["type"] == "team_task" and event["task"]["id"] == "task-1" and event["task"]["status"] == "running"
         for event in events
     )
     assert any(
-        event["type"] == "team_task"
-        and event["task"]["id"] == "task-1"
-        and event["task"]["status"] == "completed"
+        event["type"] == "team_task" and event["task"]["id"] == "task-1" and event["task"]["status"] == "completed"
         for event in events
     )
     assert any(
@@ -219,9 +215,7 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
         ),
     ],
 )
-def test_resolve_runtime_options(
-    message_request, expected_mode, expected_thinking, expected_plan, expected_subagents
-):
+def test_resolve_runtime_options(message_request, expected_mode, expected_thinking, expected_plan, expected_subagents):
     runtime_options = supervisor._resolve_runtime_options(message_request)
 
     assert runtime_options.mode == expected_mode

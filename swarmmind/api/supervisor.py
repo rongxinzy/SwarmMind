@@ -159,11 +159,15 @@ MODE_RUNTIME_MAP: dict[ConversationMode, dict[str, bool]] = {
 
 
 class StatusResponse(BaseModel):
+    """Status response with summary and goal."""
+
     summary: str
     goal: str
 
 
 class StrategyChangeApproveRequest(BaseModel):
+    """Request to approve a strategy change."""
+
     change_id: str
 
 
@@ -185,7 +189,7 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-def startup():
+def startup() -> None:
     """Initialize DB on startup."""
     init_db()
     seed_default_agents()
@@ -255,7 +259,9 @@ def _cleanup_scanner():
 
 
 @app.get("/pending")
-def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
+def get_pending(
+    limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)
+) -> PendingResponse:
     """List pending action proposals (paginated)."""
     conn = get_connection()
     try:
@@ -277,7 +283,7 @@ def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=
 
 
 @app.post("/approve/{proposal_id}")
-def approve(proposal_id: str):
+def approve(proposal_id: str) -> ActionProposal:
     """Approve an action proposal."""
     conn = get_connection()
     try:
@@ -346,7 +352,7 @@ def get_status(goal: str = Query(..., max_length=2000)):
 
 
 @app.get("/strategy")
-def get_strategy():
+def get_strategy() -> StrategyResponse:
     """View the strategy routing table."""
     conn = get_connection()
     try:
@@ -387,13 +393,13 @@ def post_dispatch(body: GoalRequest):
 
 
 @app.get("/health")
-def health():
+def health() -> dict[str, str]:
     """Health check endpoint."""
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.get("/ready")
-def ready():
+def ready() -> dict[str, str]:
     """Readiness check: database plus DeerFlow runtime bundle."""
     runtime_instance = ensure_default_runtime_instance()
     return {
@@ -404,7 +410,7 @@ def ready():
 
 
 @app.get("/models")
-def list_runtime_models():
+def list_runtime_models() -> RuntimeModelCatalogResponse:
     """List runtime models available to the current anonymous visitor subject."""
     models = list_models_for_subject(
         subject_type=ANONYMOUS_SUBJECT_TYPE,
@@ -936,7 +942,7 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
 
 
 @app.get("/conversations")
-def list_conversations():
+def list_conversations() -> ConversationListResponse:
     """List all conversations ordered by updated_at descending."""
     conn = get_connection()
     try:
@@ -953,7 +959,7 @@ def list_conversations():
 
 
 @app.post("/conversations")
-def create_conversation(body: GoalRequest):
+def create_conversation(body: GoalRequest) -> Conversation:
     """Create a new conversation with the first user message."""
     conv_id = str(uuid.uuid4())
 
@@ -977,7 +983,7 @@ def create_conversation(body: GoalRequest):
 
 
 @app.get("/conversations/{conversation_id}")
-def get_conversation(conversation_id: str):
+def get_conversation(conversation_id: str) -> Conversation:
     """Get a single conversation by ID."""
     conn = get_connection()
     try:
@@ -992,7 +998,7 @@ def get_conversation(conversation_id: str):
 
 
 @app.get("/conversations/{conversation_id}/messages")
-def get_conversation_messages(conversation_id: str):
+def get_conversation_messages(conversation_id: str) -> MessageListResponse:
     """Get all messages for a conversation."""
     conn = get_connection()
     try:
@@ -1153,7 +1159,7 @@ def send_message(conversation_id: str, body: SendMessageRequest):
 
 
 @app.delete("/conversations/{conversation_id}")
-def delete_conversation(conversation_id: str):
+def delete_conversation(conversation_id: str) -> Conversation:
     """Delete a conversation and all its messages."""
     conn = get_connection()
     try:
@@ -1174,7 +1180,7 @@ def delete_conversation(conversation_id: str):
 
 
 @app.get("/conversations/{conversation_id}/trace")
-def get_conversation_trace(conversation_id: str):
+def get_conversation_trace(conversation_id: str) -> dict:
     """获取会话的协作轨迹（回放用）。
 
     复用 deer-flow checkpointer 数据，零侵入设计：
@@ -1370,7 +1376,9 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
 
 
 @app.post("/conversations/{conversation_id}/messages/stream")
-def send_message_stream(conversation_id: str, body: SendMessageRequest):
+def send_message_stream(
+    conversation_id: str, body: SendMessageRequest
+) -> StreamingResponse:
     """Stream a ChatSession turn with runtime state and final persistence."""
     # Validate before opening the streaming response so 404 is returned normally.
     get_conversation(conversation_id)
@@ -1381,12 +1389,16 @@ def send_message_stream(conversation_id: str, body: SendMessageRequest):
 
 
 class ClarificationResponseRequest(BaseModel):
+    """Request to respond to a clarification prompt."""
+
     tool_call_id: str
     response: str
 
 
 @app.post("/conversations/{conversation_id}/clarification")
-def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest):
+def respond_to_clarification(
+    conversation_id: str, body: ClarificationResponseRequest
+) -> dict:
     """Respond to a clarification request from the AI.
 
     This endpoint is called when the user responds to an ask_clarification tool call.

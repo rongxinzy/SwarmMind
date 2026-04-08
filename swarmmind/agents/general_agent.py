@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class SwarmMindDeerFlowClient(DeerFlowClient):
     """DeerFlow client wrapper that injects SwarmMind product identity."""
 
-    def __init__(self, *args, system_prompt: str, **kwargs):
+    def __init__(self, *args, system_prompt: str, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._swarmmind_system_prompt = system_prompt
         # Note: ClarificationMiddleware is already added by DeerFlow's _build_middlewares
@@ -225,7 +225,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         thinking_enabled: bool = True,
         subagent_enabled: bool = False,
         plan_mode: bool = False,
-    ):
+    ) -> None:
         # Initialize BaseAgent (sets self.memory, loads system_prompt from DB)
         super().__init__(agent_id="general", domain="general")
 

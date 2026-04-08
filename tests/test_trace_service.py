@@ -44,7 +44,7 @@ def temp_checkpointer_db():
     }
     cursor.execute(
         """
-        INSERT INTO checkpoints 
+        INSERT INTO checkpoints
         (thread_id, checkpoint_id, parent_checkpoint_id, type, checkpoint, metadata)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
@@ -65,9 +65,7 @@ def temp_checkpointer_db():
             {
                 "type": "ai",
                 "content": "我来帮您分析 Q3 财报...",
-                "tool_calls": [
-                    {"id": "tc-001", "name": "web_search", "args": {"query": "Q3 财报分析"}}
-                ],
+                "tool_calls": [{"id": "tc-001", "name": "web_search", "args": {"query": "Q3 财报分析"}}],
             },
         ],
         "artifacts": [],
@@ -75,7 +73,7 @@ def temp_checkpointer_db():
     }
     cursor.execute(
         """
-        INSERT INTO checkpoints 
+        INSERT INTO checkpoints
         (thread_id, checkpoint_id, parent_checkpoint_id, type, checkpoint, metadata)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
@@ -96,9 +94,7 @@ def temp_checkpointer_db():
             {
                 "type": "ai",
                 "content": "我来帮您分析 Q3 财报...",
-                "tool_calls": [
-                    {"id": "tc-001", "name": "web_search", "args": {"query": "Q3 财报分析"}}
-                ],
+                "tool_calls": [{"id": "tc-001", "name": "web_search", "args": {"query": "Q3 财报分析"}}],
             },
             {
                 "type": "tool",
@@ -113,7 +109,7 @@ def temp_checkpointer_db():
     }
     cursor.execute(
         """
-        INSERT INTO checkpoints 
+        INSERT INTO checkpoints
         (thread_id, checkpoint_id, parent_checkpoint_id, type, checkpoint, metadata)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
