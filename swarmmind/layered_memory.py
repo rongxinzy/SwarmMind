@@ -54,7 +54,7 @@ class LayeredMemory:
       3. On conflict: retry up to MAX_RETRIES
     """
 
-    def __init__(self, agent_id: str):
+    def __init__(self, agent_id: str) -> None:
         self.agent_id = agent_id
 
     # ---- internal helpers ----

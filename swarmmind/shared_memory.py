@@ -24,7 +24,7 @@ class SharedMemory:
     3. If conflict (409-like): retry up to MAX_RETRIES with 100ms backoff
     """
 
-    def __init__(self, agent_id: str):
+    def __init__(self, agent_id: str) -> None:
         self.agent_id = agent_id
 
     def read(self, key: str) -> dict | None:

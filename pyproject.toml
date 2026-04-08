@@ -31,7 +31,7 @@ dev-dependencies = [
 # ============================================
 [tool.ruff]
 target-version = "py312"
-line-length = 100
+line-length = 120
 indent-width = 4
 
 [tool.ruff.lint]
@@ -86,6 +86,14 @@ ignore = [
     "ANN102",
     # S101: Use of assert detected (pytest uses asserts)
     "S101",
+    # RUF001/002/003: Ambiguous unicode character (Chinese project allows Chinese punctuation)
+    "RUF001", "RUF002", "RUF003",
+    # PLC0415: Import outside top-level (needed for lazy imports to avoid circular deps)
+    "PLC0415",
+    # ARG001/002: Unused arguments (common for API handlers and interfaces)
+    "ARG001", "ARG002",
+    # E501: Line too long (extended to 120 chars, remaining cases are acceptable)
+    "E501",
 ]
 
 [tool.ruff.lint.pydocstyle]
