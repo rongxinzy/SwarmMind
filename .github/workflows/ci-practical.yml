@@ -1,0 +1,258 @@
+name: CI (Practical)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ci-practical-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  # ============================================
+  # Job: Dependency Integrity Check
+  # ============================================
+  lockfile-check:
+    name: 🔒 Lockfile Integrity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Verify uv.lock is up to date
+        run: |
+          uv sync --locked || (
+            echo "❌ uv.lock is out of date. Run 'uv sync' locally and commit the changes."
+            exit 1
+          )
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Verify pnpm-lock.yaml is up to date
+        working-directory: ui
+        run: |
+          pnpm install --frozen-lockfile || (
+            echo "❌ pnpm-lock.yaml is out of date. Run 'pnpm install' in ui/ locally and commit the changes."
+            exit 1
+          )
+
+  # ============================================
+  # Job: Python Backend - Essential Only
+  # ============================================
+  backend-essential:
+    name: 🐍 Backend (Essential)
+    runs-on: ubuntu-latest
+    needs: lockfile-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # Only format check with auto-fixable rules
+      - name: Check Python formatting
+        run: uv run ruff format --check swarmmind/ tests/
+
+      # Only critical lint rules (no style/docstring)
+      - name: Run critical linter checks
+        run: |
+          uv run ruff check swarmmind/ tests/ \
+            --select E,W,F,B,S \
+            --ignore S101,E501
+
+      # Security only
+      - name: Run Python security checks
+        run: uv run bandit -r swarmmind/ -ll
+
+      # Tests
+      - name: Run Python tests
+        run: uv run python -m pytest tests/ -v
+
+  # ============================================
+  # Job: Python Backend - Typecheck (Non-blocking)
+  # ============================================
+  backend-typecheck:
+    name: 🐍 Backend (Typecheck - Advisory)
+    runs-on: ubuntu-latest
+    needs: lockfile-check
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Run Python type checker
+        run: uv run mypy swarmmind/ || true
+
+  # ============================================
+  # Job: Frontend - Essential Only
+  # ============================================
+  frontend-essential:
+    name: ⚛️ Frontend (Essential)
+    runs-on: ubuntu-latest
+    needs: lockfile-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ui
+        run: pnpm install --frozen-lockfile
+
+      # Build (catches type errors too)
+      - name: Build for production
+        working-directory: ui
+        run: pnpm run build
+
+  # ============================================
+  # Job: Frontend - Lint (Non-blocking)
+  # ============================================
+  frontend-lint:
+    name: ⚛️ Frontend (Lint - Advisory)
+    runs-on: ubuntu-latest
+    needs: lockfile-check
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Run ESLint (report only)
+        working-directory: ui
+        run: pnpm run lint || true
+
+  # ============================================
+  # Job: Security Audit
+  # ============================================
+  security-audit:
+    name: 🔐 Security Audit
+    runs-on: ubuntu-latest
+    needs: lockfile-check
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install Node dependencies
+        working-directory: ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Run npm security audit
+        working-directory: ui
+        run: pnpm audit --audit-level high
+        continue-on-error: true
+
+  # ============================================
+  # Job: Summary
+  # ============================================
+  ci-summary:
+    name: ✅ CI Summary
+    runs-on: ubuntu-latest
+    needs: [backend-essential, frontend-essential, security-audit]
+    if: always()
+    steps:
+      - name: Check required jobs status
+        run: |
+          echo "Backend Essential: ${{ needs.backend-essential.result }}"
+          echo "Frontend Essential: ${{ needs.frontend-essential.result }}"
+          echo "Security Audit: ${{ needs.security-audit.result }}"
+
+      - name: Fail if any required job failed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: |
+          echo "❌ CI failed"
+          exit 1
+
+      - name: Success
+        run: echo "✅ Essential CI checks passed!"
