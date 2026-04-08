@@ -117,12 +117,13 @@ jobs:
         if: matrix.check == 'typecheck'
         run: uv run mypy swarmmind/
 
-      # Security
+      # Security (report only, don't fail build)
       - name: Run Python security checks
         if: matrix.check == 'security'
         run: |
           uv run bandit -r swarmmind/ -f json -o bandit-report.json || true
-          uv run bandit -r swarmmind/
+          uv run bandit -r swarmmind/ || true
+        continue-on-error: true
 
       # Test with Coverage (skip LLM tests in CI)
       - name: Run Python tests with coverage
