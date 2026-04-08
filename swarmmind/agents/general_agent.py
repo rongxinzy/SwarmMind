@@ -566,7 +566,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                         for task in pending:
                             task.cancel()
                         loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-                except Exception:
+                except Exception:  # nosec: B110 - cleanup code, safe to ignore
                     pass
                 loop.close()
 
