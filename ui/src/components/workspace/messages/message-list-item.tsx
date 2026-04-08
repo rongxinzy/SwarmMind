@@ -150,8 +150,8 @@ function MessageContent_({
   }, [rawContent, isHuman]);
 
   const filesList =
-    files && files.length > 0 && thread_id ? (
-      <RichFilesList files={files} threadId={thread_id} />
+    files && files.length > 0 && threadId ? (
+      <RichFilesList files={files} threadId={threadId} />
     ) : null;
 
   // Uploading state: mock AI message shown while files upload

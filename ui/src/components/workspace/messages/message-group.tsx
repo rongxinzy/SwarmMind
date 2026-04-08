@@ -50,10 +50,10 @@ export function MessageGroup({
 }) {
   const { t } = useI18n();
   const [showAbove, setShowAbove] = useState(
-    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true",
+    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY,
   );
   const [showLastThinking, setShowLastThinking] = useState(
-    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true",
+    env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY,
   );
   const steps = useMemo(() => convertToSteps(messages), [messages]);
   const lastToolCallStep = useMemo(() => {
@@ -340,7 +340,7 @@ function ToolCall({
         const url = new URL(
           `write-file:${path}?message_id=${messageId}&tool_call_id=${id}`,
         ).toString();
-        if (selectedArtifact === url) {
+        if (selectedArtifact?.id === url) {
           return;
         }
         select(url, true);

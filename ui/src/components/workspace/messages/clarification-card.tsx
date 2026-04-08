@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { MessageCircleQuestion, Send } from "lucide-react";
+import {
+  HelpCircle,
+  Lightbulb,
+  MessageCircleQuestion,
+  Route,
+  Send,
+  TriangleAlert,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
@@ -16,9 +23,16 @@ import {
 import { cn } from "@/lib/utils";
 import {
   type ClarificationType,
-  getClarificationIcon,
   getClarificationLabel,
 } from "@/core/messages/clarification";
+
+const clarificationIcons: Record<ClarificationType, React.ComponentType<{ className?: string }>> = {
+  missing_info: HelpCircle,
+  ambiguous_requirement: MessageCircleQuestion,
+  approach_choice: Route,
+  risk_confirmation: TriangleAlert,
+  suggestion: Lightbulb,
+};
 
 interface ClarificationCardProps {
   question: string;
@@ -40,7 +54,7 @@ export function ClarificationCard({
   const [customResponse, setCustomResponse] = useState("");
   const [hasResponded, setHasResponded] = useState(false);
 
-  const icon = getClarificationIcon(clarificationType);
+  const IconComponent = clarificationIcons[clarificationType];
   const label = getClarificationLabel(clarificationType);
 
   const handleOptionClick = (option: string) => {
@@ -72,7 +86,7 @@ export function ClarificationCard({
       <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-medium">
-            <span className="text-xl">{icon}</span>
+            <IconComponent className="size-5 text-amber-500" />
             <span>{label}</span>
           </CardTitle>
           {context && (

@@ -33,7 +33,7 @@ interface ArtifactsContextValue {
   // Compatibility properties for message-group.tsx
   autoOpen: boolean;
   autoSelect: boolean;
-  select: (artifact: Artifact | null) => void;
+  select: (artifact: Artifact | null | string, autoOpen?: boolean) => void;
 }
 
 // ============================================================================
@@ -71,12 +71,32 @@ export function ArtifactsProvider({
     setArtifactsState(newArtifacts);
   }, []);
 
-  const selectArtifact = useCallback((artifact: Artifact | null) => {
-    setSelectedArtifact(artifact);
-    if (artifact) {
-      setIsOpen(true);
+  const selectArtifact = useCallback((artifact: Artifact | null | string, autoOpen?: boolean) => {
+    if (typeof artifact === 'string') {
+      // Handle URL string - find or create artifact from URL
+      const url = artifact;
+      const existingArtifact = artifacts.find(a => a.path === url || a.id === url);
+      if (existingArtifact) {
+        setSelectedArtifact(existingArtifact);
+      } else {
+        // Create a temporary artifact for the URL
+        const tempArtifact: Artifact = {
+          id: url,
+          path: url,
+          filename: url.split('/').pop() || url,
+        };
+        setSelectedArtifact(tempArtifact);
+      }
+      if (autoOpen) {
+        setIsOpen(true);
+      }
+    } else {
+      setSelectedArtifact(artifact);
+      if (artifact) {
+        setIsOpen(true);
+      }
     }
-  }, []);
+  }, [artifacts]);
 
   const setOpen = useCallback((open: boolean) => {
     setIsOpen(open);
