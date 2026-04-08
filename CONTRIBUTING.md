@@ -21,6 +21,67 @@
 - ❌ 强制推送 (`git push --force`)
 - ❌ 删除分支 (`git push origin --delete main`)
 
+## 分支命名规范
+
+所有开发工作必须在独立的功能分支上进行，禁止直接向受保护分支推送。
+
+### 分支命名格式
+
+```
+<type>/<short-description>
+```
+
+### 分支类型 (Type)
+
+| 类型 | 用途 | 示例 |
+|------|------|------|
+| `feature` | 新功能开发 | `feature/user-auth` |
+| `fix` | Bug 修复 | `fix/memory-leak` |
+| `docs` | 文档更新 | `docs/api-guide` |
+| `refactor` | 代码重构（不改变功能） | `refactor/dispatch-logic` |
+| `test` | 测试相关 | `test/shared-memory` |
+| `chore` | 构建/工具/配置变更 | `chore/update-deps` |
+| `perf` | 性能优化 | `perf/query-cache` |
+| `release` | 版本发布准备 | `release/v1.0.0` |
+
+### 命名规则
+
+1. **使用小写字母**：全部小写，避免大小写混淆
+2. **使用连字符分隔单词**：`feature/user-auth` ✅ `feature/userAuth` ❌
+3. **简短描述**：描述应简洁明了，2-4 个词为宜
+4. **关联 Issue**：如有对应 Issue，可在描述中包含编号
+   - 示例：`fix/#123-memory-leak`
+
+### 完整示例
+
+```bash
+# ✅ 正确的分支命名
+git checkout -b feature/context-broker-routing
+git checkout -b fix/#456-null-pointer
+git checkout -b docs/contributing-guide
+git checkout -b refactor/simplify-memory-layer
+git checkout -b test/layered-memory-edge-cases
+git checkout -b chore/update-readme-badges
+git checkout -b perf/reduce-db-queries
+
+# ❌ 错误的分支命名
+git checkout -b Feature/NewThing      # 大写字母
+git checkout -b fix_memory_leak       # 使用下划线
+git checkout -b my-branch             # 缺少类型前缀
+git checkout -b feature/fix/docs      # 多个类型
+git checkout -b fix                   # 缺少描述
+```
+
+### 长生命周期分支
+
+以下分支具有特殊含义，请勿随意创建：
+
+| 分支 | 用途 | 保护状态 |
+|------|------|----------|
+| `main` | 主分支，稳定代码 | 🔒 严格保护 |
+| `release/*` | 版本发布分支 | 🔒 严格保护 |
+| `hotfix/*` | 紧急修复（从 release 分支创建） | 遵循功能分支规范 |
+
 ## 开发工作流程
 
 ### 1. 创建功能分支
@@ -30,13 +91,11 @@
 git checkout main
 git pull origin main
 
-# 创建功能分支
-# 建议使用以下命名规范：
-#   feature/xxx   - 新功能
-#   fix/xxx       - Bug 修复
-#   docs/xxx      - 文档更新
-#   refactor/xxx  - 代码重构
-git checkout -b feature/your-feature-name
+# 创建功能分支（遵循上述命名规范）
+git checkout -b <type>/<short-description>
+
+# 示例
+git checkout -b feature/context-broker-routing
 ```
 
 ### 2. 开发与提交
