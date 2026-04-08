@@ -66,7 +66,9 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
             "total_tokens": 0,
         }
 
-        async for chunk in self._agent.astream(state, config=config, context=context, stream_mode="values"):
+        async for chunk in self._agent.astream(
+            state, config=config, context=context, stream_mode="values"
+        ):
             messages = chunk.get("messages", [])
 
             for msg in messages:
@@ -165,7 +167,9 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
             max_concurrent_subagents=max_concurrent_subagents,
             agent_name=self._agent_name,
         )
-        system_prompt = rewrite_swarmmind_identity_prompt(base_prompt, self._swarmmind_system_prompt)
+        system_prompt = rewrite_swarmmind_identity_prompt(
+            base_prompt, self._swarmmind_system_prompt
+        )
 
         # Get tools with subagent support if enabled
         tools = self._get_tools(model_name=model_name, subagent_enabled=subagent_enabled)
@@ -175,7 +179,9 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
             logger.info("Available tools: %s", tool_names)
 
         kwargs: dict[str, Any] = {
-            "model": deerflow_client_module.create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
+            "model": deerflow_client_module.create_chat_model(
+                name=model_name, thinking_enabled=thinking_enabled
+            ),
             "tools": tools,
             "middleware": deerflow_client_module._build_middlewares(
                 config,
@@ -352,7 +358,9 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         """
         thread_id = ctx.session_id if ctx and ctx.session_id else str(uuid.uuid4())
         effective_runtime = self._resolve_runtime_options(runtime_options)
-        logger.info("[DEBUG] astream_events: subagent_enabled=%s", effective_runtime.subagent_enabled)
+        logger.info(
+            "[DEBUG] astream_events: subagent_enabled=%s", effective_runtime.subagent_enabled
+        )
         config = self._client._get_runnable_config(
             thread_id,
             model_name=effective_runtime.model_name,
@@ -364,7 +372,9 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         self._client._ensure_agent(config)
 
         current_user_message_id = str(uuid.uuid4())
-        state: dict[str, Any] = {"messages": [HumanMessage(content=goal, id=current_user_message_id)]}
+        state: dict[str, Any] = {
+            "messages": [HumanMessage(content=goal, id=current_user_message_id)]
+        }
         runtime_context = {"thread_id": thread_id}
 
         seen_ids: set[str] = set()
@@ -427,7 +437,9 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                     "task_completed",
                     "task_failed",
                 ):
-                    logger.info("Task event: type=%s, task_id=%s", event.get("type"), event.get("task_id"))
+                    logger.info(
+                        "Task event: type=%s, task_id=%s", event.get("type"), event.get("task_id")
+                    )
                     yield {
                         "type": "custom_event",
                         "event_type": event["type"],
@@ -444,7 +456,8 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                     (
                         index
                         for index, message in enumerate(messages)
-                        if isinstance(message, HumanMessage) and getattr(message, "id", None) == current_user_message_id
+                        if isinstance(message, HumanMessage)
+                        and getattr(message, "id", None) == current_user_message_id
                     ),
                     -1,
                 )
@@ -537,7 +550,9 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         async def _run_async_stream():
             """Run the async stream and put events into the queue."""
             try:
-                async for event in self._astream_events(goal, ctx=ctx, runtime_options=runtime_options):
+                async for event in self._astream_events(
+                    goal, ctx=ctx, runtime_options=runtime_options
+                ):
                     result_queue.put(("event", event))
             except Exception as e:
                 exception_container.append(e)

@@ -2,8 +2,6 @@
 
 import pytest
 
-pytestmark = pytest.mark.requires_llm
-
 from swarmmind import context_broker
 from swarmmind.api import supervisor
 from swarmmind.db import get_connection, init_db, seed_default_agents

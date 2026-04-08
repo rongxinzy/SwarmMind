@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 
 # 复用 deer-flow 的 runtime root 路径结构
 DEFAULT_CHECKPOINTER_PATH = (
-    Path(__file__).resolve().parents[2] / ".runtime" / "deerflow" / "local-default" / "checkpoints.db"
+    Path(__file__).resolve().parents[2]
+    / ".runtime"
+    / "deerflow"
+    / "local-default"
+    / "checkpoints.db"
 )
 
 
@@ -38,7 +42,9 @@ class TraceService:
             checkpointer_path: Path to SqliteSaver database.
                 Defaults to deer-flow's default location.
         """
-        self.checkpointer_path = Path(checkpointer_path) if checkpointer_path else DEFAULT_CHECKPOINTER_PATH
+        self.checkpointer_path = (
+            Path(checkpointer_path) if checkpointer_path else DEFAULT_CHECKPOINTER_PATH
+        )
 
     def get_conversation_trace(self, thread_id: str) -> dict[str, Any]:
         """获取会话的协作轨迹。
@@ -169,7 +175,8 @@ class TraceService:
                         "agent_status": "acting",
                         "content": f"创建产物: {artifact}",
                         "artifact_path": artifact,
-                        "timestamp": metadata.get("created_at") or datetime.now(UTC).isoformat(),
+                        "timestamp": metadata.get("created_at")
+                        or datetime.now(UTC).isoformat(),
                     }
                 )
                 event_id += 1
@@ -187,7 +194,8 @@ class TraceService:
                         "agent_status": "planning",
                         "content": f"更新任务计划: {len(todos)} 个待办",
                         "todos_count": len(todos),
-                        "timestamp": metadata.get("created_at") or datetime.now(UTC).isoformat(),
+                        "timestamp": metadata.get("created_at")
+                        or datetime.now(UTC).isoformat(),
                     }
                 )
                 event_id += 1

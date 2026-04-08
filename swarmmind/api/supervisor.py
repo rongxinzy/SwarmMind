@@ -95,7 +95,11 @@ def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[st
 
         # Parse title (same as TitleMiddleware._parse_title)
         title_content = _normalize(response.content).strip().strip('"').strip("'")
-        title = title_content[: config.max_chars] if len(title_content) > config.max_chars else title_content
+        title = (
+            title_content[: config.max_chars]
+            if len(title_content) > config.max_chars
+            else title_content
+        )
 
         if title:
             return title, "llm"
@@ -155,15 +159,11 @@ MODE_RUNTIME_MAP: dict[ConversationMode, dict[str, bool]] = {
 
 
 class StatusResponse(BaseModel):
-    """Status response with summary and goal."""
-
     summary: str
     goal: str
 
 
 class StrategyChangeApproveRequest(BaseModel):
-    """Request to approve a strategy change."""
-
     change_id: str
 
 
@@ -185,7 +185,7 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-def startup() -> None:
+def startup():
     """Initialize DB on startup."""
     init_db()
     seed_default_agents()
@@ -209,7 +209,6 @@ def _cleanup_scanner():
                 cursor = conn.cursor()
 
                 # 1. Auto-reject proposals pending beyond ACTION_TIMEOUT_SECONDS
-                # nosec: B608 - safe, ACTION_TIMEOUT_SECONDS is a constant, not user input
                 cursor.execute(
                     f"""
                     SELECT id, agent_id, description, created_at
@@ -256,7 +255,7 @@ def _cleanup_scanner():
 
 
 @app.get("/pending")
-def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> PendingResponse:
+def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
     """List pending action proposals (paginated)."""
     conn = get_connection()
     try:
@@ -265,7 +264,8 @@ def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=
         total = cursor.fetchone()["total"]
 
         cursor.execute(
-            "SELECT * FROM action_proposals WHERE status = 'pending' ORDER BY created_at ASC LIMIT ? OFFSET ?",
+            "SELECT * FROM action_proposals WHERE status = 'pending' "
+            "ORDER BY created_at ASC LIMIT ? OFFSET ?",
             (limit, offset),
         )
         rows = cursor.fetchall()
@@ -277,7 +277,7 @@ def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=
 
 
 @app.post("/approve/{proposal_id}")
-def approve(proposal_id: str) -> ActionProposal:
+def approve(proposal_id: str):
     """Approve an action proposal."""
     conn = get_connection()
     try:
@@ -346,13 +346,14 @@ def get_status(goal: str = Query(..., max_length=2000)):
 
 
 @app.get("/strategy")
-def get_strategy() -> StrategyResponse:
+def get_strategy():
     """View the strategy routing table."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT situation_tag, agent_id, success_count, failure_count FROM strategy_table ORDER BY situation_tag"
+            "SELECT situation_tag, agent_id, success_count, failure_count "
+            "FROM strategy_table ORDER BY situation_tag"
         )
         rows = cursor.fetchall()
         entries = [
@@ -386,13 +387,13 @@ def post_dispatch(body: GoalRequest):
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health():
     """Health check endpoint."""
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
 
 @app.get("/ready")
-def ready() -> dict[str, str]:
+def ready():
     """Readiness check: database plus DeerFlow runtime bundle."""
     runtime_instance = ensure_default_runtime_instance()
     return {
@@ -403,7 +404,7 @@ def ready() -> dict[str, str]:
 
 
 @app.get("/models")
-def list_runtime_models() -> RuntimeModelCatalogResponse:
+def list_runtime_models():
     """List runtime models available to the current anonymous visitor subject."""
     models = list_models_for_subject(
         subject_type=ANONYMOUS_SUBJECT_TYPE,
@@ -438,9 +439,15 @@ def _row_to_conversation(row) -> Conversation:
         title=row["title"],
         title_status=row["title_status"],
         title_source=row["title_source"],
-        title_generated_at=(str(row["title_generated_at"]) if row["title_generated_at"] is not None else None),
-        runtime_profile_id=(str(row["runtime_profile_id"]) if row["runtime_profile_id"] is not None else None),
-        runtime_instance_id=(str(row["runtime_instance_id"]) if row["runtime_instance_id"] is not None else None),
+        title_generated_at=(
+            str(row["title_generated_at"]) if row["title_generated_at"] is not None else None
+        ),
+        runtime_profile_id=(
+            str(row["runtime_profile_id"]) if row["runtime_profile_id"] is not None else None
+        ),
+        runtime_instance_id=(
+            str(row["runtime_instance_id"]) if row["runtime_instance_id"] is not None else None
+        ),
         thread_id=str(row["thread_id"]) if row["thread_id"] is not None else None,
         created_at=str(row["created_at"]),
         updated_at=str(row["updated_at"]),
@@ -732,7 +739,9 @@ def _translate_general_agent_event(
                         "team_task",
                         task={
                             "id": tool_call_id,
-                            "title": _task_card_title(tool_args if isinstance(tool_args, dict) else {}),
+                            "title": _task_card_title(
+                                tool_args if isinstance(tool_args, dict) else {}
+                            ),
                             "status": "running",
                             "detail": "Agent Team 正在协同处理这个子任务。",
                         },
@@ -927,7 +936,7 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
 
 
 @app.get("/conversations")
-def list_conversations() -> ConversationListResponse:
+def list_conversations():
     """List all conversations ordered by updated_at descending."""
     conn = get_connection()
     try:
@@ -944,7 +953,7 @@ def list_conversations() -> ConversationListResponse:
 
 
 @app.post("/conversations")
-def create_conversation(body: GoalRequest) -> Conversation:
+def create_conversation(body: GoalRequest):
     """Create a new conversation with the first user message."""
     conv_id = str(uuid.uuid4())
 
@@ -968,7 +977,7 @@ def create_conversation(body: GoalRequest) -> Conversation:
 
 
 @app.get("/conversations/{conversation_id}")
-def get_conversation(conversation_id: str) -> Conversation:
+def get_conversation(conversation_id: str):
     """Get a single conversation by ID."""
     conn = get_connection()
     try:
@@ -983,7 +992,7 @@ def get_conversation(conversation_id: str) -> Conversation:
 
 
 @app.get("/conversations/{conversation_id}/messages")
-def get_conversation_messages(conversation_id: str) -> MessageListResponse:
+def get_conversation_messages(conversation_id: str):
     """Get all messages for a conversation."""
     conn = get_connection()
     try:
@@ -1144,7 +1153,7 @@ def send_message(conversation_id: str, body: SendMessageRequest):
 
 
 @app.delete("/conversations/{conversation_id}")
-def delete_conversation(conversation_id: str) -> Conversation:
+def delete_conversation(conversation_id: str):
     """Delete a conversation and all its messages."""
     conn = get_connection()
     try:
@@ -1165,7 +1174,7 @@ def delete_conversation(conversation_id: str) -> Conversation:
 
 
 @app.get("/conversations/{conversation_id}/trace")
-def get_conversation_trace(conversation_id: str) -> dict:
+def get_conversation_trace(conversation_id: str):
     """获取会话的协作轨迹（回放用）。
 
     复用 deer-flow checkpointer 数据，零侵入设计：
@@ -1295,7 +1304,9 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
                     logger.info("Stream event #%d: type=%s", event_count, event.get("type"))
             except StopIteration as stop:
                 ai_response, _tool_results = stop.value
-                logger.info("Stream completed: events=%d, response_length=%d", event_count, len(ai_response))
+                logger.info(
+                    "Stream completed: events=%d, response_length=%d", event_count, len(ai_response)
+                )
                 break
             except Exception as stream_error:
                 logger.error("Stream event error: %s", stream_error, exc_info=True)
@@ -1359,7 +1370,7 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
 
 
 @app.post("/conversations/{conversation_id}/messages/stream")
-def send_message_stream(conversation_id: str, body: SendMessageRequest) -> StreamingResponse:
+def send_message_stream(conversation_id: str, body: SendMessageRequest):
     """Stream a ChatSession turn with runtime state and final persistence."""
     # Validate before opening the streaming response so 404 is returned normally.
     get_conversation(conversation_id)
@@ -1370,14 +1381,12 @@ def send_message_stream(conversation_id: str, body: SendMessageRequest) -> Strea
 
 
 class ClarificationResponseRequest(BaseModel):
-    """Request to respond to a clarification prompt."""
-
     tool_call_id: str
     response: str
 
 
 @app.post("/conversations/{conversation_id}/clarification")
-def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest) -> dict:
+def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest):
     """Respond to a clarification request from the AI.
 
     This endpoint is called when the user responds to an ask_clarification tool call.
