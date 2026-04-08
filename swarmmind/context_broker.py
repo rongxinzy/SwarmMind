@@ -288,14 +288,12 @@ def update_strategy_on_outcome(
         del agent_id
         if success:
             cursor.execute(
-                "UPDATE strategy_table SET success_count = success_count + 1 "
-                "WHERE situation_tag = ?",
+                "UPDATE strategy_table SET success_count = success_count + 1 WHERE situation_tag = ?",
                 (situation_tag,),
             )
         else:
             cursor.execute(
-                "UPDATE strategy_table SET failure_count = failure_count + 1 "
-                "WHERE situation_tag = ?",
+                "UPDATE strategy_table SET failure_count = failure_count + 1 WHERE situation_tag = ?",
                 (situation_tag,),
             )
         conn.commit()

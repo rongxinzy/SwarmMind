@@ -199,16 +199,12 @@ def _migrate_conversation_title_columns(conn: sqlite3.Connection) -> None:
 
     if "conversations" not in {
         row["name"]
-        for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'"
-        ).fetchall()
+        for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'").fetchall()
     }:
         return
 
     if "title_status" not in existing_columns:
-        cursor.execute(
-            "ALTER TABLE conversations ADD COLUMN title_status TEXT NOT NULL DEFAULT 'pending'"
-        )
+        cursor.execute("ALTER TABLE conversations ADD COLUMN title_status TEXT NOT NULL DEFAULT 'pending'")
     if "title_source" not in existing_columns:
         cursor.execute("ALTER TABLE conversations ADD COLUMN title_source TEXT")
     if "title_generated_at" not in existing_columns:

@@ -332,9 +332,7 @@ def resolve_model_for_subject(
         for model in models:
             if model.name == requested_model_name:
                 return model
-        raise RuntimeConfigError(
-            f"Model '{requested_model_name}' is not assigned to {subject_type}:{subject_id}."
-        )
+        raise RuntimeConfigError(f"Model '{requested_model_name}' is not assigned to {subject_type}:{subject_id}.")
 
     for model in models:
         if model.is_default:

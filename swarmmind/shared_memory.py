@@ -33,8 +33,7 @@ class SharedMemory:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT key, value, domain_tags, last_writer_agent_id, updated_at "
-                "FROM working_memory WHERE key = ?",
+                "SELECT key, value, domain_tags, last_writer_agent_id, updated_at FROM working_memory WHERE key = ?",
                 (key,),
             )
             row = cursor.fetchone()
@@ -95,8 +94,7 @@ class SharedMemory:
                     if current and current["updated_at"] != prior_updated_at:
                         # Another agent wrote in between — conflict, retry
                         logger.debug(
-                            "SharedMemory conflict on key=%s (attempt %d/%d). "
-                            "prior_writer=%s, our_writer=%s",
+                            "SharedMemory conflict on key=%s (attempt %d/%d). prior_writer=%s, our_writer=%s",
                             key,
                             attempt + 1,
                             MEMORY_MAX_RETRIES,

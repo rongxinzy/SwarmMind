@@ -95,11 +95,7 @@ def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[st
 
         # Parse title (same as TitleMiddleware._parse_title)
         title_content = _normalize(response.content).strip().strip('"').strip("'")
-        title = (
-            title_content[: config.max_chars]
-            if len(title_content) > config.max_chars
-            else title_content
-        )
+        title = title_content[: config.max_chars] if len(title_content) > config.max_chars else title_content
 
         if title:
             return title, "llm"
@@ -259,9 +255,7 @@ def _cleanup_scanner():
 
 
 @app.get("/pending")
-def get_pending(
-    limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)
-) -> PendingResponse:
+def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> PendingResponse:
     """List pending action proposals (paginated)."""
     conn = get_connection()
     try:
@@ -270,8 +264,7 @@ def get_pending(
         total = cursor.fetchone()["total"]
 
         cursor.execute(
-            "SELECT * FROM action_proposals WHERE status = 'pending' "
-            "ORDER BY created_at ASC LIMIT ? OFFSET ?",
+            "SELECT * FROM action_proposals WHERE status = 'pending' ORDER BY created_at ASC LIMIT ? OFFSET ?",
             (limit, offset),
         )
         rows = cursor.fetchall()
@@ -358,8 +351,7 @@ def get_strategy() -> StrategyResponse:
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT situation_tag, agent_id, success_count, failure_count "
-            "FROM strategy_table ORDER BY situation_tag"
+            "SELECT situation_tag, agent_id, success_count, failure_count FROM strategy_table ORDER BY situation_tag"
         )
         rows = cursor.fetchall()
         entries = [
@@ -445,15 +437,9 @@ def _row_to_conversation(row) -> Conversation:
         title=row["title"],
         title_status=row["title_status"],
         title_source=row["title_source"],
-        title_generated_at=(
-            str(row["title_generated_at"]) if row["title_generated_at"] is not None else None
-        ),
-        runtime_profile_id=(
-            str(row["runtime_profile_id"]) if row["runtime_profile_id"] is not None else None
-        ),
-        runtime_instance_id=(
-            str(row["runtime_instance_id"]) if row["runtime_instance_id"] is not None else None
-        ),
+        title_generated_at=(str(row["title_generated_at"]) if row["title_generated_at"] is not None else None),
+        runtime_profile_id=(str(row["runtime_profile_id"]) if row["runtime_profile_id"] is not None else None),
+        runtime_instance_id=(str(row["runtime_instance_id"]) if row["runtime_instance_id"] is not None else None),
         thread_id=str(row["thread_id"]) if row["thread_id"] is not None else None,
         created_at=str(row["created_at"]),
         updated_at=str(row["updated_at"]),
@@ -745,9 +731,7 @@ def _translate_general_agent_event(
                         "team_task",
                         task={
                             "id": tool_call_id,
-                            "title": _task_card_title(
-                                tool_args if isinstance(tool_args, dict) else {}
-                            ),
+                            "title": _task_card_title(tool_args if isinstance(tool_args, dict) else {}),
                             "status": "running",
                             "detail": "Agent Team 正在协同处理这个子任务。",
                         },
@@ -1310,9 +1294,7 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
                     logger.info("Stream event #%d: type=%s", event_count, event.get("type"))
             except StopIteration as stop:
                 ai_response, _tool_results = stop.value
-                logger.info(
-                    "Stream completed: events=%d, response_length=%d", event_count, len(ai_response)
-                )
+                logger.info("Stream completed: events=%d, response_length=%d", event_count, len(ai_response))
                 break
             except Exception as stream_error:
                 logger.error("Stream event error: %s", stream_error, exc_info=True)
@@ -1376,9 +1358,7 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
 
 
 @app.post("/conversations/{conversation_id}/messages/stream")
-def send_message_stream(
-    conversation_id: str, body: SendMessageRequest
-) -> StreamingResponse:
+def send_message_stream(conversation_id: str, body: SendMessageRequest) -> StreamingResponse:
     """Stream a ChatSession turn with runtime state and final persistence."""
     # Validate before opening the streaming response so 404 is returned normally.
     get_conversation(conversation_id)
@@ -1396,9 +1376,7 @@ class ClarificationResponseRequest(BaseModel):
 
 
 @app.post("/conversations/{conversation_id}/clarification")
-def respond_to_clarification(
-    conversation_id: str, body: ClarificationResponseRequest
-) -> dict:
+def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest) -> dict:
     """Respond to a clarification request from the AI.
 
     This endpoint is called when the user responds to an ask_clarification tool call.
