@@ -23,9 +23,11 @@ export interface Artifact {
 interface ArtifactsContextValue {
   artifacts: Artifact[];
   selectedArtifact: Artifact | null;
+  selectedArtifactUrl: string | null;
   isOpen: boolean;
   setArtifacts: (artifacts: Artifact[]) => void;
   selectArtifact: (artifact: Artifact | null) => void;
+  selectArtifactByUrl: (url: string | null) => void;
   setOpen: (open: boolean) => void;
   toggleOpen: () => void;
   addArtifact: (artifact: Artifact) => void;
@@ -33,7 +35,7 @@ interface ArtifactsContextValue {
   // Compatibility properties for message-group.tsx
   autoOpen: boolean;
   autoSelect: boolean;
-  select: (artifact: Artifact | null | string, autoOpen?: boolean) => void;
+  select: (artifactOrUrl: Artifact | string | null, byUrl?: boolean) => void;
 }
 
 // ============================================================================
@@ -65,38 +67,28 @@ export function ArtifactsProvider({
 }: ArtifactsProviderProps) {
   const [artifacts, setArtifactsState] = useState<Artifact[]>(initialArtifacts);
   const [selectedArtifact, setSelectedArtifact] = useState<Artifact | null>(null);
+  const [selectedArtifactUrl, setSelectedArtifactUrl] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   const setArtifacts = useCallback((newArtifacts: Artifact[]) => {
     setArtifactsState(newArtifacts);
   }, []);
 
-  const selectArtifact = useCallback((artifact: Artifact | null | string, autoOpen?: boolean) => {
-    if (typeof artifact === 'string') {
-      // Handle URL string - find or create artifact from URL
-      const url = artifact;
-      const existingArtifact = artifacts.find(a => a.path === url || a.id === url);
-      if (existingArtifact) {
-        setSelectedArtifact(existingArtifact);
-      } else {
-        // Create a temporary artifact for the URL
-        const tempArtifact: Artifact = {
-          id: url,
-          path: url,
-          filename: url.split('/').pop() || url,
-        };
-        setSelectedArtifact(tempArtifact);
-      }
-      if (autoOpen) {
-        setIsOpen(true);
-      }
-    } else {
-      setSelectedArtifact(artifact);
-      if (artifact) {
-        setIsOpen(true);
-      }
+  const selectArtifact = useCallback((artifact: Artifact | null) => {
+    setSelectedArtifact(artifact);
+    if (artifact) {
+      setSelectedArtifactUrl(null);
+      setIsOpen(true);
     }
-  }, [artifacts]);
+  }, []);
+
+  const selectArtifactByUrl = useCallback((url: string | null) => {
+    setSelectedArtifactUrl(url);
+    if (url) {
+      setSelectedArtifact(null);
+      setIsOpen(true);
+    }
+  }, []);
 
   const setOpen = useCallback((open: boolean) => {
     setIsOpen(open);
@@ -121,14 +113,28 @@ export function ArtifactsProvider({
     setSelectedArtifact((prev) => (prev?.id === id ? null : prev));
   }, []);
 
+  // Compatibility select function that handles both Artifact and URL string
+  const select = useCallback((artifactOrUrl: Artifact | string | null, byUrl = false) => {
+    if (artifactOrUrl === null) {
+      setSelectedArtifact(null);
+      setSelectedArtifactUrl(null);
+    } else if (byUrl || typeof artifactOrUrl === 'string') {
+      selectArtifactByUrl(typeof artifactOrUrl === 'string' ? artifactOrUrl : artifactOrUrl.id);
+    } else {
+      selectArtifact(artifactOrUrl);
+    }
+  }, [selectArtifact, selectArtifactByUrl]);
+
   return (
     <ArtifactsContext.Provider
       value={{
         artifacts,
         selectedArtifact,
+        selectedArtifactUrl,
         isOpen,
         setArtifacts,
         selectArtifact,
+        selectArtifactByUrl,
         setOpen,
         toggleOpen,
         addArtifact,
@@ -136,7 +142,7 @@ export function ArtifactsProvider({
         // Compatibility properties
         autoOpen: false,
         autoSelect: false,
-        select: selectArtifact,
+        select,
       }}
     >
       {children}

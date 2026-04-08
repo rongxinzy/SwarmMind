@@ -73,8 +73,10 @@ jobs:
         working-directory: ui
         run: pnpm install --frozen-lockfile
 
-      # Skip tsc typecheck due to existing type issues (see issue #22)
-      # Build with vite directly (vite handles types differently)
+      - name: Run typecheck
+        working-directory: ui
+        run: pnpm run typecheck
+
       - name: Run production build
         working-directory: ui
         run: npx vite build

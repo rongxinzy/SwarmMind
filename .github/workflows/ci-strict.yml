@@ -46,8 +46,8 @@ jobs:
           # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
           sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
           sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
-          # Verify it can sync
-          uv sync --locked
+          # Re-sync to update lockfile hashes after URL replacement
+          uv sync
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -94,14 +94,12 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Replace PyPI mirror in uv.lock
+      - name: Install dependencies
         run: |
           # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
           sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
           sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
-
-      - name: Install dependencies
-        run: uv sync --locked
+          uv sync
 
       # Format Check
       - name: Check Python formatting
@@ -138,7 +136,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        check: [lint, build]
+        check: [lint, typecheck, build]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -165,11 +163,17 @@ jobs:
         working-directory: ui
         run: pnpm run lint
 
-      # Build (skip tsc check, use vite build directly)
+      # Type Check
+      - name: Run TypeScript type check
+        if: matrix.check == 'typecheck'
+        working-directory: ui
+        run: pnpm run typecheck
+
+      # Build
       - name: Build for production
         if: matrix.check == 'build'
         working-directory: ui
-        run: npx vite build
+        run: pnpm run build
 
   # ============================================
   # Job: Spell Check
