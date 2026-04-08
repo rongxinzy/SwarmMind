@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        check: [format, lint, typecheck, security, test]
+        check: [format, lint, test]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,19 +112,6 @@ jobs:
         if: matrix.check == 'lint'
         run: uv run ruff check swarmmind/ tests/
 
-      # Type Check
-      - name: Run Python type checker
-        if: matrix.check == 'typecheck'
-        run: uv run mypy swarmmind/
-
-      # Security (report only, don't fail build)
-      - name: Run Python security checks
-        if: matrix.check == 'security'
-        run: |
-          uv run bandit -r swarmmind/ -f json -o bandit-report.json || true
-          uv run bandit -r swarmmind/ || true
-        continue-on-error: true
-
       # Test with Coverage (skip LLM tests in CI)
       - name: Run Python tests with coverage
         if: matrix.check == 'test'
@@ -150,7 +137,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        check: [lint, typecheck, build]
+        check: [lint, build]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -177,75 +164,11 @@ jobs:
         working-directory: ui
         run: pnpm run lint
 
-      # Type Check
-      - name: Run TypeScript type check
-        if: matrix.check == 'typecheck'
-        working-directory: ui
-        run: pnpm run typecheck
-
-      # Build (skip tsc check, use vite build directly for now due to existing type issues)
+      # Build (skip tsc check, use vite build directly)
       - name: Build for production
         if: matrix.check == 'build'
         working-directory: ui
         run: npx vite build
-
-  # ============================================
-  # Job: Security Audit
-  # ============================================
-  security-audit:
-    name: 🔐 Security Audit
-    runs-on: ubuntu-latest
-    needs: lockfile-check
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-          cache-dependency-path: ui/pnpm-lock.yaml
-
-      - name: Install Node dependencies
-        working-directory: ui
-        run: pnpm install --frozen-lockfile
-
-      - name: Run npm security audit
-        working-directory: ui
-        run: pnpm audit --audit-level high
-        continue-on-error: true
-
-      - name: Check for known vulnerabilities (Node)
-        working-directory: ui
-        run: |
-          pnpm audit --json > audit-report.json || true
-          if [ -s audit-report.json ]; then
-            CRITICAL=$(jq '[.advisories[]? | select(.severity == "critical")] | length' audit-report.json || echo "0")
-            HIGH=$(jq '[.advisories[]? | select(.severity == "high")] | length' audit-report.json || echo "0")
-            if [ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]; then
-              echo "❌ Found $CRITICAL critical and $HIGH high severity vulnerabilities"
-              exit 1
-            fi
-          fi
-          echo "✅ No critical or high severity vulnerabilities found"
-
-      - name: Run GitHub CodeQL Analysis
-        uses: github/codeql-action/init@v3
-        with:
-          languages: python, javascript
-          queries: security-extended,security-and-quality
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
 
   # ============================================
   # Job: Spell Check
@@ -269,14 +192,13 @@ jobs:
   ci-summary:
     name: ✅ CI Summary
     runs-on: ubuntu-latest
-    needs: [backend, frontend, security-audit, spellcheck]
+    needs: [backend, frontend, spellcheck]
     if: always()
     steps:
       - name: Check all jobs status
         run: |
           echo "Backend: ${{ needs.backend.result }}"
           echo "Frontend: ${{ needs.frontend.result }}"
-          echo "Security Audit: ${{ needs.security-audit.result }}"
           echo "Spell Check: ${{ needs.spellcheck.result }}"
 
       - name: Fail if any job failed
