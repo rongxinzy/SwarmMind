@@ -3,32 +3,6 @@ import { useMemo } from "react";
 import { visit } from "unist-util-visit";
 import type { BuildVisitor } from "unist-util-visit";
 
-// Intl.Segmenter type declaration for older TypeScript versions
-declare global {
-  interface IntlSegmentData {
-    segment: string;
-    index: number;
-    input: string;
-  }
-
-  interface IntlSegments {
-    [Symbol.iterator](): Iterator<IntlSegmentData>;
-  }
-
-  /* eslint-disable @typescript-eslint/no-namespace */
-  namespace Intl {
-    interface SegmenterOptions {
-      granularity?: "grapheme" | "word" | "sentence";
-    }
-
-    class Segmenter {
-      constructor(locale: string, options?: SegmenterOptions);
-      segment(input: string): IntlSegments;
-    }
-  /* eslint-enable @typescript-eslint/no-namespace */
-  }
-}
-
 export function rehypeSplitWordsIntoSpans() {
   return (tree: Root) => {
     visit(tree, "element", ((node: Element) => {

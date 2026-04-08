@@ -18,8 +18,8 @@ dependencies = [
     "deerflow-harness @ git+https://github.com/hawkli-1994/deer-flow@main#subdirectory=backend/packages/harness",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "ruff>=0.6.0",
     "mypy>=1.11.0",
     "bandit>=1.7.9",

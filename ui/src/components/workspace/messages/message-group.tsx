@@ -201,7 +201,7 @@ function ToolCall({
   isLoading?: boolean;
 }) {
   const { t } = useI18n();
-  const { setOpen, autoOpen, autoSelect, selectedArtifact, select } =
+  const { setOpen, autoOpen, autoSelect, selectedArtifactUrl, select } =
     useArtifacts();
 
   if (name === "web_search") {
@@ -340,7 +340,7 @@ function ToolCall({
         const url = new URL(
           `write-file:${path}?message_id=${messageId}&tool_call_id=${id}`,
         ).toString();
-        if (selectedArtifact?.id === url) {
+        if (selectedArtifactUrl === url) {
           return;
         }
         select(url, true);
