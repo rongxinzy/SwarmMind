@@ -1263,6 +1263,7 @@ function V0ChatInner({
       const decoder = new TextDecoder();
       let buffer = "";
 
+      // eslint-disable-next-line no-constant-condition
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -1413,7 +1414,7 @@ function V0ChatInner({
   );
 
   // Artifacts state (simplified from DeerFlow)
-  const [artifacts, _setArtifacts] = useState<string[]>([]);
+  const [artifacts] = useState<string[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
 

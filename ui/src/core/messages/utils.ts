@@ -175,9 +175,10 @@ export function extractContentFromMessage(message: Message) {
         switch (content.type) {
           case "text":
             return content.text;
-          case "image_url":
+          case "image_url": {
             const imageURL = extractURLFromImageURLContent(content.image_url);
             return `![image](${imageURL})`;
+          }
           default:
             return "";
         }
@@ -338,7 +339,6 @@ export function stripUploadedFilesTag(content: string): string {
 export function parseUploadedFiles(content: string): FileInMessage[] {
   // Match <uploaded_files>...</uploaded_files> tag
   const uploadedFilesRegex = /<uploaded_files>([\s\S]*?)<\/uploaded_files>/;
-  // eslint-disable-next-line @typescript-eslint/prefer-regexp-exec
   const match = content.match(uploadedFilesRegex);
 
   if (!match) {
