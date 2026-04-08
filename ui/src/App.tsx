@@ -20,7 +20,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Sidebar, type SidebarView, VIEW_LABELS } from "@/components/ui/sidebar";
+import {
+  Sidebar,
+  SIDEBAR_WIDTH_PX,
+  type SidebarView,
+  VIEW_LABELS,
+} from "@/components/ui/sidebar";
 import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat";
 import { cn } from "@/lib/utils";
 
@@ -104,7 +109,7 @@ function PageHeader({
   onSecondaryAction: () => void;
 }) {
   return (
-    <header className="sticky top-[65px] z-20 border-b border-border bg-background md:top-0">
+    <header className="sticky top-0 z-20 border-b border-border bg-background">
       <div className="flex flex-col gap-4 px-4 py-4 md:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-2">
@@ -342,16 +347,16 @@ export default function App() {
         recentConversations={recentConversations}
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
-        pageTitle={VIEW_LABELS[activeView]}
       />
 
       <main
         className={cn(
-          "flex flex-col md:ml-[248px]",
+          "flex flex-col",
           activeView === "chat"
             ? "h-[100dvh] min-h-0 overflow-hidden"
             : "min-h-screen",
         )}
+        style={{ marginLeft: `${SIDEBAR_WIDTH_PX}px` }}
       >
         {activeView !== "chat" && (
           <PageHeader
@@ -363,8 +368,8 @@ export default function App() {
         <div
           className={
             activeView === "chat"
-              ? "flex min-h-0 flex-1 flex-col overflow-hidden pt-[65px] md:pt-0"
-              : "flex-1 pt-[65px] md:pt-0"
+              ? "flex min-h-0 flex-1 flex-col overflow-hidden"
+              : "flex-1"
           }
         >
           {renderContent()}

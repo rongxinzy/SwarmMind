@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { AnimatePresence, motion } from "framer-motion"
 import {
   Building2,
   BookOpenText,
@@ -13,11 +12,9 @@ import {
   Home,
   Library,
   Loader2,
-  Menu,
   PenSquare,
   Sparkles,
   Trash2,
-  X,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -46,6 +43,8 @@ export const VIEW_LABELS: Record<SidebarView, string> = {
   recent: "最近记录",
   schedules: "定时任务",
 }
+
+export const SIDEBAR_WIDTH_PX = 272
 
 const projectItems = [
   { label: "Enterprise CRM", meta: "进行中" },
@@ -136,14 +135,10 @@ function formatConversationTime(value?: string) {
   }).format(date)
 }
 
-function SidebarHeader({
-  onClose,
-}: {
-  onClose?: () => void
-}) {
+function SidebarHeader() {
   return (
     <div className="border-b border-sidebar-border/80 px-4 py-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-sidebar-border bg-sidebar-accent text-foreground">
             <Sparkles className="size-4" />
@@ -157,11 +152,6 @@ function SidebarHeader({
             </p>
           </div>
         </div>
-        {onClose ? (
-          <Button variant="icon" size="icon-sm" onClick={onClose} className="shrink-0 rounded-xl">
-            <X className="size-4" />
-          </Button>
-        ) : null}
       </div>
     </div>
   )
@@ -173,7 +163,6 @@ interface SidebarProps {
   recentConversations?: ConversationRecord[]
   onSelectConversation?: (id: string) => void
   onDeleteConversation?: (id: string) => Promise<void>
-  pageTitle?: string
 }
 
 export function Sidebar({
@@ -182,19 +171,15 @@ export function Sidebar({
   recentConversations = [],
   onSelectConversation,
   onDeleteConversation,
-  pageTitle,
 }: SidebarProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
   const [deletingConversationId, setDeletingConversationId] = React.useState<string | null>(null)
 
   const handleSelect = (view: SidebarView) => {
     onViewChange(view)
-    setIsOpen(false)
   }
 
   const handleSelectConversation = (conversationId: string) => {
     onSelectConversation?.(conversationId)
-    setIsOpen(false)
   }
 
   const handleDeleteConversation = async (conversationId: string) => {
@@ -217,9 +202,9 @@ export function Sidebar({
     }
   }
 
-  const sidebarContent = (options?: { onClose?: () => void }) => (
+  const sidebarContent = (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <SidebarHeader onClose={options?.onClose} />
+      <SidebarHeader />
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-6">
           <div className="space-y-1">
@@ -357,42 +342,11 @@ export function Sidebar({
   )
 
   return (
-    <>
-      <AnimatePresence>
-        {isOpen ? (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/20 md:hidden"
-              onClick={() => { setIsOpen(false); }}
-            />
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 24, stiffness: 280 }}
-              className="fixed inset-y-0 left-0 z-50 w-[248px] border-r border-sidebar-border bg-sidebar md:hidden"
-            >
-              {sidebarContent({ onClose: () => { setIsOpen(false); } })}
-            </motion.div>
-          </>
-        ) : null}
-      </AnimatePresence>
-
-      <aside className="fixed inset-y-0 left-0 hidden w-[248px] border-r border-sidebar-border bg-sidebar md:block">
-        {sidebarContent()}
-      </aside>
-
-      <div className="fixed left-0 right-0 top-0 z-30 border-b border-sidebar-border bg-background md:hidden">
-        <div className="flex items-center justify-between px-4 py-4">
-          <span className="truncate text-[16px] font-semibold text-foreground">{pageTitle || "SwarmMind"}</span>
-          <Button variant="icon" size="icon-sm" onClick={() => { setIsOpen(true); }}>
-            <Menu className="size-4" />
-          </Button>
-        </div>
-      </div>
-    </>
+    <aside
+      className="fixed inset-y-0 left-0 z-30 border-r border-sidebar-border bg-sidebar"
+      style={{ width: `${SIDEBAR_WIDTH_PX}px` }}
+    >
+      {sidebarContent}
+    </aside>
   )
 }
