@@ -411,8 +411,8 @@ function ModelPicker({
   const [open, setOpen] = useState(false);
   const current = models.find((model) => model.name === selected) ?? models[0];
   const currentLabel =
-    current.display_name ||
-    current.name ||
+    current?.display_name ||
+    current?.name ||
     (isLoading ? "加载模型..." : loadError ? "模型加载失败" : "未配置模型");
   const isDisabled = isLoading || (!loadError && models.length <= 1);
 
