@@ -105,9 +105,9 @@ jobs:
       - name: Run Python security checks
         run: uv run bandit -r swarmmind/ -ll
 
-      # Tests
+      # Tests (skip LLM tests in CI)
       - name: Run Python tests
-        run: uv run python -m pytest tests/ -v
+        run: uv run python -m pytest tests/ -v -m "not requires_llm"
 
   # ============================================
   # Job: Python Backend - Typecheck (Non-blocking)

@@ -20,6 +20,11 @@ class FakeStreamingAgent:
         for chunk in self._values_chunks:
             yield ("values", chunk)
 
+    async def astream(self, state, config=None, context=None, stream_mode=None):
+        """Async version of stream."""
+        for item in self.stream(state, config, context, stream_mode):
+            yield item
+
 
 class FakeClient:
     def __init__(self, chunks):

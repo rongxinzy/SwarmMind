@@ -6,6 +6,8 @@ import json
 
 import pytest
 
+pytestmark = pytest.mark.requires_llm
+
 from swarmmind.api import supervisor
 from swarmmind.db import get_connection, init_db, seed_default_agents
 from swarmmind.models import ConversationMode, GoalRequest, SendMessageRequest

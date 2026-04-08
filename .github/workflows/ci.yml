@@ -13,6 +13,11 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Required for tests that need LLM configuration
+  LLM_MODEL: gpt-4o-mini
+  LLM_PROVIDER: openai
+
 jobs:
   backend:
     name: Backend Test
@@ -35,8 +40,8 @@ jobs:
       - name: Install backend dependencies
         run: uv sync --locked
 
-      - name: Run backend tests
-        run: make test
+      - name: Run backend tests (skip LLM tests)
+        run: uv run python -m pytest tests/ -v -m "not requires_llm"
 
   frontend:
     name: Frontend Check
@@ -63,7 +68,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run typecheck
-        run: make typecheck
+        working-directory: ui
+        run: pnpm run typecheck
 
       - name: Run production build
-        run: make build
+        working-directory: ui
+        run: npx vite build
