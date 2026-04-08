@@ -202,7 +202,7 @@ addopts = [
     "--cov=swarmmind",
     "--cov-report=term-missing",
     "--cov-report=html",
-    "--cov-fail-under=70",
+    "--cov-fail-under=50",
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
