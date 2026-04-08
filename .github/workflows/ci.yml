@@ -17,6 +17,8 @@ env:
   # Required for tests that need LLM configuration
   LLM_MODEL: gpt-4o-mini
   LLM_PROVIDER: openai
+  # Use official PyPI in CI (override any mirror settings)
+  UV_INDEX_URL: "https://pypi.org/simple/"
 
 jobs:
   backend:
@@ -38,7 +40,11 @@ jobs:
           enable-cache: true
 
       - name: Install backend dependencies
-        run: uv sync --locked
+        run: |
+          # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
+          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
+          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
+          uv sync --locked
 
       - name: Run backend tests (skip LLM tests)
         run: uv run python -m pytest tests/ -v -m "not requires_llm"

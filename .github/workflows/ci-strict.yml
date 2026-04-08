@@ -17,6 +17,8 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "20"
   PNPM_VERSION: "9"
+  # Use official PyPI in CI (override any mirror settings)
+  UV_INDEX_URL: "https://pypi.org/simple/"
 
 jobs:
   # ============================================
@@ -39,12 +41,13 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Verify uv.lock is up to date
+      - name: Replace PyPI mirror in uv.lock
         run: |
-          uv sync --locked || (
-            echo "❌ uv.lock is out of date. Run 'uv sync' locally and commit the changes."
-            exit 1
-          )
+          # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
+          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
+          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
+          # Verify it can sync
+          uv sync --locked
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -90,6 +93,12 @@ jobs:
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
+
+      - name: Replace PyPI mirror in uv.lock
+        run: |
+          # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
+          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
+          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
 
       - name: Install dependencies
         run: uv sync --locked
