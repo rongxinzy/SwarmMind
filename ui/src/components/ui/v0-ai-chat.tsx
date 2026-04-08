@@ -156,28 +156,28 @@ const MODE_OPTIONS: {
     id: "flash",
     label: "Flash",
     description: "最快回复，不展开推理",
-    accentClassName: "border-[#d2dce3] bg-[#f4f7f9] text-[#46586b]",
+    accentClassName: "border-[var(--status-running-border)] bg-[var(--status-running-bg)] text-[var(--status-running)]",
     icon: Zap,
   },
   {
     id: "thinking",
     label: "Thinking",
     description: "保留推理过程，单轮深入分析",
-    accentClassName: "border-[#ddd7e4] bg-[#f6f3f8] text-[#5c516b]",
+    accentClassName: "border-[var(--status-chat-border)] bg-[var(--status-chat-bg)] text-[var(--status-chat)]",
     icon: Lightbulb,
   },
   {
     id: "pro",
     label: "Pro",
     description: "先规划再执行",
-    accentClassName: "border-[#d4ded3] bg-[#f3f6f2] text-[#48604f]",
+    accentClassName: "border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done)]",
     icon: GraduationCap,
   },
   {
     id: "ultra",
     label: "Ultra",
     description: "启用完整协作流程",
-    accentClassName: "border-[#dfd4c3] bg-[#f8f4ed] text-[#6d5a3e]",
+    accentClassName: "border-[var(--status-approval-border)] bg-[var(--status-approval-bg)] text-[var(--status-approval)]",
     icon: Rocket,
   },
 ];
@@ -295,11 +295,11 @@ function ModePicker({
         onClick={() => { setOpen((prev) => !prev); }}
         aria-label={`当前执行模式：${current.label}`}
         className={cn(
-          "group flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors hover:border-border focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80",
+          "group flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all duration-200 hover:border-[var(--warm-border)] focus-visible:border-[var(--warm-ring)] focus-visible:ring-2 focus-visible:ring-[var(--warm-ring)]/50",
           current.accentClassName,
         )}
       >
-        <span className="flex size-6 items-center justify-center rounded-md border border-black/5 bg-background">
+        <span className="flex size-6 items-center justify-center rounded-md border border-black/5 bg-[var(--warm-ivory)]">
           <CurrentIcon className="size-3" />
         </span>
         <span className="min-w-0">
@@ -362,7 +362,7 @@ function ModePicker({
                         "flex w-full items-start gap-2.5 rounded-[14px] border px-3 py-2.5 text-left transition-colors",
                         isSelected
                           ? cn("bg-card", mode.accentClassName)
-                          : "border-border bg-background text-foreground hover:border-border hover:bg-secondary",
+                          : "border-[var(--warm-border)] bg-[var(--warm-ivory)] text-[var(--neutral-900)] hover:border-[var(--warm-ring)] hover:bg-[var(--neutral-150)]",
                       )}
                     >
                       <span
@@ -431,7 +431,7 @@ function ModelPicker({
         }}
         disabled={isDisabled}
         title={loadError ?? undefined}
-        className="flex min-h-10 items-center gap-2 rounded-md border border-transparent bg-transparent px-3 text-[11px] tracking-[0.08em] text-muted-foreground transition-colors hover:border-border hover:bg-secondary hover:text-foreground focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80"
+        className="flex min-h-10 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[11px] tracking-[0.06em] text-[var(--neutral-600)] transition-all duration-200 hover:border-[var(--warm-border)] hover:bg-[var(--neutral-150)] hover:text-[var(--neutral-800)] focus-visible:border-[var(--warm-ring)] focus-visible:ring-2 focus-visible:ring-[var(--warm-ring)]/50"
       >
         <Sparkles className="size-3.5" />
         <span className="max-w-[140px] truncate">{currentLabel}</span>
@@ -531,7 +531,7 @@ const MessageBubble = memo(function MessageBubble({
         className={cn(
           "relative max-w-[90%]",
           isUser
-            ? "rounded-[20px] border user-bubble px-[18px] py-[13px] text-foreground"
+            ? "rounded-[22px] border user-bubble px-[20px] py-[14px] text-[var(--neutral-900)]"
             : "px-1 py-1 md:px-2",
         )}
       >
@@ -555,12 +555,12 @@ const MessageBubble = memo(function MessageBubble({
                 "h-8 w-8 rounded-[10px] text-muted-foreground md:h-7 md:w-7",
                 isUser
                   ? "border border-border bg-card hover:bg-card hover:text-foreground"
-                  : "border border-transparent bg-background hover:border-border hover:bg-secondary hover:text-foreground",
+                  : "border border-transparent bg-[var(--warm-ivory)] hover:border-[var(--warm-border)] hover:bg-[var(--neutral-150)] hover:text-[var(--neutral-700)]",
               )}
               title={copied ? "已复制" : "复制消息"}
             >
               {copied ? (
-                <Check className="size-3 text-[#0d6b4b]" />
+                <Check className="size-3 text-[var(--status-done)]" />
               ) : (
                 <Copy className="size-3" />
               )}
@@ -646,7 +646,7 @@ function MessageListSkeleton() {
       </div>
 
       <div className="flex justify-start">
-        <div className="w-full max-w-[520px] rounded-2xl border border-border/70 bg-[#f7f6f3] px-4 py-4">
+        <div className="w-full max-w-[520px] rounded-2xl border border-[var(--warm-border)] bg-[var(--neutral-150)] px-4 py-4">
           <div className="space-y-2">
             <div className="skeleton-line h-3.5 w-[120px] rounded-full" />
             <div className="skeleton-line h-4 rounded-full" />
@@ -1447,8 +1447,10 @@ function V0ChatInner({
                   transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                   className="mb-7"
                 >
-                  <div className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
-                    <Sparkles className="size-4 text-[#6c6259]" />
+                  <div className="inline-flex size-10 items-center justify-center rounded-xl border bg-[var(--warm-ivory)] text-[var(--neutral-600)]"
+                    style={{ boxShadow: 'var(--shadow-whisper)' }}
+                  >
+                    <Sparkles className="size-4" />
                   </div>
                   <p className="mt-5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
                     Exploratory Session
@@ -1492,7 +1494,7 @@ function V0ChatInner({
                         setInput(prompt);
                         void handleSubmit(prompt);
                       }}
-                      className="group flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3.5 text-left transition-colors hover:border-[#c6cec6] hover:bg-secondary"
+                      className="group flex items-start gap-3 rounded-xl border bg-[var(--warm-ivory)] px-4 py-3.5 text-left transition-all duration-200 hover:border-[var(--warm-ring)] hover:bg-[var(--neutral-150)]"
                     >
                       <span
                         className={cn(
@@ -1624,7 +1626,7 @@ function V0ChatInner({
                     transition={{ duration: 0.2 }}
                     className="flex justify-start"
                   >
-                    <div className="flex items-center gap-2 rounded-lg border border-border bg-secondary px-4 py-2">
+                    <div className="flex items-center gap-2 rounded-xl border border-[var(--warm-border)] bg-[var(--neutral-150)] px-4 py-2">
                       <StreamingDots />
                       <span className="text-[13px] text-muted-foreground">
                         正在生成回复
@@ -1652,7 +1654,8 @@ function V0ChatInner({
                 onClick={() => { scrollToLatest("smooth"); }}
                 aria-label="回到最新"
                 title="回到最新"
-                className="pointer-events-auto size-10 rounded-full border-border bg-card shadow-none hover:bg-card"
+                className="pointer-events-auto size-10 rounded-full border-[var(--warm-border)] bg-[var(--warm-ivory)] hover:bg-[var(--neutral-150)] hover:border-[var(--warm-ring)]"
+                style={{ boxShadow: 'var(--shadow-whisper)' }}
               >
                 <ArrowDown className="size-3.5" />
               </Button>
@@ -1662,13 +1665,22 @@ function V0ChatInner({
       </div>
 
       {/* Pinned bottom: status + composer as unified container */}
-      <div className="sticky bottom-0 z-20">
-        <div className="relative border-t border-border/70 bg-background">
+      <div className="sticky bottom-0 z-20"
+        style={{
+          background: 'linear-gradient(to top, var(--warm-paper) 0%, var(--warm-paper) 85%, transparent 100%)',
+        }}
+      >
+        <div className="relative border-t border-[var(--warm-border)]/50 bg-[var(--warm-paper)]">
           <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-2.5">
-            <div className="rounded-[14px] border border-border bg-card transition-[border-color,box-shadow] focus-within:border-[#bec8d0] focus-within:ring-[3px] focus-within:ring-[#e7ecef]/80">
+            <div
+              className="rounded-2xl border border-[var(--warm-border)] bg-[var(--warm-ivory)] transition-all duration-200 focus-within:border-[var(--warm-ring)]"
+              style={{
+                boxShadow: 'var(--shadow-whisper)',
+              }}
+            >
               {(runtime.phase !== "idle" || error) && (
                 <div
-                  className="border-b border-border bg-secondary px-5 py-2.5"
+                  className="border-b border-[var(--warm-border)] bg-[var(--neutral-150)] px-5 py-2.5"
                   aria-live="polite"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1705,7 +1717,7 @@ function V0ChatInner({
                   className="min-h-[100px] resize-none border-none bg-card px-5 py-4 text-[15px] leading-[24px] tracking-[-0.003em] focus-visible:ring-0"
                   disabled={isComposerDisabled}
                 />
-                <div className="flex flex-col gap-2 border-t border-border bg-secondary/70 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 border-t border-[var(--warm-border)] bg-[var(--neutral-150)]/70 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <ModePicker
                       selected={selectedMode}
@@ -1715,7 +1727,7 @@ function V0ChatInner({
                       variant="ghost"
                       size="icon-sm"
                       disabled
-                      className="size-10 rounded-md border border-transparent text-muted-foreground hover:border-border hover:bg-card"
+                      className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
                       title="上传附件"
                     >
                       <Paperclip className="size-4" />
@@ -1724,7 +1736,7 @@ function V0ChatInner({
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        className="size-10 rounded-md border border-transparent text-muted-foreground hover:border-border hover:bg-card"
+                        className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
                         onClick={() =>
                           navigator.clipboard.writeText(
                             lastAssistantMessage.content,
