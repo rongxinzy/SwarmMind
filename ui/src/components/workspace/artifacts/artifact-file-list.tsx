@@ -45,7 +45,7 @@ export function ArtifactFileList({
           key={file}
           filepath={file}
           isSelected={selectedArtifact?.path === file}
-          onClick={() => handleClick(file)}
+          onClick={() => { handleClick(file); }}
           conversationId={conversationId}
         />
       ))}
@@ -96,7 +96,7 @@ function ArtifactFileCard({
             href={`/api/conversations/${conversationId}/artifacts${filepath}`}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); }}
           >
             <Button variant="ghost" size="icon-sm">
               <DownloadIcon className="size-4" />
@@ -156,7 +156,7 @@ export function ArtifactFileDetail({
               <DownloadIcon className="size-4" />
             </Button>
           </a>
-          <Button variant="ghost" size="icon-sm" onClick={() => setOpen(false)}>
+          <Button variant="ghost" size="icon-sm" onClick={() => { setOpen(false); }}>
             ✕
           </Button>
         </div>

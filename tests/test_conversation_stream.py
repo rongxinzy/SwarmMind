@@ -167,7 +167,13 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
 
 
 @pytest.mark.parametrize(
-    ("message_request", "expected_mode", "expected_thinking", "expected_plan", "expected_subagents"),
+    (
+        "message_request",
+        "expected_mode",
+        "expected_thinking",
+        "expected_plan",
+        "expected_subagents",
+    ),
     [
         (
             SendMessageRequest(content="flash", mode=ConversationMode.FLASH),
@@ -213,7 +219,9 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
         ),
     ],
 )
-def test_resolve_runtime_options(message_request, expected_mode, expected_thinking, expected_plan, expected_subagents):
+def test_resolve_runtime_options(
+    message_request, expected_mode, expected_thinking, expected_plan, expected_subagents
+):
     runtime_options = supervisor._resolve_runtime_options(message_request)
 
     assert runtime_options.mode == expected_mode

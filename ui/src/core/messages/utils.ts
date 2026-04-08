@@ -6,17 +6,17 @@ interface GenericMessageGroup<T = string> {
   messages: Message[];
 }
 
-interface HumanMessageGroup extends GenericMessageGroup<"human"> {}
+type HumanMessageGroup = GenericMessageGroup<"human">
 
-interface AssistantProcessingGroup extends GenericMessageGroup<"assistant:processing"> {}
+type AssistantProcessingGroup = GenericMessageGroup<"assistant:processing">
 
-interface AssistantMessageGroup extends GenericMessageGroup<"assistant"> {}
+type AssistantMessageGroup = GenericMessageGroup<"assistant">
 
-interface AssistantPresentFilesGroup extends GenericMessageGroup<"assistant:present-files"> {}
+type AssistantPresentFilesGroup = GenericMessageGroup<"assistant:present-files">
 
-interface AssistantClarificationGroup extends GenericMessageGroup<"assistant:clarification"> {}
+type AssistantClarificationGroup = GenericMessageGroup<"assistant:clarification">
 
-interface AssistantSubagentGroup extends GenericMessageGroup<"assistant:subagent"> {}
+type AssistantSubagentGroup = GenericMessageGroup<"assistant:subagent">
 
 type MessageGroup =
   | HumanMessageGroup
@@ -101,7 +101,7 @@ export function groupMessages<T>(
       } else if (hasReasoning(message) || hasToolCalls(message)) {
         const lastGroup = groups[groups.length - 1];
         // Accumulate consecutive intermediate AI messages into one processing group.
-        if (lastGroup?.type !== "assistant:processing") {
+        if (lastGroup.type !== "assistant:processing") {
           groups.push({
             id: message.id,
             type: "assistant:processing",
@@ -252,7 +252,7 @@ export function hasReasoning(message: Message) {
   if (Array.isArray(message.content)) {
     const part = message.content[0];
     // Compatible with the Anthropic gateway
-    return (part as unknown as { type: "thinking" })?.type === "thinking";
+    return (part as unknown as { type: "thinking" }).type === "thinking";
   }
   if (typeof message.content === "string") {
     return splitInlineReasoning(message.content).reasoning !== null;
@@ -348,12 +348,12 @@ export function parseUploadedFiles(content: string): FileInMessage[] {
   const uploadedFilesContent = match[1];
 
   // Check if it's "No files have been uploaded yet."
-  if (uploadedFilesContent?.includes("No files have been uploaded yet.")) {
+  if (uploadedFilesContent.includes("No files have been uploaded yet.")) {
     return [];
   }
 
   // Check if the backend reported no new files were uploaded in this message
-  if (uploadedFilesContent?.includes("(empty)")) {
+  if (uploadedFilesContent.includes("(empty)")) {
     return [];
   }
 

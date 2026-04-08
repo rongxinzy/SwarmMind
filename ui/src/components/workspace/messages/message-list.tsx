@@ -208,7 +208,7 @@ export function MessageList({
                 options={parsed.options}
                 clarificationType={parsed.clarificationType}
                 onRespond={(response) =>
-                  onClarificationRespond(response, toolMessage.tool_call_id)
+                  { onClarificationRespond(response, toolMessage.tool_call_id); }
                 }
               />
             );

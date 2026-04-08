@@ -28,7 +28,7 @@ export function SubtaskCard({
   isLoading?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(true);
-  const task = useSubtask(taskId)!;
+  const task = useSubtask(taskId);
 
   const icon = useMemo(() => {
     if (task.status === "completed") {
@@ -71,7 +71,7 @@ export function SubtaskCard({
           <Button
             className="w-full items-start justify-start text-left hover:bg-transparent"
             variant="ghost"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => { setCollapsed(!collapsed); }}
           >
             <div className="flex w-full items-center justify-between">
               <ChainOfThoughtStep

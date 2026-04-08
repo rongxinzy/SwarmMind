@@ -36,8 +36,8 @@ export default function CapsuleTabs({
     return items.slice(start, start + visibleCount);
   }, [page, items, visibleCount]);
 
-  const handlePrevPage = () => setPage((p) => Math.max(p - 1, 0));
-  const handleNextPage = () => setPage((p) => Math.min(p + 1, totalPages - 1));
+  const handlePrevPage = () => { setPage((p) => Math.max(p - 1, 0)); };
+  const handleNextPage = () => { setPage((p) => Math.min(p + 1, totalPages - 1)); };
 
   const handleTabChange = (value: string) => {
     setActive(value);
@@ -54,7 +54,7 @@ export default function CapsuleTabs({
           {Array.from({ length: totalPages }).map((_, idx) => (
             <button
               key={idx}
-              onClick={() => setPage(idx)}
+              onClick={() => { setPage(idx); }}
               className={cn(
                 "w-4 h-4 border-2 transition-all cursor-pointer",
                 idx === page ? "bg-primary border-primary" : "bg-muted border-border hover:border-foreground"

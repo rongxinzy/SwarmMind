@@ -17,7 +17,7 @@ export function CopyButton({
   const handleCopy = useCallback(() => {
     void navigator.clipboard.writeText(clipboardData);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => { setCopied(false); }, 2000);
   }, [clipboardData]);
   return (
     <Tooltip content={t.clipboard.copyToClipboard}>

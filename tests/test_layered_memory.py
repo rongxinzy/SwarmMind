@@ -153,7 +153,11 @@ class TestCASVersionConflict:
 
         # Write with correct expected version
         entry2 = lm.write(
-            scope, "cas_key", "v2", tags=[], expected_version=entry.version,
+            scope,
+            "cas_key",
+            "v2",
+            tags=[],
+            expected_version=entry.version,
         )
         assert entry2.value == "v2"
         assert entry2.version == entry.version + 1
@@ -170,7 +174,11 @@ class TestCASVersionConflict:
         # Our CAS should fail
         with pytest.raises(MemoryWriteConflict):
             lm.write(
-                scope, "cas_key", "v3", tags=[], expected_version=entry.version,
+                scope,
+                "cas_key",
+                "v3",
+                tags=[],
+                expected_version=entry.version,
             )
 
 
@@ -243,6 +251,7 @@ class TestSessionPromotion:
 
         # Verify promotion record exists
         from swarmmind.db import get_connection
+
         conn = get_connection()
         try:
             cursor = conn.cursor()
@@ -284,6 +293,7 @@ class TestCompactionHints:
         assert hint_id is not None
 
         from swarmmind.db import get_connection
+
         conn = get_connection()
         try:
             cursor = conn.cursor()

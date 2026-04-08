@@ -25,7 +25,14 @@ class FakeClient:
     def __init__(self, chunks):
         self._agent = FakeStreamingAgent(chunks)
 
-    def _get_runnable_config(self, thread_id, model_name=None, thinking_enabled=True, plan_mode=False, subagent_enabled=False):
+    def _get_runnable_config(
+        self,
+        thread_id,
+        model_name=None,
+        thinking_enabled=True,
+        plan_mode=False,
+        subagent_enabled=False,
+    ):
         return {
             "thread_id": thread_id,
             "model_name": model_name,

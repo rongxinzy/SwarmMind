@@ -2,8 +2,8 @@
 
 import pytest
 
-from swarmmind.api import supervisor
 from swarmmind import context_broker
+from swarmmind.api import supervisor
 from swarmmind.db import get_connection, init_db, seed_default_agents
 from swarmmind.models import GoalRequest, SendMessageRequest
 

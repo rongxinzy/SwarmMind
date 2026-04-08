@@ -11,12 +11,12 @@ import type { ComponentProps, ReactNode } from "react";
 import { createContext, memo, useContext, useEffect, useState, useCallback } from "react";
 import { Shimmer } from "./shimmer";
 
-type ReasoningContextValue = {
+interface ReasoningContextValue {
   isStreaming: boolean;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   duration: number | undefined;
-};
+}
 
 const ReasoningContext = createContext<ReasoningContextValue | null>(null);
 
@@ -92,7 +92,7 @@ export const Reasoning = memo(
           setHasAutoClosed(true);
         }, AUTO_CLOSE_DELAY);
 
-        return () => clearTimeout(timer);
+        return () => { clearTimeout(timer); };
       }
     }, [isStreaming, isOpen, defaultOpen, setIsOpen, hasAutoClosed, duration]);
 

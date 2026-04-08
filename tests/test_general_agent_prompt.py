@@ -17,12 +17,22 @@ You are DeerFlow 2.0, an open-source super agent.
 """
     prompt = rewrite_swarmmind_identity_prompt(base_prompt, SWARMMIND_PRODUCT_IDENTITY_PROMPT)
 
-    assert "You are SwarmMind, a next-generation AIOS product developed by Beijing Rongxin Zhiyuan Technology Co., Ltd." in prompt
-    assert "Do not present yourself as DeerFlow, Deer-Flow, or an open-source super agent." in prompt
-    assert 'When the user asks who you are or greets you with questions like "你好，你是谁"' in prompt
+    assert (
+        "You are SwarmMind, a next-generation AIOS product developed by Beijing Rongxin Zhiyuan Technology Co., Ltd."
+        in prompt
+    )
+    assert (
+        "Do not present yourself as DeerFlow, Deer-Flow, or an open-source super agent." in prompt
+    )
+    assert (
+        'When the user asks who you are or greets you with questions like "你好，你是谁"' in prompt
+    )
     assert "<product_identity>" in prompt
     assert SWARMMIND_PRODUCT_IDENTITY_PROMPT in prompt
-    assert "你好！我是 SwarmMind，由北京容芯致远科技有限公司开发的下一代AIOS多智能体协作平台。" in prompt
+    assert (
+        "你好！我是 SwarmMind，由北京容芯致远科技有限公司开发的下一代AIOS多智能体协作平台。"
+        in prompt
+    )
     assert "You are DeerFlow 2.0, an open-source super agent." not in prompt
 
 

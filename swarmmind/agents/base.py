@@ -6,6 +6,7 @@ from swarmmind.db import get_connection
 from swarmmind.layered_memory import LayeredMemory
 from swarmmind.models import MemoryContext, MemoryScope, ProposalStatus
 
+
 class AgentError(Exception):
     """Base exception for SwarmMind agent errors."""
 
@@ -45,8 +46,7 @@ class BaseAgent(ABC):
         raise NotImplementedError
 
     def _resolve_write_scope(self, ctx: MemoryContext | None) -> MemoryScope:
-        """
-        Determine the most specific writable scope from ctx.
+        """Determine the most specific writable scope from ctx.
 
         Priority: session_id (L1) > team_id (L2) > project_id (L3) > user_id (L4).
         Agents cannot write to L4 unless they are in SOUL_WRITER_AGENT_IDS,
@@ -54,6 +54,7 @@ class BaseAgent(ABC):
         to the most specific available scope (never L4 for regular agents).
         """
         from swarmmind.models import MemoryLayer
+
         if ctx is None:
             # No context — use a default user scope (L4, but agent will be denied
             # unless they are soul_writer; this is intentional guardrail)

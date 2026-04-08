@@ -14,7 +14,8 @@ from types import ModuleType
 
 def _ensure_litellm_stub() -> None:
     try:
-        import litellm  # noqa: F401
+        import litellm
+
         return
     except ModuleNotFoundError:
         pass
@@ -36,7 +37,8 @@ def _ensure_litellm_stub() -> None:
 
 def _ensure_deerflow_stub() -> None:
     try:
-        import deerflow.client  # noqa: F401
+        import deerflow.client
+
         return
     except ModuleNotFoundError:
         pass

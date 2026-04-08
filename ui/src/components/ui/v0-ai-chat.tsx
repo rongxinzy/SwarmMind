@@ -145,13 +145,13 @@ const QUICK_PROMPTS = [
 const MODEL_FETCH_RETRY_COUNT = 3;
 const MODEL_FETCH_RETRY_DELAY_MS = 400;
 
-const MODE_OPTIONS: Array<{
+const MODE_OPTIONS: {
   id: ConversationMode;
   label: string;
   description: string;
   accentClassName: string;
   icon: typeof Zap;
-}> = [
+}[] = [
   {
     id: "flash",
     label: "Flash",
@@ -292,7 +292,7 @@ function ModePicker({
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => { setOpen((prev) => !prev); }}
         aria-label={`当前执行模式：${current.label}`}
         className={cn(
           "group flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-left transition-colors hover:border-border focus-visible:border-[#bec8d0] focus-visible:ring-4 focus-visible:ring-[#e7ecef]/80",
@@ -320,7 +320,7 @@ function ModePicker({
           <>
             <div
               className="fixed inset-0 z-40"
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); }}
             />
             <motion.div
               initial={{ opacity: 0, y: 8, scale: 0.97 }}
@@ -411,8 +411,8 @@ function ModelPicker({
   const [open, setOpen] = useState(false);
   const current = models.find((model) => model.name === selected) ?? models[0];
   const currentLabel =
-    current?.display_name ||
-    current?.name ||
+    current.display_name ||
+    current.name ||
     (isLoading ? "加载模型..." : loadError ? "模型加载失败" : "未配置模型");
   const isDisabled = isLoading || (!loadError && models.length <= 1);
 
@@ -442,7 +442,7 @@ function ModelPicker({
           <>
             <div
               className="fixed inset-0 z-40"
-              onClick={() => setOpen(false)}
+              onClick={() => { setOpen(false); }}
             />
             <motion.div
               initial={{ opacity: 0, y: 4, scale: 0.96 }}
@@ -503,8 +503,8 @@ function MessageBubble({
       return;
     }
 
-    const timer = window.setTimeout(() => setCopied(false), 2000);
-    return () => window.clearTimeout(timer);
+    const timer = window.setTimeout(() => { setCopied(false); }, 2000);
+    return () => { window.clearTimeout(timer); };
   }, [copied]);
 
   const handleCopy = useCallback(async () => {
@@ -854,7 +854,7 @@ function V0ChatInner({
       void fetchModels();
     }, 3000);
 
-    return () => window.clearTimeout(retryTimer);
+    return () => { window.clearTimeout(retryTimer); };
   }, [fetchModels, modelLoadError, modelOptions.length]);
 
   useEffect(() => {
@@ -888,13 +888,13 @@ function V0ChatInner({
       const rafId = window.requestAnimationFrame(() => {
         syncScrollState();
       });
-      return () => window.cancelAnimationFrame(rafId);
+      return () => { window.cancelAnimationFrame(rafId); };
     }
 
     const rafId = window.requestAnimationFrame(() => {
       scrollToLatest(messages.length > 0 ? "smooth" : "auto");
     });
-    return () => window.cancelAnimationFrame(rafId);
+    return () => { window.cancelAnimationFrame(rafId); };
   }, [messages, runtime, scrollToLatest, syncScrollState]);
 
   useEffect(() => {
@@ -1648,7 +1648,7 @@ function V0ChatInner({
                 type="button"
                 variant="outline"
                 size="icon"
-                onClick={() => scrollToLatest("smooth")}
+                onClick={() => { scrollToLatest("smooth"); }}
                 aria-label="回到最新"
                 title="回到最新"
                 className="pointer-events-auto size-10 rounded-full border-border bg-card shadow-none hover:bg-card"
@@ -1687,7 +1687,7 @@ function V0ChatInner({
               <div>
                 <Textarea
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={(e) => { setInput(e.target.value); }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
@@ -1836,7 +1836,7 @@ function ChatLayout({
               <Button
                 variant="ghost"
                 size="icon-sm"
-                onClick={() => setArtifactsOpen(false)}
+                onClick={() => { setArtifactsOpen(false); }}
               >
                 <XIcon className="size-4" />
               </Button>
@@ -1862,7 +1862,7 @@ function ChatLayout({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onSelectArtifact(null)}
+                    onClick={() => { onSelectArtifact(null); }}
                   >
                     返回列表
                   </Button>
@@ -1905,7 +1905,7 @@ function ArtifactFileListSimple({ files, onSelect }: ArtifactFileListSimpleProps
       {files.map((file) => (
         <button
           key={file}
-          onClick={() => onSelect(file)}
+          onClick={() => { onSelect(file); }}
           className="flex items-center gap-3 rounded-lg border p-3 text-left hover:bg-muted transition-colors"
         >
           <FilesIcon className="size-5 text-muted-foreground" />

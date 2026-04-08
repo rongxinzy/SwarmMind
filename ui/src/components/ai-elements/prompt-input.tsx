@@ -179,7 +179,7 @@ export function PromptInput({
 
   // Handle paste
   const handlePaste = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData?.items;
+    const items = e.clipboardData.items;
     if (!items) return;
 
     const pastedFiles: File[] = [];
@@ -286,7 +286,7 @@ export function PromptInput({
             <FileAttachmentChip
               key={file.id}
               attachment={file}
-              onRemove={() => removeFile(file.id)}
+              onRemove={() => { removeFile(file.id); }}
             />
           ))}
         </div>

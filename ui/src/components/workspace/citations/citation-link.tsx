@@ -32,7 +32,7 @@ export function CitationLink({
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); }}
           {...props}
         >
           <Badge

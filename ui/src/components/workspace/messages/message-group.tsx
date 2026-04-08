@@ -87,7 +87,7 @@ export function MessageGroup({
           key="above"
           className="w-full items-start justify-start text-left"
           variant="ghost"
-          onClick={() => setShowAbove(!showAbove)}
+          onClick={() => { setShowAbove(!showAbove); }}
         >
           <ChainOfThoughtStep
             label={
@@ -145,7 +145,7 @@ export function MessageGroup({
             key={lastReasoningStep.id}
             className="w-full items-start justify-start text-left"
             variant="ghost"
-            onClick={() => setShowLastThinking(!showLastThinking)}
+            onClick={() => { setShowLastThinking(!showLastThinking); }}
           >
             <div className="flex w-full items-center justify-between">
               <ChainOfThoughtStep
@@ -238,7 +238,7 @@ function ToolCall({
           title: string;
         }[];
       }
-    )?.results;
+    ).results;
     return (
       <ChainOfThoughtStep key={id} label={label} icon={SearchIcon}>
         {Array.isArray(results) && (
@@ -269,7 +269,7 @@ function ToolCall({
       </ChainOfThoughtStep>
     );
   } else if (name === "web_fetch") {
-    const url = (args as { url: string })?.url;
+    const url = (args as { url: string }).url;
     let title = url;
     if (typeof result === "string") {
       const potentialTitle = extractTitleFromMarkdown(result);
@@ -298,11 +298,11 @@ function ToolCall({
     );
   } else if (name === "ls") {
     let description: string | undefined = (args as { description: string })
-      ?.description;
+      .description;
     if (!description) {
       description = t.toolCalls.listFolder;
     }
-    const path: string | undefined = (args as { path: string })?.path;
+    const path: string | undefined = (args as { path: string }).path;
     return (
       <ChainOfThoughtStep key={id} label={description} icon={FolderOpenIcon}>
         {path && (
@@ -314,7 +314,7 @@ function ToolCall({
     );
   } else if (name === "read_file") {
     let description: string | undefined = (args as { description: string })
-      ?.description;
+      .description;
     if (!description) {
       description = t.toolCalls.readFile;
     }
@@ -330,11 +330,11 @@ function ToolCall({
     );
   } else if (name === "write_file" || name === "str_replace") {
     let description: string | undefined = (args as { description: string })
-      ?.description;
+      .description;
     if (!description) {
       description = t.toolCalls.writeFile;
     }
-    const path: string | undefined = (args as { path: string })?.path;
+    const path: string | undefined = (args as { path: string }).path;
     if (isLoading && isLast && autoOpen && autoSelect && path) {
       setTimeout(() => {
         const url = new URL(
@@ -372,11 +372,11 @@ function ToolCall({
     );
   } else if (name === "bash") {
     const description: string | undefined = (args as { description: string })
-      ?.description;
+      .description;
     if (!description) {
       return t.toolCalls.executeCommand;
     }
-    const command: string | undefined = (args as { command: string })?.command;
+    const command: string | undefined = (args as { command: string }).command;
     return (
       <ChainOfThoughtStep
         key={id}
@@ -411,7 +411,7 @@ function ToolCall({
     );
   } else {
     const description: string | undefined = (args as { description: string })
-      ?.description;
+      .description;
     return (
       <ChainOfThoughtStep
         key={id}

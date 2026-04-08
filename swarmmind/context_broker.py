@@ -1,16 +1,12 @@
 """Context Broker — routes goals to agents, manages strategy table."""
 
 import logging
-import re
 import uuid
-from datetime import datetime
-from typing import Optional
 
 from swarmmind.db import get_connection
 from swarmmind.models import (
     ActionProposal,
     DispatchResponse,
-    EventLogEntry,
     MemoryContext,
     ProposalStatus,
     SupervisorDecision,
@@ -21,21 +17,48 @@ logger = logging.getLogger(__name__)
 # Phase 1 keyword routing rules
 ROUTING_KEYWORDS = {
     "finance": [
-        "finance", "financial", "revenue", "expense", "profit", "loss",
-        "quarterly", "Q1", "Q2", "Q3", "Q4", "annual", "fiscal",
-        "budget", "forecast", "income statement", "balance sheet",
+        "finance",
+        "financial",
+        "revenue",
+        "expense",
+        "profit",
+        "loss",
+        "quarterly",
+        "Q1",
+        "Q2",
+        "Q3",
+        "Q4",
+        "annual",
+        "fiscal",
+        "budget",
+        "forecast",
+        "income statement",
+        "balance sheet",
     ],
     "code_review": [
-        "code", "review", "PR", "pull request", "git", "python",
-        "bug", "error", "refactor", "test", "implementation",
-        "function", "class", "module", "api", "backend", "frontend",
+        "code",
+        "review",
+        "PR",
+        "pull request",
+        "git",
+        "python",
+        "bug",
+        "error",
+        "refactor",
+        "test",
+        "implementation",
+        "function",
+        "class",
+        "module",
+        "api",
+        "backend",
+        "frontend",
     ],
 }
 
 
 def derive_situation_tag(goal: str) -> str:
-    """
-    Derive a situation tag from goal text using keyword extraction.
+    """Derive a situation tag from goal text using keyword extraction.
     Phase 1 placeholder — Phase 2 should use embeddings.
     """
     goal_lower = goal.lower()
@@ -56,9 +79,8 @@ def derive_situation_tag(goal: str) -> str:
     return "unknown"
 
 
-def route_to_agent(situation_tag: str) -> Optional[str]:
-    """
-    Look up strategy_table for the given situation_tag.
+def route_to_agent(situation_tag: str) -> str | None:
+    """Look up strategy_table for the given situation_tag.
 
     DeerFlow-first mode always falls back to the ``general`` runtime entrypoint
     when no dedicated control-plane mapping exists yet.
@@ -79,9 +101,9 @@ def route_to_agent(situation_tag: str) -> Optional[str]:
 def create_action_proposal(
     agent_id: str,
     description: str,
-    target_resource: Optional[str] = None,
-    preconditions: Optional[dict] = None,
-    postconditions: Optional[dict] = None,
+    target_resource: str | None = None,
+    preconditions: dict | None = None,
+    postconditions: dict | None = None,
     confidence: float = 0.5,
 ) -> ActionProposal:
     """Create and persist an action proposal."""
@@ -113,7 +135,9 @@ def create_action_proposal(
 
         logger.info(
             "Action proposal created: id=%s agent_id=%s description=%s",
-            proposal_id, agent_id, description[:50],
+            proposal_id,
+            agent_id,
+            description[:50],
         )
 
         return ActionProposal(
@@ -162,8 +186,7 @@ def dispatch(
     session_id: str | None = None,
     override_situation_tag: str | None = None,
 ) -> DispatchResponse:
-    """
-    Main dispatch entry point.
+    """Main dispatch entry point.
 
     1. Build MemoryContext from scope parameters
     2. Derive situation_tag from goal (keyword extraction), or use override_situation_tag if provided
@@ -191,7 +214,10 @@ def dispatch(
 
     logger.info(
         "Dispatched: goal=%r situation_tag=%s agent_id=%s proposal_id=%s",
-        goal[:50], situation_tag, agent_id, proposal.id,
+        goal[:50],
+        situation_tag,
+        agent_id,
+        proposal.id,
     )
 
     return DispatchResponse(
@@ -205,7 +231,7 @@ def dispatch(
 def update_proposal_result(
     proposal_id: str,
     description: str,
-    target_resource: Optional[str] = None,
+    target_resource: str | None = None,
     confidence: float = 1.0,
 ) -> None:
     """Update an action proposal after agent has processed it."""
@@ -239,7 +265,11 @@ def record_supervisor_decision(
             SET supervisor_decision = ?, outcome = ?
             WHERE action_proposal_id = ?
             """,
-            (decision.value, "success" if decision == SupervisorDecision.APPROVED else "failure", action_proposal_id),
+            (
+                decision.value,
+                "success" if decision == SupervisorDecision.APPROVED else "failure",
+                action_proposal_id,
+            ),
         )
         conn.commit()
     finally:

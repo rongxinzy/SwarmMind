@@ -7,8 +7,8 @@ import logging
 import os
 from pathlib import Path
 
-from swarmmind.runtime.errors import RuntimeConfigError
 from swarmmind.runtime.catalog import list_enabled_runtime_models, sync_env_runtime_model
+from swarmmind.runtime.errors import RuntimeConfigError
 from swarmmind.runtime.models import RuntimeInstance, RuntimeModel, RuntimeProfile
 from swarmmind.runtime.profile import resolve_default_runtime_profile
 
@@ -42,7 +42,9 @@ def _render_model_lines(model: RuntimeModel) -> list[str]:
     return lines
 
 
-def _render_config(profile: RuntimeProfile, deer_flow_home: Path, models: list[RuntimeModel]) -> str:
+def _render_config(
+    profile: RuntimeProfile, deer_flow_home: Path, models: list[RuntimeModel]
+) -> str:
     ordered_models = sorted(
         models,
         key=lambda model: (0 if model.name == profile.model_name else 1, model.name),
@@ -125,7 +127,9 @@ def ensure_default_runtime_instance() -> RuntimeInstance:
     runtime_root.mkdir(parents=True, exist_ok=True)
     deer_flow_home.mkdir(parents=True, exist_ok=True)
 
-    config_path.write_text(_render_config(profile, deer_flow_home, runtime_models), encoding="utf-8")
+    config_path.write_text(
+        _render_config(profile, deer_flow_home, runtime_models), encoding="utf-8"
+    )
     if not extensions_config_path.exists():
         extensions_config_path.write_text(
             json.dumps({"mcpServers": {}, "skills": {}}, indent=2),

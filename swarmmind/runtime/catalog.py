@@ -57,7 +57,12 @@ def _resolve_base_url() -> str | None:
         return base_url
 
     # Provider-specific base URLs
-    for env_var in ["OPENAI_BASE_URL", "ANTHROPIC_BASE_URL", "MOONSHOT_BASE_URL", "MINIMAX_BASE_URL"]:
+    for env_var in [
+        "OPENAI_BASE_URL",
+        "ANTHROPIC_BASE_URL",
+        "MOONSHOT_BASE_URL",
+        "MINIMAX_BASE_URL",
+    ]:
         if base_url := os.environ.get(env_var):
             return base_url
 
@@ -114,9 +119,9 @@ def infer_env_runtime_model() -> RuntimeModel:
         raise RuntimeConfigError(
             "LLM_MODEL is required. Set it in .env file or environment.\n"
             "Examples:\n"
-            '  LLM_MODEL=gpt-4o\n'
-            '  LLM_MODEL=kimi-k2.5\n'
-            '  LLM_MODEL=MiniMax-M2.7'
+            "  LLM_MODEL=gpt-4o\n"
+            "  LLM_MODEL=kimi-k2.5\n"
+            "  LLM_MODEL=MiniMax-M2.7"
         )
 
     # Get or infer model class
@@ -321,9 +326,7 @@ def resolve_model_for_subject(
     """Validate a requested model or fall back to the subject default."""
     models = list_models_for_subject(subject_type=subject_type, subject_id=subject_id)
     if not models:
-        raise RuntimeConfigError(
-            f"No runtime models are assigned to {subject_type}:{subject_id}."
-        )
+        raise RuntimeConfigError(f"No runtime models are assigned to {subject_type}:{subject_id}.")
 
     if requested_model_name:
         for model in models:

@@ -22,10 +22,10 @@ import { createContext, useState } from "react";
 // ChainOfThought Context
 // ============================================================================
 
-type ChainOfThoughtContextValue = {
+interface ChainOfThoughtContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
-};
+}
 
 const ChainOfThoughtContext = createContext<ChainOfThoughtContextValue | null>(null);
 
@@ -212,21 +212,21 @@ export const ToolCallStep = ({ toolCall, isLoading, className }: ToolCallStepPro
   const defaultLabel = TOOL_LABELS[name] || `使用工具: ${name}`;
   
   // Get description from args or use default
-  const description = (args?.description as string) || defaultLabel;
+  const description = (args.description as string) || defaultLabel;
   
   // Get additional details based on tool type
   const getDetail = () => {
     switch (name) {
       case "web_search":
-        return args?.query as string;
+        return args.query as string;
       case "web_fetch":
-        return args?.url as string;
+        return args.url as string;
       case "read_file":
       case "write_file":
       case "str_replace":
-        return args?.path as string;
+        return args.path as string;
       case "bash":
-        return args?.command as string;
+        return args.command as string;
       default:
         return undefined;
     }

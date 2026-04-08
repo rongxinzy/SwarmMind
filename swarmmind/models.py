@@ -2,7 +2,6 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -36,8 +35,8 @@ class Agent(BaseModel):
 class WorkingMemoryEntry(BaseModel):
     key: str
     value: str
-    domain_tags: Optional[str] = None
-    last_writer_agent_id: Optional[str] = None
+    domain_tags: str | None = None
+    last_writer_agent_id: str | None = None
     updated_at: datetime
 
 
@@ -52,9 +51,9 @@ class ActionProposal(BaseModel):
     id: str
     agent_id: str
     description: str
-    target_resource: Optional[str] = None
-    preconditions: Optional[dict] = None
-    postconditions: Optional[dict] = None
+    target_resource: str | None = None
+    preconditions: dict | None = None
+    postconditions: dict | None = None
     confidence: float = 0.5
     status: ProposalStatus = ProposalStatus.PENDING
     created_at: datetime
@@ -64,24 +63,25 @@ class StrategyChangeProposal(BaseModel):
     id: str
     situation_tag: str
     proposed_agent_id: str
-    reason: Optional[str] = None
+    reason: str | None = None
     status: ProposalStatus = ProposalStatus.PENDING
     proposed_at: datetime
 
 
 class EventLogEntry(BaseModel):
-    id: Optional[int] = None
+    id: int | None = None
     timestamp: datetime
     goal: str
-    situation_tag: Optional[str] = None
-    dispatched_agent_id: Optional[str] = None
-    action_proposal_id: Optional[str] = None
-    supervisor_decision: Optional[SupervisorDecision] = None
-    outcome: Optional[str] = None
-    latency_ms: Optional[int] = None
+    situation_tag: str | None = None
+    dispatched_agent_id: str | None = None
+    action_proposal_id: str | None = None
+    supervisor_decision: SupervisorDecision | None = None
+    outcome: str | None = None
+    latency_ms: int | None = None
 
 
 # ---- Layered Memory models ----
+
 
 class MemoryLayer(str, Enum):
     USER_SOUL = "L4_user_soul"
@@ -110,6 +110,7 @@ class MemoryEntry(BaseModel):
 
 class MemoryContext(BaseModel):
     """Carries scope information through a request lifecycle."""
+
     user_id: str
     project_id: str | None = None
     team_id: str | None = None
@@ -117,8 +118,7 @@ class MemoryContext(BaseModel):
 
     @property
     def visible_scopes(self) -> list[MemoryScope]:
-        """
-        Return scopes in priority order: L1 > L2 > L3 > L4.
+        """Return scopes in priority order: L1 > L2 > L3 > L4.
         More specific layers override more abstract ones.
         """
         scopes = []
@@ -144,6 +144,7 @@ class CompactionHint(BaseModel):
 
 # ---- API Request/Response models ----
 
+
 class GoalRequest(BaseModel):
     goal: str = Field(..., max_length=2000)
 
@@ -154,7 +155,7 @@ class ApproveRequest(BaseModel):
 
 class RejectRequest(BaseModel):
     id: str
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class DispatchResponse(BaseModel):
@@ -179,6 +180,7 @@ class StrategyResponse(BaseModel):
 
 
 # ---- Conversation models ----
+
 
 class Conversation(BaseModel):
     id: str

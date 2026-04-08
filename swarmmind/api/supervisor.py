@@ -5,8 +5,7 @@ import logging
 import threading
 import time
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,12 +21,10 @@ from swarmmind.context_broker import (
 from swarmmind.db import get_connection, health_check, init_db, seed_default_agents
 from swarmmind.models import (
     ActionProposal,
-    ApproveRequest,
     Conversation,
     ConversationListResponse,
     ConversationMode,
     ConversationRuntimeOptions,
-    DispatchResponse,
     GoalRequest,
     MemoryContext,
     Message,
@@ -39,17 +36,17 @@ from swarmmind.models import (
     RuntimeModelOption,
     SendMessageRequest,
     SendMessageResponse,
-    StrategyChangeProposal,
     StrategyEntry,
     StrategyResponse,
     SupervisorDecision,
 )
 from swarmmind.renderer import render_status
 
+
 # Deferred import for deer-flow title generation (avoid circular imports)
 def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[str, str]:
     """Generate title in isolated session using deer-flow's capabilities.
-    
+
     This replicates TitleMiddleware's logic but executes in a separate thread/session,
     preventing title generation from appearing in the main conversation stream.
     """
@@ -60,9 +57,9 @@ def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[st
         # Fallback to simple truncation if deerflow not available
         title = user_msg[:50] if len(user_msg) <= 50 else user_msg[:47] + "..."
         return title or "New Conversation", "fallback"
-    
+
     config = get_title_config()
-    
+
     # Normalize content (same as TitleMiddleware._normalize_content)
     def _normalize(content: object) -> str:
         if isinstance(content, str):
@@ -78,40 +75,51 @@ def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[st
             if nested is not None:
                 return _normalize(nested)
         return ""
-    
+
     user_normalized = _normalize(user_msg)[:500]
     assistant_normalized = _normalize(assistant_msg)[:500]
-    
+
     # Build prompt using deer-flow's template
     prompt = config.prompt_template.format(
         max_words=config.max_words,
         user_msg=user_normalized,
         assistant_msg=assistant_normalized,
     )
-    
+
     # Create model with thinking disabled (title doesn't need reasoning)
     model = create_chat_model(name=config.model_name, thinking_enabled=False)
-    
+
     try:
         # Execute in isolated session (no thread state pollution)
         response = model.invoke(prompt)
-        
+
         # Parse title (same as TitleMiddleware._parse_title)
         title_content = _normalize(response.content).strip().strip('"').strip("'")
-        title = title_content[:config.max_chars] if len(title_content) > config.max_chars else title_content
-        
+        title = (
+            title_content[: config.max_chars]
+            if len(title_content) > config.max_chars
+            else title_content
+        )
+
         if title:
             return title, "llm"
     except Exception:
         logger.exception("Title generation failed, using fallback")
-    
+
     # Fallback to truncated user message
     fallback_chars = min(config.max_chars, 50)
     if len(user_normalized) > fallback_chars:
         return user_normalized[:fallback_chars].rstrip() + "...", "fallback"
     return user_normalized or "New Conversation", "fallback"
+
+
 from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
-from swarmmind.runtime import RuntimeConfigError, RuntimeExecutionError, RuntimeUnavailableError, ensure_default_runtime_instance
+from swarmmind.runtime import (
+    RuntimeConfigError,
+    RuntimeExecutionError,
+    RuntimeUnavailableError,
+    ensure_default_runtime_instance,
+)
 from swarmmind.runtime.catalog import (
     ANONYMOUS_SUBJECT_ID,
     ANONYMOUS_SUBJECT_TYPE,
@@ -148,6 +156,7 @@ MODE_RUNTIME_MAP: dict[ConversationMode, dict[str, bool]] = {
 }
 
 # ---- Pydantic models ----
+
 
 class StatusResponse(BaseModel):
     summary: str
@@ -189,6 +198,7 @@ def startup():
 
 # ---- Timeout scanner ----
 
+
 def _cleanup_scanner():
     """Background thread: clean up stale proposals and expired memory entries."""
     while True:
@@ -211,7 +221,8 @@ def _cleanup_scanner():
                 for row in stale:
                     logger.info(
                         "Auto-rejecting stale proposal: id=%s (created=%s)",
-                        row["id"], row["created_at"],
+                        row["id"],
+                        row["created_at"],
                     )
                     cursor.execute(
                         "UPDATE action_proposals SET status = ? WHERE id = ?",
@@ -242,15 +253,14 @@ def _cleanup_scanner():
 
 # ---- Supervisor endpoints ----
 
+
 @app.get("/pending")
 def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)):
     """List pending action proposals (paginated)."""
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT COUNT(*) as total FROM action_proposals WHERE status = 'pending'"
-        )
+        cursor.execute("SELECT COUNT(*) as total FROM action_proposals WHERE status = 'pending'")
         total = cursor.fetchone()["total"]
 
         cursor.execute(
@@ -295,7 +305,7 @@ def approve(proposal_id: str):
 
 
 @app.post("/reject/{proposal_id}")
-def reject(proposal_id: str, body: Optional[RejectRequest] = None):
+def reject(proposal_id: str, body: RejectRequest | None = None):
     """Reject an action proposal."""
     conn = get_connection()
     try:
@@ -324,8 +334,7 @@ def reject(proposal_id: str, body: Optional[RejectRequest] = None):
 
 @app.get("/status")
 def get_status(goal: str = Query(..., max_length=2000)):
-    """
-    LLM Status Renderer: given a goal, read shared context and
+    """LLM Status Renderer: given a goal, read shared context and
     generate a human-readable status summary (Phase 1: prose only).
     """
     try:
@@ -422,6 +431,7 @@ def list_runtime_models():
 
 
 # ---- Conversation endpoints ----
+
 
 def _row_to_conversation(row) -> Conversation:
     return Conversation(
@@ -629,7 +639,11 @@ def _format_runtime_error(exc: Exception) -> str:
 
 def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOptions:
     effective_mode = body.mode
-    logger.info("[DEBUG] _resolve_runtime_options: body.mode=%s, effective_mode=%s", body.mode, effective_mode)
+    logger.info(
+        "[DEBUG] _resolve_runtime_options: body.mode=%s, effective_mode=%s",
+        body.mode,
+        effective_mode,
+    )
     if effective_mode is None:
         effective_mode = ConversationMode.THINKING if body.reasoning else ConversationMode.FLASH
 
@@ -642,7 +656,10 @@ def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOpt
         plan_mode=runtime_flags["plan_mode"],
         subagent_enabled=runtime_flags["subagent_enabled"],
     )
-    logger.info("[DEBUG] _resolve_runtime_options: returning options with subagent_enabled=%s", options.subagent_enabled)
+    logger.info(
+        "[DEBUG] _resolve_runtime_options: returning options with subagent_enabled=%s",
+        options.subagent_enabled,
+    )
     return options
 
 
@@ -722,7 +739,9 @@ def _translate_general_agent_event(
                         "team_task",
                         task={
                             "id": tool_call_id,
-                            "title": _task_card_title(tool_args if isinstance(tool_args, dict) else {}),
+                            "title": _task_card_title(
+                                tool_args if isinstance(tool_args, dict) else {}
+                            ),
                             "status": "running",
                             "detail": "Agent Team 正在协同处理这个子任务。",
                         },
@@ -851,8 +870,7 @@ def _translate_general_agent_event(
 
 
 def _maybe_generate_conversation_title(conversation_id: str) -> None:
-    """
-    Generate a conversation title after the first complete exchange.
+    """Generate a conversation title after the first complete exchange.
 
     Uses deer-flow's title generation capabilities in an isolated session,
     preventing title LLM calls from polluting the main conversation stream.
@@ -883,9 +901,7 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
         )
         rows = cursor.fetchall()
         user_messages = [row["content"] for row in rows if row["role"] == "user"]
-        assistant_messages = [
-            row["content"] for row in rows if row["role"] == "assistant"
-        ]
+        assistant_messages = [row["content"] for row in rows if row["role"] == "assistant"]
 
         if len(user_messages) != 1 or len(assistant_messages) < 1:
             return
@@ -918,6 +934,7 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
     finally:
         conn.close()
 
+
 @app.get("/conversations")
 def list_conversations():
     """List all conversations ordered by updated_at descending."""
@@ -927,9 +944,7 @@ def list_conversations():
         cursor.execute("SELECT COUNT(*) as total FROM conversations")
         total = cursor.fetchone()["total"]
 
-        cursor.execute(
-            "SELECT * FROM conversations ORDER BY updated_at DESC"
-        )
+        cursor.execute("SELECT * FROM conversations ORDER BY updated_at DESC")
         rows = cursor.fetchall()
         items = [_row_to_conversation(row) for row in rows]
         return ConversationListResponse(items=items, total=total)
@@ -997,7 +1012,16 @@ def get_conversation_messages(conversation_id: str):
             (conversation_id,),
         )
         rows = cursor.fetchall()
-        items = [Message(id=str(row["id"]), conversation_id=str(row["conversation_id"]), role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"])) for row in rows]
+        items = [
+            Message(
+                id=str(row["id"]),
+                conversation_id=str(row["conversation_id"]),
+                role=str(row["role"]),
+                content=str(row["content"]),
+                created_at=str(row["created_at"]),
+            )
+            for row in rows
+        ]
         return MessageListResponse(items=items, total=total)
     finally:
         conn.close()
@@ -1005,8 +1029,7 @@ def get_conversation_messages(conversation_id: str):
 
 @app.post("/conversations/{conversation_id}/messages", include_in_schema=False)
 def send_message(conversation_id: str, body: SendMessageRequest):
-    """
-    Internal compatibility endpoint for non-streaming conversation turns.
+    """Internal compatibility endpoint for non-streaming conversation turns.
 
     All execution flows through the single DeerFlow Runtime Instance.
     """
@@ -1104,10 +1127,22 @@ def send_message(conversation_id: str, body: SendMessageRequest):
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM messages WHERE id = ?", (user_msg_id,))
         row = cursor.fetchone()
-        user_msg = Message(id=str(row["id"]), conversation_id=str(row["conversation_id"]), role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"]))
+        user_msg = Message(
+            id=str(row["id"]),
+            conversation_id=str(row["conversation_id"]),
+            role=str(row["role"]),
+            content=str(row["content"]),
+            created_at=str(row["created_at"]),
+        )
         cursor.execute("SELECT * FROM messages WHERE id = ?", (assistant_msg_id,))
         row = cursor.fetchone()
-        assistant_msg = Message(id=str(row["id"]), conversation_id=str(row["conversation_id"]), role=str(row["role"]), content=str(row["content"]), created_at=str(row["created_at"]))
+        assistant_msg = Message(
+            id=str(row["id"]),
+            conversation_id=str(row["conversation_id"]),
+            role=str(row["role"]),
+            content=str(row["content"]),
+            created_at=str(row["created_at"]),
+        )
 
         return SendMessageResponse(
             user_message=user_msg,
@@ -1137,40 +1172,38 @@ def delete_conversation(conversation_id: str):
 
 # ---- Collaboration Trace Endpoints ----
 
+
 @app.get("/conversations/{conversation_id}/trace")
 def get_conversation_trace(conversation_id: str):
     """获取会话的协作轨迹（回放用）。
-    
+
     复用 deer-flow checkpointer 数据，零侵入设计：
     1. 从 conversations 表读取 thread_id
     2. 从 deer-flow SqliteSaver 读取 checkpoints
     3. 解析 ThreadState 转换为协作轨迹
-    
+
     Args:
         conversation_id: SwarmMind conversation ID (maps to deer-flow thread_id)
-        
+
     Returns:
         Collaboration trace with events, status, and summary.
     """
     # 延迟导入，避免循环依赖
     from swarmmind.services.trace_service import trace_service
-    
+
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, thread_id FROM conversations WHERE id = ?",
-            (conversation_id,)
-        )
+        cursor.execute("SELECT id, thread_id FROM conversations WHERE id = ?", (conversation_id,))
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Conversation not found")
-        
+
         # 优先使用 thread_id，否则用 conversation_id 作为 fallback
         thread_id = row["thread_id"] or conversation_id
     finally:
         conn.close()
-    
+
     # 从 deer-flow checkpointer 读取轨迹
     try:
         trace = trace_service.get_conversation_trace(thread_id)
@@ -1182,7 +1215,7 @@ def get_conversation_trace(conversation_id: str):
             "thread_id": thread_id,
             "status": "error",
             "events": [],
-            "summary": f"读取轨迹失败: {str(e)}",
+            "summary": f"读取轨迹失败: {e!s}",
             "checkpoint_count": 0,
         }
 
@@ -1271,7 +1304,9 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
                     logger.info("Stream event #%d: type=%s", event_count, event.get("type"))
             except StopIteration as stop:
                 ai_response, _tool_results = stop.value
-                logger.info("Stream completed: events=%d, response_length=%d", event_count, len(ai_response))
+                logger.info(
+                    "Stream completed: events=%d, response_length=%d", event_count, len(ai_response)
+                )
                 break
             except Exception as stream_error:
                 logger.error("Stream event error: %s", stream_error, exc_info=True)
@@ -1353,21 +1388,21 @@ class ClarificationResponseRequest(BaseModel):
 @app.post("/conversations/{conversation_id}/clarification")
 def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest):
     """Respond to a clarification request from the AI.
-    
+
     This endpoint is called when the user responds to an ask_clarification tool call.
     The response is added as a ToolMessage to the conversation history, and the
     conversation is resumed.
     """
     # Validate conversation exists
     get_conversation(conversation_id)
-    
+
     # Persist the clarification response as a user message with tool_call_id
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         message_id = str(uuid.uuid4())
-        
+
         # Store as a special message that will be treated as a tool response
         cursor.execute(
             """
@@ -1385,7 +1420,7 @@ def respond_to_clarification(conversation_id: str, body: ClarificationResponseRe
             ),
         )
         conn.commit()
-        
+
         return {
             "id": message_id,
             "role": "tool",
