@@ -715,7 +715,7 @@ wheels = [
 [[package]]
 name = "deerflow-harness"
 version = "0.1.0"
-source = { git = "https://github.com/hawkli-1994/deer-flow?subdirectory=backend%2Fpackages%2Fharness&rev=main#f9c7aefbf51c8eb9a564beb3bf4348234a405a3d" }
+source = { git = "https://github.com/hawkli-1994/deer-flow?subdirectory=backend%2Fpackages%2Fharness&rev=main#55313fb76466cf365092a3dbbc70d2d0a6fa2a76" }
 dependencies = [
     { name = "agent-client-protocol" },
     { name = "agent-sandbox" },
