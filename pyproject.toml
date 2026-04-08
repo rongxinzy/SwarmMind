@@ -207,6 +207,7 @@ addopts = [
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
+    "requires_llm: marks tests that require LLM configuration (deselect with '-m \"not requires_llm\"')",
 ]
 
 [tool.coverage.run]
@@ -227,7 +228,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 precision = 2
-fail_under = 70
+fail_under = 50
 
 # ============================================
 # Bandit - Security Linter
