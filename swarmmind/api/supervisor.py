@@ -209,6 +209,7 @@ def _cleanup_scanner():
                 cursor = conn.cursor()
 
                 # 1. Auto-reject proposals pending beyond ACTION_TIMEOUT_SECONDS
+                # nosec: B608 - safe, ACTION_TIMEOUT_SECONDS is a constant, not user input
                 cursor.execute(
                     f"""
                     SELECT id, agent_id, description, created_at
