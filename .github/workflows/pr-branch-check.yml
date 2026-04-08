@@ -16,7 +16,7 @@ jobs:
 
           # 允许的分支名模式
           # main, release* - 受保护分支，不应该直接创建PR
-          # feature/*, fix/*, docs/*, refactor/*, test/*, chore/*, perf/*, hotfix/* - 功能分支
+          # feature/*, fix/*, docs/*, refactor/*, test/*, chore/*, perf/*, hotfix/*, codex/* - 功能分支
 
           if [[ "$BRANCH_NAME" =~ ^(main|release.*)$ ]]; then
             echo "❌ ERROR: Branch '$BRANCH_NAME' is a protected branch."
@@ -24,7 +24,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$BRANCH_NAME" =~ ^(feature|fix|docs|refactor|test|chore|perf|hotfix)/[a-z0-9-]+$ ]]; then
+          if [[ "$BRANCH_NAME" =~ ^(feature|fix|docs|refactor|test|chore|perf|hotfix|codex)/[a-z0-9-]+$ ]]; then
             echo "✅ Branch name '$BRANCH_NAME' follows the naming convention."
             exit 0
           fi
@@ -42,11 +42,13 @@ jobs:
           echo "  - chore     - Build/tools/config"
           echo "  - perf      - Performance improvements"
           echo "  - hotfix    - Emergency fixes"
+          echo "  - codex     - Codex-generated branches"
           echo ""
           echo "Examples:"
           echo "  ✅ feature/user-auth"
           echo "  ✅ fix/memory-leak"
           echo "  ✅ docs/api-guide"
+          echo "  ✅ codex/designmd"
           echo ""
           echo "See CONTRIBUTING.md for more details."
           exit 1
