@@ -1,251 +1,651 @@
-# SwarmMind Design System v2.0
+# SwarmMind Design System v3.0
 
-> Status: Canonical design source of truth for `SwarmMind/ui/`
+> Status: Canonical design source of truth for `ui/` and `docs/ui/*`
 > Last updated: 2026-04-08
-> Scope: V1 Supervisor UI, ChatSession + Project Space
-
-## 1. Design Philosophy
-
-### 1.1 Product Character
-
-SwarmMind is a **supervised AI work surface** for exploration, execution, and governance. It is not a generic AI chat shell—it is a control room for human-supervised AI operations.
-
-**Core Identity:**
-- Structured work over casual conversation
-- Operational clarity over brand spectacle
-- Trust and traceability over novelty
-- Light exploration in chat, heavier control in project space
-
-**The SwarmMind Feeling:**
-
-Imagine a **modern mission control center** reimagined through the lens of **premium Japanese stationery**—precise, warm, and purposefully designed. The interface balances operational density with human warmth, like a well-organized engineer's notebook: every element has its place, every color serves a function, and white space is used with intention.
-
-Where consumer AI products feel like playgrounds, SwarmMind feels like a **professional cockpit**—trustworthy, efficient, and quietly sophisticated.
-
-### 1.2 Two Modes, One System
-
-| Mode | Purpose | Visual Character |
-|------|---------|------------------|
-| **ChatSession** | Exploration, drafting, ideation | Lighter shell, softer separation, fast feedback |
-| **Project Space** | Formal execution with governance | Dense information, persistent status, explicit controls |
-
-**Golden Rule:** Chat is for exploration. Project is for execution. They must not look interchangeable.
+> Scope: Workbench, ChatSession, Project Space, Approval and governance surfaces
+> Rule: If implementation conflicts with this file, implementation must be refactored
 
 ---
 
-## 2. Color System
+## 1. Design Intent
 
-### 2.1 Design Tokens
+### 1.1 Product Role
 
-SwarmMind uses a **warm neutral chassis** with semantic accents. Every gray has a subtle warm undertone—closer to Notion's paper warmth than Vercel's cold slate.
+SwarmMind is a supervised AI work surface for exploration, execution, and governance.
+It is not a generic AI chat shell, and it is not project management with a chatbot bolted on.
 
-#### Primary Palette
+The product must always communicate four things:
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `--warm-paper` | `#F7F7F5` | App background, primary canvas |
-| `--warm-ivory` | `#FAFAF8` | Elevated cards, panels |
-| `--warm-sand` | `#E8E6E0` | Secondary surfaces, button backgrounds |
-| `--warm-border` | `#E5E3DD` | Subtle borders, dividers |
-| `--warm-ring` | `#D1CFC8` | Interactive ring shadows |
+- Structured work over casual conversation
+- Human supervision over autonomous spectacle
+- Traceable execution over fuzzy magic
+- Warm operational clarity over cold technical theater
+
+### 1.2 Visual Thesis
+
+The canonical SwarmMind feeling is:
+
+**A calm operations studio drawn on warm engineering paper.**
+
+The interface should feel like a control room designed by people who value notebooks, margin rhythm, and auditability. It should read as precise and trustworthy, but never sterile. It is closer to a premium field manual than a glossy SaaS dashboard.
+
+This means:
+
+- Warm neutral surfaces, never icy blue-gray foundations
+- Clear structural borders, never floating plastic cards everywhere
+- Editorial typography moments for authority, but functional UI text for dense work
+- Strong page hierarchy driven by spacing, rhythm, and containment
+- Status visibility that feels sober and readable, not alarmist
+
+### 1.3 Keywords
+
+The visual language should consistently score high on these keywords:
+
+- Calm
+- Exact
+- Warm
+- Supervised
+- Editorial
+- Intentional
+- Dense but breathable
+
+### 1.4 What Users Should Remember
+
+If a user remembers only one thing about SwarmMind's UI, it should be:
+
+**"This feels like serious AI work happening on beautifully organized paper."**
+
+### 1.5 Modes and Visual Separation
+
+SwarmMind has three visual situations. They are related, but they must not feel interchangeable.
+
+| Surface | Job | Character | Density |
+|---------|-----|-----------|---------|
+| `ChatSession` | Explore, clarify, draft, probe | Softer containment, faster entry, more breathing room around the composer | Medium |
+| `Project Space` | Execute, coordinate, review, track | Stronger chrome, persistent status, more sectional framing | Medium-high |
+| `Governance / Approval` | Pause, decide, unblock, audit | Highest contrast in hierarchy, explicit consequences, minimal decorative detail | High |
+
+### 1.6 Non-Goals
+
+SwarmMind should not become any of the following:
+
+- A playful consumer AI playground
+- A neon futuristic command center
+- A glassmorphism-heavy startup dashboard
+- A generic shadcn demo with warm colors
+- A marketing site aesthetic pasted onto a work product
+
+---
+
+## 2. Visual Theme and Atmosphere
+
+### 2.1 Atmosphere
+
+The overall atmosphere is **warm operational clarity**.
+
+Design reference, in words rather than brands:
+
+- The paper warmth of a premium notebook
+- The crisp containment of industrial control labels
+- The pacing of an editorial layout
+- The restraint of enterprise software that respects the user's attention
+
+### 2.2 Signature Moves
+
+SwarmMind should rely on a few repeatable signature moves rather than many decorative tricks.
+
+#### Signature Move A: Warm Paper Chassis
+
+The app shell is built on warm paper and ivory surfaces, not pure white.
+
+- Primary canvas is slightly warm
+- Elevated surfaces are brighter, not louder
+- Large areas of pure white are reserved for high-focus inputs and specific reading surfaces
+
+#### Signature Move B: Border-First Containment
+
+Borders define structure before shadows do.
+
+- Large surfaces need a clear edge
+- Ring shadows are preferred over soft drop shadows
+- If a surface only exists because of a shadow, the design is wrong
+
+#### Signature Move C: Editorial Headline Moments
+
+The UI is functional first, but it earns selective editorial headline moments.
+
+- Page titles
+- Empty-state titles
+- Approval headlines
+- Major section anchors
+
+These moments can use a serif display face. Dense controls, tables, chips, tabs, and inline metadata should not.
+
+#### Signature Move D: Stateful Warm Accents
+
+Semantic colors should feel desaturated and operational.
+
+- Running is steel blue, not electric blue
+- Approval is ochre, not warning yellow
+- Blocked is terracotta, not saturated red
+- Done is sage, not bright green
+
+#### Signature Move E: Quiet Motion
+
+Motion should explain change, not perform intelligence.
+
+- Streaming is subtle
+- Entry transitions are soft
+- Sticky elements breathe, they do not float theatrically
+
+### 2.3 Background Strategy
+
+Backgrounds should create structure, not spectacle.
+
+Allowed:
+
+- Gentle tonal separation between shell and surface
+- Soft vertical gradients for sticky zones
+- Very subtle paper-noise or grain only if it is nearly imperceptible
+
+Forbidden:
+
+- Loud mesh gradients
+- Decorative aurora backgrounds
+- Animated particle fields
+- Purple-on-white startup gradients
+
+### 2.4 Dark Mode Philosophy
+
+Dark mode is not an inversion. It should feel like **charcoal paper and neutral ink**.
+
+Dark mode must preserve the same product personality:
+
+- Warm charcoal instead of black glass
+- Ivory text instead of stark white
+- Strong containment through borders and tonal separation
+- Accents remain muted and supervised
+
+---
+
+## 3. Color Architecture
+
+### 3.1 Core Palette
+
+#### Chassis Neutrals
+
+| Token | Hex | Role |
+|-------|-----|------|
+| `--warm-paper` | `#F7F7F5` | Primary app background |
+| `--warm-ivory` | `#FAFAF8` | Elevated panels and cards |
+| `--warm-mist` | `#F0EEEA` | Utility surfaces and soft separators |
+| `--warm-sand` | `#E8E6E0` | Secondary controls and tactile surfaces |
+| `--warm-border` | `#E5E3DD` | Standard borders |
+| `--warm-ring` | `#D1CFC8` | Ring shadow and interactive containment |
 
 #### Neutral Ladder
 
-| Token | Hex | Usage |
-|-------|-----|-------|
+| Token | Hex | Role |
+|-------|-----|------|
 | `--neutral-50` | `#FAFAF8` | Lightest surface |
-| `--neutral-100` | `#F7F7F5` | Primary background (warm paper) |
-| `--neutral-150` | `#F0EEEA` | Elevated utility tint |
-| `--neutral-200` | `#E8E6E0` | Secondary panels |
-| `--neutral-300` | `#D8D6D0` | Low-contrast borders |
-| `--neutral-500` | `#8A8882` | Muted text, placeholders |
+| `--neutral-100` | `#F7F7F5` | Base canvas |
+| `--neutral-150` | `#F0EEEA` | Muted fill |
+| `--neutral-200` | `#E8E6E0` | Secondary surface |
+| `--neutral-300` | `#D8D6D0` | Visible border / quiet dividers |
+| `--neutral-400` | `#B8B6B0` | Disabled text and icons |
+| `--neutral-500` | `#8A8882` | Tertiary text |
+| `--neutral-600` | `#6A6862` | Secondary text |
 | `--neutral-700` | `#5A5852` | Strong secondary text |
-| `--neutral-900` | `#1E1E1C` | Primary text (near black) |
+| `--neutral-800` | `#3A3832` | Dense labels, table emphasis |
+| `--neutral-900` | `#1E1E1C` | Primary text |
 
-#### Semantic Accents (Desaturated)
+#### Semantic Signals
 
-| State | Color | Hex | Usage |
-|-------|-------|-----|-------|
-| **Running** | Steel Blue | `#5A7A96` | Active processes, loading states |
-| **Approval** | Ochre/Amber | `#B8956F` | Pending approvals, warnings |
-| **Blocked** | Terracotta | `#A67C6B` | Errors, blocked states |
-| **Done** | Sage | `#7A9A7E` | Success, completed states |
-| **Draft** | Warm Gray | `#9A9894` | Draft states, inactive |
-| **Chat** | Gray-Violet | `#8A8298` | Exploratory states (subtle use) |
+| State | Token | Hex | Role |
+|-------|-------|-----|------|
+| Running | `--status-running` | `#5A7A96` | Active process, streaming, current execution |
+| Approval | `--status-approval` | `#B8956F` | Pending decision, caution, handoff |
+| Blocked | `--status-blocked` | `#A67C6B` | Failure, blocked execution, invalid state |
+| Done | `--status-done` | `#7A9A7E` | Success, completion, healthy resolved state |
+| Draft | `--status-draft` | `#9A9894` | Inactive, placeholder, not-started |
+| Chat | `--status-chat` | `#8A8298` | Exploratory states only, sparing use |
 
-**Accent Rule:** If a semantic color looks like a Bootstrap default, it is too pure. Desaturate by 20-30%.
+#### Semantic Backgrounds
 
-### 2.2 Usage Rules
+| Token | Hex |
+|-------|-----|
+| `--status-running-bg` | `#EEF1F4` |
+| `--status-running-border` | `#D5DCE3` |
+| `--status-approval-bg` | `#F5F0EA` |
+| `--status-approval-border` | `#E5DDD3` |
+| `--status-blocked-bg` | `#F3EEEB` |
+| `--status-blocked-border` | `#E3D9D3` |
+| `--status-done-bg` | `#EDF2EE` |
+| `--status-done-border` | `#D5E0D7` |
+| `--status-chat-bg` | `#F0EEF3` |
+| `--status-chat-border` | `#E0DCE6` |
+| `--status-draft-bg` | `#F2F2F0` |
+| `--status-draft-border` | `#E5E5E3` |
 
-#### Surface Hierarchy
+### 3.2 Color Roles
 
-```
+Use color by responsibility, not by decoration.
+
+| Role | Rule |
+|------|------|
+| Chassis color | Defines canvas and containment |
+| Ink color | Defines reading hierarchy |
+| Semantic color | Defines state and consequence |
+| Accent color | Reserved for narrow high-signal moments |
+
+Operational rule:
+
+- Any local area should usually contain at most one semantic color family
+- If multiple semantic colors appear in the same card or row, hierarchy is likely broken
+
+### 3.3 Surface Hierarchy
+
+```text
 App Background (#F7F7F5)
-    └── Primary Panel (#FAFAF8) — slightly brighter, 1px border
-        └── Secondary Panel (#F0EEEA) — soft warm gray
-            └── Elevated Utility (#FFFFFF) — pure white only for high-focus inputs
+    -> Primary Surface (#FAFAF8)
+        -> Utility Surface (#F0EEEA)
+            -> High-Focus Input (#FFFFFF)
 ```
 
-#### Anti-Gloss Principles
+Rules:
 
-- **Border first:** Use `1px solid #E5E3DD` to define surfaces. Shadow supports edges, never replaces them.
-- **No borderless large-shadow cards:** This creates cheap plastic sheen—off-brand for SwarmMind.
-- **Matte and crisp:** Avoid diffused shadows. Blur radius stays small.
+- Large layout regions should differ mainly by tone and border
+- White should feel earned, not default
+- Secondary surfaces should not become a patchwork of many grays
 
-#### Dark Mode Mapping
+### 3.4 Dark Mode Mapping
 
-Dark mode is **not** a literal inversion. Target feeling:
+| Light Role | Light | Dark |
+|------------|-------|------|
+| App background | `#F7F7F5` | `#1A1A18` |
+| Primary surface | `#FAFAF8` | `#242422` |
+| Utility surface | `#F0EEEA` | `#2C2C29` |
+| Primary text | `#1E1E1C` | `#E8E6E0` |
+| Secondary text | `#5A5852` | `#B7B4AE` |
+| Standard border | `#E5E3DD` | `#3A3935` |
 
-- More **charcoal-paper** than black glass
-- More **neutral ink** than brown tint
-- Still calm and supervised, never neon
+Dark mode rules:
 
-| Light | Dark |
-|-------|------|
-| `#F7F7F5` | `#1A1A18` (warm charcoal) |
-| `#FAFAF8` | `#242422` (elevated surface) |
-| `#1E1E1C` | `#E8E6E0` (primary text) |
+- Do not increase saturation in dark mode
+- Do not use neon signal colors
+- Do not switch to blue-gray as the base chassis
+
+### 3.5 Color Budget
+
+Per local view, keep the budget disciplined:
+
+- One chassis family
+- One text ladder
+- One active semantic family
+- Optional one accent family for CTA emphasis
+
+If a page needs many colors to feel organized, its information architecture is failing.
+
+### 3.6 Forbidden Color Habits
+
+- Cool gray as base neutral
+- Bright cyan, lime, or saturated magenta signals
+- Generic purple gradients
+- Pure black backgrounds on product pages
+- Pure white full-page canvases
 
 ---
 
-## 3. Typography
+## 4. Typography
 
-### 3.1 Font Families
+### 4.1 Canonical Font Stack
 
-**Canonical V2 Stack:**
+SwarmMind uses a split system:
 
-| Role | Font | Fallback |
-|------|------|----------|
-| Display / Headlines | `Geist` | `Inter`, `system-ui` |
-| Body / UI | `Geist` | `Inter`, `system-ui` |
-| Monospace | `Geist Mono` | `JetBrains Mono`, `Consolas` |
+| Role | Primary | Fallback |
+|------|---------|----------|
+| Display / Editorial heading | `Newsreader` | `Source Han Serif SC`, `Noto Serif SC`, `Georgia`, serif |
+| Body / UI / Navigation | `Geist` | `PingFang SC`, `Hiragino Sans GB`, `Noto Sans SC`, `Microsoft YaHei`, sans-serif |
+| Monospace | `Geist Mono` | `SFMono-Regular`, `IBM Plex Mono`, `Menlo`, `Consolas`, monospace |
 
-**Rationale:** Geist provides a neutral, modern, operational feel that fits high-density product surfaces better than display-forward alternatives.
+Rationale:
 
-### 3.2 Type Scale
+- `Newsreader` gives SwarmMind a distinctive editorial authority without becoming theatrical
+- `Geist` keeps dense controls rational and contemporary
+- `Geist Mono` supports code, logs, and run metadata
 
-| Role | Size | Line Height | Weight | Tracking | Usage |
-|------|------|-------------|--------|----------|-------|
-| **Display** | 36px | 1.20 | 600 | -0.02em | Page titles |
-| **H1** | 28px | 1.30 | 600 | -0.02em | Major sections |
-| **H2** | 22px | 1.30 | 600 | -0.01em | Section headers |
-| **H3** | 18px | 1.40 | 500 | 0 | Surface titles |
-| **Body Large** | 16px | 1.60 | 400 | 0 | Primary content |
-| **Body** | 14px | 1.60 | 400 | 0 | Standard text |
-| **Body Small** | 13px | 1.50 | 400 | 0 | Dense text |
-| **Caption** | 12px | 1.40 | 500 | 0.02em | Metadata |
-| **Label** | 11px | 1.20 | 500 | 0.04em | Tags, badges |
-| **Code** | 13px | 1.60 | 400 | -0.01em | Monospace content |
+### 4.2 Where Serif Is Allowed
 
-### 3.3 Typography Rules
+Serif is a highlight, not a blanket rule.
 
-**Headings:**
-- Tighten tracking slightly (`-0.02em`) for page titles
-- Near-neutral tracking (`-0.01em`) for section titles
-- No decorative all-caps except small metadata labels
-- Utility-oriented, never oversized hero typography
+Allowed:
 
-**Body Text:**
-- Default tracking, do not squeeze for style
-- Relaxed line-height (1.50–1.60) for reading comfort
-- High contrast on all neutral surfaces
+- Page titles
+- Empty-state titles
+- Major section anchors
+- Approval decision headlines
+- Short dashboard stat headlines
 
-**Small Text (11-12px):**
-- Add tracking (`0.02em–0.08em`) for readability
-- Uppercase labels use positive tracking
+Not allowed:
+
+- Dense nav items
+- Table headers in data-heavy grids
+- Form labels
+- Chips, badges, tabs, inline controls
+- Paragraph-heavy assistant output by default
+
+### 4.3 Type Scale
+
+| Role | Font | Size | Line Height | Weight | Tracking | Usage |
+|------|------|------|-------------|--------|----------|-------|
+| Display | Serif | 40px | 1.15 | 500 | -0.02em | Main page title |
+| H1 | Serif | 32px | 1.20 | 500 | -0.02em | Major section title |
+| H2 | Serif | 24px | 1.25 | 500 | -0.01em | Section anchor |
+| H3 | Sans | 20px | 1.35 | 600 | -0.01em | Surface title |
+| Body Large | Sans | 16px | 1.65 | 400 | 0 | Intro copy, descriptive text |
+| Body | Sans | 14px | 1.60 | 400 | 0 | Standard product text |
+| Body Small | Sans | 13px | 1.55 | 400 | 0 | Dense UI text |
+| Caption | Sans | 12px | 1.45 | 500 | 0.02em | Metadata |
+| Label | Sans | 11px | 1.30 | 500 | 0.05em | Badges, field labels |
+| Micro | Sans | 10px | 1.30 | 500 | 0.06em | Timestamp, tiny utilities |
+| Code | Mono | 13px | 1.60 | 400 | -0.01em | Code and logs |
+
+### 4.4 Typography Rules
+
+#### Headings
+
+- Headings should feel authored, not generated
+- Tight tracking is allowed on titles
+- Headlines should usually be short and direct
+- Avoid oversized hero type in product surfaces
+
+#### Body Copy
+
+- Reading comfort matters more than compression
+- 14px with 1.60 line height is the default product reading rhythm
+- 13px is allowed in dense metadata zones, but not for primary explanations
+
+#### Labels and Metadata
+
+- Small labels should use positive tracking
+- Uppercase is allowed only for small metadata or system labeling
+- If everything becomes uppercase, the UI loses calmness
+
+### 4.5 Bilingual Rules
+
+SwarmMind contains Chinese and English content. The system must handle both cleanly.
+
+#### Rhythm and Spacing
+
+| Element | English | Chinese | Notes |
+|---------|---------|---------|-------|
+| Body line height | 1.60 | 1.75–1.80 | CJK characters need more breathing room |
+| Heading line height | 1.15–1.25 | 1.30–1.40 | Prevent stacked characters from touching |
+| Paragraph spacing | 1em | 1.2em | Visual separation for dense CJK text |
+
+#### Typography Rules
+
+- **Do not force all-uppercase on Chinese labels** — it is illegible and looks broken
+- **Mixed-language headings** should prefer sans if the serif rendering becomes inconsistent
+- **English technical terms** may remain inline when they are product vocabulary, for example `ChatSession`, `Project`, `Run`, `Artifact`
+- **Avoid inline English words in Chinese body text** unless they are established product terms
+
+#### Punctuation and Spacing
+
+| Situation | Rule | Example |
+|-----------|------|---------|
+| Chinese text with English | Add hair space around English words | 启动 ChatSession 以开始工作 |
+| Numbers in Chinese | Use full-width punctuation before/after | 共 15 个项目 |
+| Parentheses | Prefer full-width `（）` for Chinese context | （参见上文） |
+| Colons in labels | Use full-width `：` | 状态：运行中 |
+
+#### Font Stack Adjustments for Chinese
+
+```css
+/* For Chinese-heavy content, slightly loosen the rhythm */
+.chinese-body {
+  font-family: "Geist", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+  line-height: 1.75;
+  letter-spacing: 0.02em;  /* Slight tracking for CJK readability */
+}
+
+/* Headings with Chinese should use tighter weight */
+.chinese-heading {
+  font-weight: 600;  /* Avoid 700+ which looks heavy in CJK */
+}
+```
+
+#### Character Counts for Readability
+
+| Context | English | Chinese | Max Width |
+|---------|---------|---------|-----------|
+| Optimal line length | 45–75 chars | 25–35 chars | ~680px |
+| Comfortable reading | Up to 90 chars | Up to 40 chars | ~800px |
+| Dense UI labels | 2–4 words | 2–6 characters | — |
 
 ---
 
-## 4. Spacing & Layout
+## 5. Layout, Spacing, and Density
 
-### 4.1 Spacing Scale (4px Base)
+### 5.1 Shell Blueprint
 
-```
-4px   — Tightest
-8px   — Tight
-12px  — Compact
-16px  — Standard
-20px  — Comfortable
-24px  — Spacious
-32px  — Generous
-40px  — Section gaps
-48px  — Major sections
+Desktop web is the baseline.
+
+```text
++------------------------------------------------------------------------------------------------------------------+
+| Left Navigation 264-288 | Main Content min 720 | Context Rail 320-360 |
++------------------------------------------------------------------------------------------------------------------+
 ```
 
-### 4.2 Surface Padding
+Recommended shell behavior:
+
+- Left navigation is persistent
+- Top bar stays compact and useful
+- Main content carries the current task
+- Right rail holds context, run state, approvals, artifacts, or detail panels
+
+### 5.2 Spacing Scale
+
+SwarmMind uses a 4px base.
+
+| Token | Size | Usage |
+|------|------|-------|
+| `space-1` | 4px | Tightest alignment |
+| `space-2` | 8px | Inline gaps |
+| `space-3` | 12px | Compact grouping |
+| `space-4` | 16px | Standard padding and gaps |
+| `space-5` | 20px | Comfortable grouping |
+| `space-6` | 24px | Spacious panel padding |
+| `space-8` | 32px | Section gap |
+| `space-10` | 40px | Large section break |
+| `space-12` | 48px | Page-level break |
+
+### 5.3 Density Bands
+
+| Context | Density | Notes |
+|---------|---------|------|
+| Workbench | Medium | Scanable, summary-forward |
+| ChatSession | Medium | Composer-first, readable stream |
+| Project Space | Medium-high | Persistent context and execution status |
+| Approval / Audit | High | Dense facts, explicit consequence framing |
+
+### 5.4 Padding Rules
 
 | Element | Padding |
 |---------|---------|
-| Small controls | 8–12px |
-| Standard card / panel | 16px |
-| Large panel / composer | 20–24px |
-| Message bubbles | 16–24px horizontal, 12–20px vertical |
+| Small button | `8px 12px` |
+| Standard button | `10px 14px` |
+| Card / panel | `16px` |
+| Elevated panel | `20px` |
+| Large composer | `20px 20px 16px` |
+| Table cell | `10px 12px` |
 
-### 4.3 Vertical Rhythm
+### 5.5 Rhythm Rules
 
-| Context | Gap |
-|---------|-----|
-| Tight clusters (same block) | 8–12px |
-| Between semantic blocks | 16–20px |
-| Major page sections | 24–32px |
+Use spacing to express semantic structure.
 
-### 4.4 Layout Principles
+- Inside a semantic block: `8px` to `12px`
+- Between related blocks: `16px` to `20px`
+- Between major sections: `24px` to `32px`
+- Between page zones: `32px` to `48px`
 
-**App Shell:**
-- Fixed sidebar for navigation
-- Sticky top header where needed
-- Central work surface
-- Optional right-side contextual area
+If a surface needs many dividers because spacing is not carrying hierarchy, spacing is wrong.
 
-**Layout over Cards:**
-- Default to layout first
-- Cards only for semantic containers: settings groups, state summaries, message bubbles, composers, artifacts
-- Do not solve composition problems by wrapping everything in cards
+### 5.6 Desktop-First Responsive Policy
+
+Current product commitment is desktop web, not mobile product design.
+
+Rules:
+
+- Support laptop widths cleanly
+- On narrow windows, collapse secondary rails before damaging the main work area
+- Do not introduce mobile-only navigation patterns as a product promise
+- Small-screen tolerance is allowed; mobile-first redesign is not in scope
 
 ---
 
-## 5. Components
+## 6. Surfaces, Borders, Radius, and Depth
 
-### 5.1 Buttons
+### 6.1 Surface Levels
 
-**Primary Button (Warm Sand)**
+| Level | Treatment | Usage |
+|-------|-----------|------|
+| `0 Flat` | No shadow, no raised border | Base canvas |
+| `1 Contained` | `1px solid var(--warm-border)` | Standard sections and cards |
+| `2 Ring` | `0 0 0 1px var(--warm-ring)` | Interactive emphasis |
+| `3 Whisper` | `0 4px 12px rgba(0,0,0,0.04)` | Elevated card or floating utility |
+| `4 Sticky` | `0 -2px 20px rgba(0,0,0,0.06)` | Sticky composer / sticky bars |
+
+### 6.2 Shadow Philosophy
+
+- Border defines the object
+- Shadow supports, never replaces, containment
+- Most surfaces should feel matte
+- Large blurred shadows read as cheap gloss and are off-brand
+
+### 6.3 Border Radius Scale
+
+| Element | Radius |
+|---------|--------|
+| Inline small control | 8px |
+| Button / input | 10px to 12px |
+| Standard card | 14px |
+| Large panel | 16px to 18px |
+| Composer / prominent container | 20px to 24px |
+
+Rule:
+
+- Radius communicates hierarchy, not softness for its own sake
+- If everything is equally rounded, the UI loses structure
+
+### 6.4 Texture Rules
+
+Allowed:
+
+- Tonal separation
+- Ring shadows
+- Very faint divider lines
+- Extremely subtle grain if it behaves like paper texture, not noise art
+
+Forbidden:
+
+- Glassmorphism as a product identity
+- Frosted everything
+- Multilayer heavy shadow stacks
+- Ornamental borders that fight content
+
+---
+
+## 7. Component Grammar
+
+### 7.1 Buttons
+
+#### Primary Action
+
+Default primary action should feel compact, deliberate, and trustworthy.
+
+```css
+background: #1E1E1C;
+color: #FAFAF8;
+border: 1px solid #1E1E1C;
+border-radius: 12px;
+padding: 10px 14px;
+```
+
+Usage:
+
+- Highest-priority action in a local region
+- Usually one per panel header or composer zone
+
+#### Secondary Action
+
 ```css
 background: #E8E6E0;
 color: #1E1E1C;
-padding: 8px 16px;
-border-radius: 10px;
 border: 1px solid #D8D6D0;
-/* Ring shadow on hover */
+border-radius: 12px;
+padding: 10px 14px;
 box-shadow: 0 0 0 1px #D1CFC8;
 ```
 
-**Secondary Button (Ghost)**
+Usage:
+
+- Safe default action
+- Most toolbar and card-level actions
+
+#### Ghost Action
+
 ```css
 background: transparent;
 color: #5A5852;
-padding: 8px 16px;
-border-radius: 10px;
 border: 1px solid #E5E3DD;
-/* Hover: subtle fill */
+border-radius: 12px;
+padding: 10px 14px;
 ```
 
-**Brand Button (Caution: Sparingly)**
+Usage:
+
+- Secondary controls
+- Table or row actions
+- Quiet utility actions
+
+Button rules:
+
+- Keep button copy short and operational
+- Icon-only buttons must preserve a 44px touch target
+- Avoid chromatic CTA buttons unless the flow truly needs extra urgency
+
+### 7.2 Inputs and Composer
+
+Text input and composer are high-trust surfaces.
+
 ```css
-background: #5A7A96;  /* Steel blue variant */
-color: #FAFAF8;
-padding: 8px 16px;
-border-radius: 10px;
-/* Use only for primary CTAs */
+background: #FFFFFF;
+color: #1E1E1C;
+border: 1px solid #D8D6D0;
+border-radius: 12px;
+padding: 10px 14px;
 ```
 
-**Button Rules:**
-- Compact and decisive primary actions
-- Secondary buttons must not compete visually
-- Icon-only buttons: minimum 44px touch target
+Focus state:
 
-### 5.2 Cards & Panels
+```css
+border-color: #C8C6C0;
+box-shadow:
+  0 0 0 3px rgba(90, 122, 150, 0.10),
+  0 4px 20px rgba(0, 0, 0, 0.06);
+```
 
-**Standard Card:**
+Composer rules:
+
+- The composer is the anchor of ChatSession
+- Model picker, status, and send action belong in the composer zone
+- A sticky composer may use a soft vertical gradient and sticky shadow, but never a theatrical floating tray
+
+### 7.3 Cards and Panels
+
+Standard card:
+
 ```css
 background: #FAFAF8;
 border: 1px solid #E5E3DD;
@@ -253,318 +653,334 @@ border-radius: 14px;
 padding: 16px;
 ```
 
-**Elevated Card:**
+Elevated panel:
+
 ```css
 background: #FFFFFF;
 border: 1px solid #E5E3DD;
-border-radius: 16px;
-box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+border-radius: 18px;
 padding: 20px;
+box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 ```
 
-**Panel Hierarchy:**
-- Signal hierarchy through spacing and border strength, not color
-- Avoid glassmorphism and heavy blur as visual identity
-- Pinned bars may use low-opacity blur for separation
+Rules:
 
-### 5.3 Border Radius Scale
+- Solve layout with structure before adding more cards
+- Do not wrap every object in its own bordered box
+- Panels should be grouped by meaning, not by implementation convenience
 
-| Element | Radius |
-|---------|--------|
-| Inputs, buttons | 10–12px |
-| Standard cards | 14–16px |
-| Large floating panels | 18–20px |
-| Message bubbles | 20–24px |
-| Composer | 20–24px |
+### 7.4 Badges and Status Pills
 
-**Rule:** Radius expresses hierarchy, not style-for-style's-sake.
+Status pills are functional metadata, not decoration.
 
-### 5.4 Input Fields
+Rules:
 
-**Text Input:**
-```css
-background: #FFFFFF;
-border: 1px solid #D8D6D0;
-border-radius: 12px;
-padding: 10px 14px;
-color: #1E1E1C;
-/* Focus state */
-border-color: #5A7A96;
-box-shadow: 0 0 0 3px rgba(90,122,150,0.1);
-```
+- Use short labels
+- Match pill text, border, and background within one semantic family
+- Avoid rainbow clusters
+- In a tight area, one semantic pill is usually enough
 
-**Focus State Rules:**
-- Never rely on default browser blue outline
-- One calm primary cue + one secondary cue
-- Stay within warm-neutral system
-- Focus should feel clearer, not louder
+### 7.5 Tabs, Lists, and Tables
 
-### 5.5 Chips & Badges
+#### Tabs
 
-- Use for state and scope
-- Keep text short (1–2 words)
-- Avoid rainbow badge clusters
-- Maximum one semantic color per area
+- Tabs should feel like structural switches, not playful chips
+- Default to underline, border, or soft fill distinctions
+- Avoid over-rounded segmented-control aesthetics unless the flow is conversational
 
-### 5.6 Code Blocks
+#### Lists
 
-Code blocks are core texture surfaces—they must look engineered, not like generic text cards.
+- Prefer row dividers over nested cards
+- Secondary metadata should align consistently
+- Hover should clarify affordance, not repaint the whole row
+
+#### Tables
+
+- Use them when comparability matters
+- Header typography stays sans
+- Sorting and filtering controls must feel quieter than the data itself
+
+### 7.6 Code Blocks and Logs
+
+Code blocks are engineered texture surfaces.
 
 ```css
-/* Container */
-background: #1E1E1E;  /* Dark neutral inversion */
+background: #1A1A1A;
+border: 1px solid #282828;
 border-radius: 10px;
 overflow: hidden;
-
-/* Header */
-background: #2A2A2A;
-padding: 10px 16px;
-border-bottom: 1px solid #3A3A3A;
-
-/* Code area */
-font-family: 'Geist Mono', monospace;
-font-size: 13px;
-line-height: 1.60;
-padding: 16px;
 ```
 
-**Code Block Rules:**
-- Background: Dark neutral (`#1E1E1E`) or cool `neutral-150`
-- Typography: `Geist Mono`, 13px, 1.5 line-height
-- Header: 32–36px height, language label (11px uppercase)
-- Syntax highlighting: Low-saturation, cold-neutral (no neon themes)
-- Radius: 8–10px (engineered, not bubbly)
+Header:
+
+```css
+background: #141414;
+border-bottom: 1px solid rgba(255,255,255,0.05);
+min-height: 36px;
+padding: 0 14px;
+font-family: "Geist Mono", monospace;
+font-size: 10px;
+letter-spacing: 0.1em;
+text-transform: uppercase;
+```
+
+Code rules:
+
+- Low-saturation syntax only
+- No neon themes
+- Body line-height stays around `1.60`
+- Action buttons remain compact and quiet
+
+### 7.7 Empty, Loading, and Error States
+
+#### Empty State
+
+- Compact
+- Warm
+- One clear next step
+- No giant hero illustration inside product work surfaces
+
+#### Loading State
+
+- Prefer skeletons or localized progress indicators
+- Avoid full-page loading theater when only one panel is changing
+
+#### Error State
+
+- Explain what failed
+- Explain what the user can do next
+- Provide retry or back-out path when possible
+- Avoid vague copy like "something went wrong"
 
 ---
 
-## 6. Elevation & Depth
+## 8. Motion
 
-### 6.1 Shadow System
+### 8.1 Allowed Motion
 
-| Level | Treatment | Use Case |
-|-------|-----------|----------|
-| **Flat (0)** | No shadow, no border | Background, inline text |
-| **Contained (1)** | `1px solid #E5E3DD` | Standard cards, sections |
-| **Ring (2)** | `0 0 0 1px #D1CFC8` | Interactive cards, buttons |
-| **Whisper (3)** | `0 4px 12px rgba(0,0,0,0.04)` | Elevated cards |
-| **Sticky (4)** | `0 -2px 20px rgba(0,0,0,0.06)` | Sticky composer |
+- Fade and slight translate on new content
+- Hover and focus transitions
+- Streaming indicators with restrained amplitude
+- Sticky composer settling
+- Accordion expand/collapse with clear spatial logic
 
-### 6.2 Shadow Philosophy
+### 8.2 Forbidden Motion
 
-- Most surfaces: very soft or no visible shadow
-- Border defines the surface; shadow only supports
-- No diffused shadows—blur radius stays small
-- Matte and crisp, never consumer-product gloss
+- Decorative looping backgrounds
+- Overproduced AI-themed motion
+- Large parallax scenes
+- Multi-stage reveal choreography inside dense work surfaces
+- Motion that competes with reading or typing
 
-### 6.3 Micro-Depth Tools
-
-**Allowed:**
-- Low-contrast border
-- Subtle tonal separation between stacked neutrals
-- One restrained shadow
-- Selective `backdrop-blur` on sticky surfaces
-
-**Forbidden:**
-- Glassmorphism as page identity
-- Frosted panels everywhere
-- Dark heavy shadow stacks
-- Blur used only for decoration
-
----
-
-## 7. Motion
-
-### 7.1 Allowed Motion
-
-SwarmMind allows **small, breathable motion**—not attention-seeking motion.
-
-**Allowed:**
-- Soft fade-in on entering content (180–260ms)
-- Subtle translateY for new messages (8–16px)
-- Hover and focus transitions (120–180ms)
-- Lightweight streaming indicators
-- Controlled sticky surface transitions
-- Low-amplitude accordion motion
-
-### 7.2 Forbidden Motion
-
-- Decorative looping background animation
-- Large parallax or scene-level motion
-- Dramatic multi-stage entrance choreography
-- Motion used only to signal "AI-ness"
-- Motion competing with text input or status reading
-
-### 7.3 Timing Rules
+### 8.3 Timing
 
 | Type | Duration |
 |------|----------|
-| Micro transitions | 120–180ms |
-| Standard content | 180–260ms |
-| Page-level | 300–400ms |
+| Micro interaction | `120ms` to `180ms` |
+| Standard surface transition | `180ms` to `260ms` |
+| Page-level shift | `280ms` to `360ms` |
 
-**Rule:** Only one "strong" motion event visible at a time in a local region.
+### 8.4 Easing Functions
 
-### 7.4 Motion Purpose Test
+Use standard easing curves for consistent motion personality:
 
-Every animation must answer one of:
+| Name | Curve | Usage |
+|------|-------|-------|
+| `ease-standard` | `cubic-bezier(0.4, 0, 0.2, 1)` | Default for most transitions — enters with slight deceleration |
+| `ease-decelerate` | `cubic-bezier(0, 0, 0.2, 1)` | Elements entering the view — soft arrival |
+| `ease-accelerate` | `cubic-bezier(0.4, 0, 1, 1)` | Elements exiting — quick departure, less attention |
+| `ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Playful moments only — toggle switches, celebratory feedback |
+
+Rules:
+
+- Prefer `ease-standard` for 80% of transitions
+- Avoid `ease-spring` in dense operational surfaces
+- Never use linear easing for UI motion — it feels mechanical
+
+### 8.4 Motion Test
+
+Every animation must answer at least one of these:
+
 - What changed?
 - Where did it go?
 - What should I notice?
 
-If it answers none, cut it.
+If it answers none, remove it.
 
 ---
 
-## 8. ChatSession Specific Rules
+## 9. Page-Specific Rules
 
-### 8.1 Job of the Page
+### 9.1 Workbench
 
-The chat page is a **lightweight exploratory work surface**. Its primary job is helping users start work quickly.
+Workbench is not a marketing homepage.
 
-**Not:**
-- A consumer AI playground
-- A mode gallery
-- A prompt template showcase
-- A brand statement page
+Its job:
 
-### 8.2 Visual Hierarchy
+- Surface what needs attention
+- Show active work and recent work
+- Provide immediate entry into `ChatSession` or `Project`
 
-1. Input / composer
-2. Active conversation content
-3. Current execution state
-4. Optional starter prompts
+Rules:
+
+- No hero section behavior
+- Summary cards should stay utilitarian
+- Important counts, status, and recent context should be glanceable
+
+### 9.2 ChatSession
+
+ChatSession is the lightweight exploratory work surface.
+
+#### Hierarchy
+
+The eye should land in this order:
+
+1. Composer
+2. Current conversation content
+3. Execution status
+4. Starter prompts or guidance
 5. Secondary controls
 
-**Rule:** If the eye lands on anything before the composer in an empty chat, hierarchy is wrong.
+#### Empty State
 
-### 8.3 Empty State
+- One compact title
+- One line of explanation
+- Visible composer
+- At most 2 to 4 starter prompts
+- No theatrical launch-screen behavior
 
-- Compact and warm, not theatrical
-- One restrained monochrome icon
-- Short title + one-line explanation
-- Visible primary composer
-- 2–4 starter prompts maximum
-- Warmth from whitespace, type rhythm, soft neutrals
+#### Message Stream
 
-**Avoid:**
-- Oversized intro blocks
-- Large decorative hero treatment
-- Multiple competing callouts
+- Optimize for reading, not bubble ornament
+- Assistant replies should feel like annotated working notes
+- Long answers should flow as continuous content
+- Bubble styling should stay quiet
 
-### 8.4 Composer Design
+### 9.3 Project Space
 
-The composer is the **anchor of the page**:
+Project Space is a formal execution surface.
 
-- Remains visible while reading history
-- Reads as primary working surface
-- Status and model controls belong to composer region
-- Controls beneath textarea feel secondary
-- Sticky separation: subtle warm tint + restrained shadow
+Rules:
 
-**Focus State:**
-```css
-border-color: #C8C6C0;
-box-shadow: 0 0 0 3px rgba(90,122,150,0.08),
-            0 4px 20px rgba(0,0,0,0.06);
-```
+- Status must remain visible without hunting
+- Section boundaries are stronger than in ChatSession
+- Artifacts, runs, approvals, and audit context should be reachable from the current view
+- Denser layouts are acceptable, but they must remain breathable
 
-### 8.5 Message Stream
+Persistent elements:
 
-- Optimize for readability over ornament
-- Left/right alignment is enough
-- Markdown rhythm matters more than bubble decoration
-- New message motion: subtle (translateY 8px, fade)
-- Assistant replies: annotated document feel, not chat toy
-- Long answers: continuous content, not stacked decorated bubbles
+- Project header
+- Current project status
+- Secondary navigation
+- Context or governance rail where needed
 
-### 8.6 Status States
+### 9.4 Approval and Governance Surfaces
 
-**Required:**
-- Model loading
-- Conversation loading
-- Streaming
-- Success / completed
-- Failed with retry path
-- No available model
+Approval moments are explicit pauses, not decorative banners.
 
-**Rule:** Every error state tells the user what they can do next.
+Rules:
+
+- Present consequence summary first
+- Show requested action second
+- Offer one clear primary decision path
+- Show safe alternative or cancel path
+- Highlight risk through hierarchy and wording before using color
+
+Governance surfaces should look stricter, not louder.
 
 ---
 
-## 9. Project Space Specific Rules
-
-### 9.1 Visual Character
-
-- More formal structure
-- Denser information
-- Persistent status visibility
-- Explicit governance surfaces
-- Stronger page chrome and sectional framing
-
-### 9.2 Information Density
-
-- Medium-high density
-- Efficient, not cramped
-- Status badges visible at glance
-- Approval workflows explicit
-- Artifacts and audit trails accessible
-
----
-
-## 10. Iconography
+## 10. Iconography and Illustrative Detail
 
 ### 10.1 Icon Rules
 
-- Default to linear icons with restrained geometry
-- Consistent `1.5px` stroke feel across product
-- Corners and joins aligned with Geist's rational skeleton
-- Monochrome by default; state color only for meaning
-- Do not mix unrelated icon families
+- Default to linear icons
+- Target a `1.5px` stroke feel
+- Corners should feel consistent with the rest of the type system
+- Monochrome by default
+- State color only when the icon conveys a real semantic state
 
-**Test:** If an icon looks softer/rounder than surrounding type, it is wrong.
+### 10.2 Recommended Set
 
-### 10.2 Lucide Icons (Recommended)
+SwarmMind uses `lucide-react` unless there is a strong reason not to.
 
-SwarmMind uses Lucide icons for consistency:
-- `lucide-react` for React components
-- Stroke width: 1.5px default
-- Size: 16px (small), 20px (default), 24px (large)
+Standard sizes:
 
----
+- 16px for compact metadata
+- 18px to 20px for common controls
+- 24px for larger empty-state or header contexts
 
-## 11. Accessibility
+### 10.3 Illustration Policy
 
-### 11.1 Non-Negotiable
+Illustration is not a primary identity layer for product surfaces.
 
-- Touch targets: 44px minimum
-- Keyboard-reachable controls
-- Visible focus states
-- Semantic headings and landmarks
-- Status changes readable without color alone
-- High contrast on all neutral surfaces
+Allowed:
 
-### 11.2 Chat Specific
+- Sparse monochrome or two-tone empty-state marks
+- Small schematic diagrams in docs or marketing surfaces
 
-- Composer controls keyboard-usable
-- Status text concise and persistent
-- Hover-only affordances have keyboard fallback
+Forbidden:
+
+- Playful mascot systems in core work surfaces
+- Decorative product illustrations that compete with task content
 
 ---
 
-## 12. Content Tone
+## 11. Content Tone
 
-SwarmMind copy should sound **operational and calm**.
+SwarmMind copy should sound operational, calm, and clear.
 
-**Prefer:**
+Prefer:
+
 - "输入问题或任务"
+- "继续当前会话"
 - "等待新的输入"
-- "会话执行失败"
-- "回到最新"
+- "会话执行失败，可重试"
+- "需要审批后继续"
 
-**Avoid:**
+Avoid:
+
 - Hype language
 - Whimsical assistant personality
-- Decorative slogans
+- Overpromising autonomy
+- Decorative slogans inside product surfaces
+
+Copy rules:
+
+- State what happened
+- State what the user can do next
+- Keep labels short
+- Avoid human-like emotional filler
+
+---
+
+## 12. Accessibility and QA Gates
+
+### 12.1 Non-Negotiable
+
+- 44px minimum touch target for pointer-relevant controls
+- Keyboard reachability for all core controls
+- Visible focus states
+- Semantic headings and landmarks
+- Status communication not dependent on color alone
+- High contrast on all neutral surfaces
+
+### 12.2 Chat-Specific Gates
+
+- Composer controls must be keyboard-usable
+- Streaming state must remain understandable during motion
+- Hover-only actions require keyboard fallback
+- Long assistant output must preserve readable line length
+
+### 12.3 Visual QA Gates
+
+Before shipping a UI change, confirm:
+
+- Chat and Project still feel meaningfully different
+- No new cool gray drift entered the chassis
+- No heavy blur or glass effect became structural
+- Status colors remain desaturated
+- White surfaces are used intentionally, not by default
 
 ---
 
@@ -574,35 +990,55 @@ SwarmMind copy should sound **operational and calm**.
 
 ```css
 :root {
-  /* Warm Neutrals */
   --warm-paper: #F7F7F5;
   --warm-ivory: #FAFAF8;
+  --warm-mist: #F0EEEA;
   --warm-sand: #E8E6E0;
   --warm-border: #E5E3DD;
   --warm-ring: #D1CFC8;
 
-  /* Neutral Ladder */
   --neutral-50: #FAFAF8;
   --neutral-100: #F7F7F5;
   --neutral-150: #F0EEEA;
   --neutral-200: #E8E6E0;
   --neutral-300: #D8D6D0;
+  --neutral-400: #B8B6B0;
   --neutral-500: #8A8882;
+  --neutral-600: #6A6862;
   --neutral-700: #5A5852;
+  --neutral-800: #3A3832;
   --neutral-900: #1E1E1C;
 
-  /* Semantic */
   --status-running: #5A7A96;
+  --status-running-bg: #EEF1F4;
+  --status-running-border: #D5DCE3;
   --status-approval: #B8956F;
+  --status-approval-bg: #F5F0EA;
+  --status-approval-border: #E5DDD3;
   --status-blocked: #A67C6B;
+  --status-blocked-bg: #F3EEEB;
+  --status-blocked-border: #E3D9D3;
   --status-done: #7A9A7E;
+  --status-done-bg: #EDF2EE;
+  --status-done-border: #D5E0D7;
+  --status-chat: #8A8298;
+  --status-chat-bg: #F0EEF3;
+  --status-chat-border: #E0DCE6;
   --status-draft: #9A9894;
+  --status-draft-bg: #F2F2F0;
+  --status-draft-border: #E5E5E3;
 
-  /* Typography */
-  --font-sans: 'Geist', 'Inter', system-ui, sans-serif;
-  --font-mono: 'Geist Mono', 'JetBrains Mono', Consolas, monospace;
+  --font-display: "Newsreader", "Source Han Serif SC", "Noto Serif SC", Georgia, serif;
+  --font-sans: "Geist", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Geist Mono", "SFMono-Regular", "IBM Plex Mono", Menlo, Consolas, monospace;
 
-  /* Spacing */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-3xl: 24px;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -613,132 +1049,127 @@ SwarmMind copy should sound **operational and calm**.
   --space-10: 40px;
   --space-12: 48px;
 
-  /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-2xl: 24px;
-
-  /* Shadows */
   --shadow-ring: 0 0 0 1px var(--warm-ring);
   --shadow-whisper: 0 4px 12px rgba(0,0,0,0.04);
   --shadow-sticky: 0 -2px 20px rgba(0,0,0,0.06);
 }
-```
 
-### 13.2 Tailwind Config Additions
-
-```javascript
-// tailwind.config.js
-module.exports = {
-  theme: {
-    extend: {
-      colors: {
-        warm: {
-          paper: '#F7F7F5',
-          ivory: '#FAFAF8',
-          sand: '#E8E6E0',
-          border: '#E5E3DD',
-          ring: '#D1CFC8',
-        },
-        neutral: {
-          50: '#FAFAF8',
-          100: '#F7F7F5',
-          150: '#F0EEEA',
-          200: '#E8E6E0',
-          300: '#D8D6D0',
-          500: '#8A8882',
-          700: '#5A5852',
-          900: '#1E1E1C',
-        },
-        status: {
-          running: '#5A7A96',
-          approval: '#B8956F',
-          blocked: '#A67C6B',
-          done: '#7A9A7E',
-          draft: '#9A9894',
-        },
-      },
-      fontFamily: {
-        sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['Geist Mono', 'JetBrains Mono', 'Consolas', 'monospace'],
-      },
-      boxShadow: {
-        'ring': '0 0 0 1px #D1CFC8',
-        'whisper': '0 4px 12px rgba(0,0,0,0.04)',
-        'sticky': '0 -2px 20px rgba(0,0,0,0.06)',
-      },
-    },
-  },
+.dark {
+  --background-dark: #1A1A18;
+  --surface-dark: #242422;
+  --surface-dark-muted: #2C2C29;
+  --text-dark: #E8E6E0;
+  --text-dark-muted: #B7B4AE;
+  --border-dark: #3A3935;
 }
 ```
 
----
+### 13.2 Tailwind and React Guidance
 
-## 14. Do / Don't
+- Map warm neutrals to the chassis first, then map semantic tokens
+- Keep utility classes aligned with the token names above
+- Prefer reusable surface and text utility classes over ad hoc one-off values
+- If a component needs many inline hex values, the token model is incomplete
 
-### ✅ Do
+### 13.3 Existing UI Alignment
 
-- Use semantic state colors consistently
-- Keep product surfaces calm
-- Let spacing and hierarchy do visual work
-- Use restrained motion for breathing room
-- Differentiate Chat and Project clearly
-- Choose Geist as the canonical typeface
-- Keep neutrals warm-toned
-- Use ring shadows for interactive states
-- Maintain generous body line-height (1.50–1.60)
-- Apply thoughtful border-radius (soft, approachable)
+Current `ui/src/index.css` should continue to align with this file's token names and hierarchy. Future implementation work should prioritize:
 
-### ❌ Don't
-
-- Turn the app into generic AI startup UI
-- Use gradients as decoration on every screen
-- Overuse colorful mode accents
-- Stack cards where layout would be cleaner
-- Make control surfaces louder than user content
-- Use cool blue-grays in the neutral palette
-- Apply heavy drop shadows
-- Use pure white as page background
-- Reduce body line-height below 1.40
-- Use decorative looping animations
+- Adding `--font-display`
+- Keeping current warm chassis values
+- Preserving ring-shadow interaction patterns
+- Tightening page-level separation between ChatSession and Project Space
 
 ---
 
-## 15. Change Management
+## 14. Agent Prompt Guide
 
-When adding or changing UI:
+When asking an agent to design or refine SwarmMind UI, prompts should reference concrete roles, tokens, and hierarchy.
 
-1. **Update this file first** if the decision affects more than one page
-2. **Update implementation tokens** or components
-3. **Update page docs** in `docs/ui/*` if interaction changed
+### 14.1 Good Prompt Structure
 
-**Rule:** If a UI change cannot be justified against this file, it should not ship.
+Specify:
+
+- Which page archetype this is
+- Which visual density it belongs to
+- Which tokens should dominate
+- Which component is primary
+- Which state colors are allowed
+
+### 14.2 Example Prompts
+
+- "Design a `ChatSession` empty state on `--warm-paper (#F7F7F5)`. Keep the composer visually primary. Use a serif page title at 32px with calm operational tone, one-line supporting copy in 14px Geist, and at most three starter prompts."
+- "Create a `Project Space` header with stronger containment than chat. Use `--warm-ivory` cards, `1px` warm borders, persistent status pills, and one primary action. No marketing hero behavior."
+- "Refine an approval panel so consequence summary appears before actions. Use muted approval colors (`#B8956F` family), strong spacing hierarchy, and no decorative illustration."
+- "Build a run log card using the dark code/log surface pattern: `#1A1A1A` background, quiet header strip, 13px mono text, low-saturation syntax."
+- "Improve a toolbar with compact secondary buttons in warm sand, ghost utilities for minor actions, and 44px touch targets for icon buttons."
+
+### 14.3 Prompting Anti-Patterns
+
+Do not ask for:
+
+- "Make it more futuristic"
+- "Add some AI vibe"
+- "Use a cooler dashboard palette"
+- "Give it a modern SaaS gradient"
+- "Make the chat page more fun"
 
 ---
 
-## 16. Implementation Checklist
+## 15. Do and Don't
 
-### Immediate Alignment Tasks
+### 15.1 Do
 
-- [ ] Align font tokens to Geist (remove Space Grotesk drift)
-- [ ] Implement warm paper-gray chassis (`#F7F7F5`)
-- [ ] Desaturate semantic accents per §2.1
-- [ ] Reduce decorative chat-page patterns
-- [ ] Implement sticky composer with micro-depth
-- [ ] Ensure 44px touch targets on composer actions
-- [ ] Standardize chat state surfaces (error, recover)
-- [ ] Keep motion lightweight and local
+- Keep the chassis warm and restrained
+- Let borders and spacing do most of the structural work
+- Use serif strategically for authority moments
+- Keep status colors muted and semantic
+- Preserve a real visual difference between ChatSession and Project Space
+- Use quiet motion and localized loading states
+- Make the composer feel like the anchor of chat
+- Keep governance surfaces explicit and consequence-first
 
-### Component Audit
+### 15.2 Don't
 
-- [ ] Buttons follow §5.1 specifications
-- [ ] Cards use correct radius and borders
-- [ ] Code blocks match §5.6 requirements
-- [ ] Input focus states follow §5.4
-- [ ] Shadows follow §6.1 elevation system
+- Do not turn the product into a generic AI startup dashboard
+- Do not rely on gradients or blur as identity
+- Do not use cool blue-gray as the foundation
+- Do not over-card every layout problem
+- Do not use saturated semantic colors
+- Do not let decorative type compete with dense operational UI
+- Do not make approval surfaces feel playful
+- Do not hide the next action in error states
 
 ---
 
-*End of Design System v2.0*
+## 16. Change Management
+
+When changing product UI:
+
+1. Update this file first if the decision affects more than one page or component family
+2. Update implementation tokens and shared primitives
+3. Update `docs/ui/*` if layout or interaction behavior changed
+
+Review rule:
+
+- If a UI change cannot be justified by this file, it should not ship
+- If a new component introduces a color, shadow, or layout behavior not described here, extend this file before implementation
+
+---
+
+## 17. Ship Checklist
+
+Before shipping any meaningful UI change, verify the following:
+
+- The page still reads as SwarmMind rather than generic shadcn
+- Warm paper, ivory, and muted borders still define the chassis
+- Headline typography is deliberate and not overused
+- ChatSession remains exploration-first
+- Project Space remains execution-and-governance-first
+- State colors remain desaturated and role-driven
+- Focus states are visible and calm
+- Error and approval states tell the user what to do next
+
+---
+
+*End of Design System v3.0*
