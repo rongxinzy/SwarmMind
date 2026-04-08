@@ -7,8 +7,8 @@ import logging
 import os
 from pathlib import Path
 
-from swarmmind.runtime.errors import RuntimeConfigError
 from swarmmind.runtime.catalog import list_enabled_runtime_models, sync_env_runtime_model
+from swarmmind.runtime.errors import RuntimeConfigError
 from swarmmind.runtime.models import RuntimeInstance, RuntimeModel, RuntimeProfile
 from swarmmind.runtime.profile import resolve_default_runtime_profile
 

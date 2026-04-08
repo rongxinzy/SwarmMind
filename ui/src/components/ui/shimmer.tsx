@@ -21,7 +21,7 @@ const ShimmerComponent = ({
   const MotionComponent = motion(Component as keyof React.JSX.IntrinsicElements);
 
   const dynamicSpread = useMemo(
-    () => (children?.length ?? 0) * spread,
+    () => (children.length ?? 0) * spread,
     [children, spread],
   );
 

@@ -3,7 +3,7 @@
 import pytest
 
 from swarmmind.context_broker import derive_situation_tag, route_to_agent
-from swarmmind.db import init_db, seed_default_agents, get_connection
+from swarmmind.db import get_connection, init_db, seed_default_agents
 
 
 @pytest.fixture(autouse=True)
@@ -105,8 +105,8 @@ class TestDispatchMemoryContext:
         )
 
         scopes = result.memory_ctx.visible_scopes
-        assert scopes[0].layer.value == "L1_tmp"      # session first
-        assert scopes[1].layer.value == "L2_team"    # team second
+        assert scopes[0].layer.value == "L1_tmp"  # session first
+        assert scopes[1].layer.value == "L2_team"  # team second
         assert scopes[2].layer.value == "L4_user_soul"  # user last
 
 

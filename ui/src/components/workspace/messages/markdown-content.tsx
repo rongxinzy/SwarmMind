@@ -16,14 +16,14 @@ function isExternalUrl(href: string | undefined): boolean {
   return !!href && /^https?:\/\//.test(href);
 }
 
-export type MarkdownContentProps = {
+export interface MarkdownContentProps {
   content: string;
   isLoading: boolean;
   rehypePlugins: MessageResponseProps["rehypePlugins"];
   className?: string;
   remarkPlugins?: MessageResponseProps["remarkPlugins"];
   components?: MessageResponseProps["components"];
-};
+}
 
 /** Renders markdown content. */
 export function MarkdownContent({

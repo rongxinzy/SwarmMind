@@ -112,14 +112,14 @@ export const MessageAction = ({
   return button;
 };
 
-type MessageBranchContextType = {
+interface MessageBranchContextType {
   currentBranch: number;
   totalBranches: number;
   goToPrevious: () => void;
   goToNext: () => void;
   branches: ReactElement[];
   setBranches: (branches: ReactElement[]) => void;
-};
+}
 
 const MessageBranchContext = createContext<MessageBranchContextType | null>(
   null,
@@ -222,8 +222,8 @@ export type MessageBranchSelectorProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export const MessageBranchSelector = ({
-  className,
-  from,
+  className: _className,
+  from: _from,
   ...props
 }: MessageBranchSelectorProps) => {
   const { totalBranches } = useMessageBranch();
@@ -269,7 +269,7 @@ export type MessageBranchNextProps = ComponentProps<typeof Button>;
 
 export const MessageBranchNext = ({
   children,
-  className,
+  className: _className,
   ...props
 }: MessageBranchNextProps) => {
   const { goToNext, totalBranches } = useMessageBranch();
@@ -341,7 +341,7 @@ export function MessageAttachment({
 }: MessageAttachmentProps) {
   const filename = data.filename || "";
   const mediaType =
-    data.mediaType?.startsWith("image/") && data.url ? "image" : "file";
+    data.mediaType.startsWith("image/") && data.url ? "image" : "file";
   const isImage = mediaType === "image";
   const attachmentLabel = filename || (isImage ? "Image" : "Attachment");
 

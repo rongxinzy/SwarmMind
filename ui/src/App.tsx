@@ -20,7 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Sidebar, SidebarView, VIEW_LABELS } from "@/components/ui/sidebar";
+import { Sidebar, type SidebarView, VIEW_LABELS } from "@/components/ui/sidebar";
 import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat";
 import { cn } from "@/lib/utils";
 
@@ -246,8 +246,8 @@ export default function App() {
         return (
           <Workbench
             onStartChat={handleStartChat}
-            onOpenProjects={() => handleViewChange("projects")}
-            onOpenApprovals={() => handleViewChange("recent")}
+            onOpenProjects={() => { handleViewChange("projects"); }}
+            onOpenApprovals={() => { handleViewChange("recent"); }}
           />
         );
       case "chat":

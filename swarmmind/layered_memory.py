@@ -21,22 +21,24 @@ logger = logging.getLogger(__name__)
 
 class LayeredMemoryError(Exception):
     """Base exception for layered memory errors."""
+
     pass
 
 
 class MemoryWriteConflict(LayeredMemoryError):
     """Raised when a CAS write conflict cannot be resolved after max retries."""
+
     pass
 
 
 class MemoryWriteForbidden(LayeredMemoryError):
     """Raised when an agent attempts to write to a layer it is not authorized for."""
+
     pass
 
 
 class LayeredMemory:
-    """
-    4-layer scoped KV store backed by SQLite.
+    """4-layer scoped KV store backed by SQLite.
 
     Layers (L1=L4, L4=USER_SOUL):
       L1 TMP    — session-scoped, TTL support (default 24h)
@@ -52,7 +54,7 @@ class LayeredMemory:
       3. On conflict: retry up to MAX_RETRIES
     """
 
-    def __init__(self, agent_id: str):
+    def __init__(self, agent_id: str) -> None:
         self.agent_id = agent_id
 
     # ---- internal helpers ----
@@ -95,8 +97,7 @@ class LayeredMemory:
     # ---- read ----
 
     def read(self, key: str, ctx: MemoryContext) -> MemoryEntry | None:
-        """
-        Priority-ordered lookup across ctx.visible_scopes.
+        """Priority-ordered lookup across ctx.visible_scopes.
         Returns the first non-expired entry found.
         Returns None if not found in any layer.
         """
@@ -122,8 +123,7 @@ class LayeredMemory:
         layers: list[MemoryLayer] | None = None,
         ctx: MemoryContext | None = None,
     ) -> list[MemoryEntry]:
-        """
-        Read all entries matching tag filter across specified layers.
+        """Read all entries matching tag filter across specified layers.
 
         If ctx is provided, restricts to ctx.visible_scopes.
         If layers is provided, restricts to those layers (takes precedence over ctx).
@@ -191,8 +191,7 @@ class LayeredMemory:
         ttl: int | None = None,
         expected_version: int | None = None,
     ) -> MemoryEntry:
-        """
-        Write to layered memory with CAS support.
+        """Write to layered memory with CAS support.
 
         - L4 (USER_SOUL) writes are restricted to SOUL_WRITER_AGENT_IDS.
         - L1 (TMP) TTL defaults to MEMORY_DEFAULT_L1_TTL_SECONDS if not set.
@@ -232,15 +231,14 @@ class LayeredMemory:
                 if expected_version is not None and existing:
                     if existing["version"] != expected_version:
                         raise MemoryWriteConflict(
-                            f"CAS conflict: expected version {expected_version}, "
-                            f"found version {existing['version']}"
+                            f"CAS conflict: expected version {expected_version}, found version {existing['version']}"
                         )
 
                 new_version = (existing["version"] + 1) if existing else 1
                 entry_id = existing["id"] if existing else str(uuid.uuid4())
 
                 cursor.execute(
-                    f"""
+                    """
                     INSERT INTO memory_entries
                     (id, layer, scope_id, key, value, tags, ttl, version, last_writer_agent_id, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -276,19 +274,22 @@ class LayeredMemory:
                     if current and current["version"] != new_version:
                         logger.debug(
                             "LayeredMemory CAS conflict on key=%s (attempt %d/%d).",
-                            key, attempt + 1, MEMORY_MAX_RETRIES,
+                            key,
+                            attempt + 1,
+                            MEMORY_MAX_RETRIES,
                         )
                         if attempt < MEMORY_MAX_RETRIES - 1:
                             time.sleep(MEMORY_RETRY_DELAY_MS / 1000.0)
                             continue
-                        else:
-                            raise MemoryWriteConflict(
-                                f"CAS conflict on key {key} after {MEMORY_MAX_RETRIES} retries."
-                            )
+                        raise MemoryWriteConflict(f"CAS conflict on key {key} after {MEMORY_MAX_RETRIES} retries.")
 
                 logger.debug(
                     "LayeredMemory write: layer=%s scope_id=%s key=%s version=%d agent=%s",
-                    scope.layer.value, scope.scope_id, key, new_version, self.agent_id,
+                    scope.layer.value,
+                    scope.scope_id,
+                    key,
+                    new_version,
+                    self.agent_id,
                 )
                 return self._build_entry(scope, key, value, tags, ttl, new_version)
 
@@ -315,17 +316,21 @@ class LayeredMemory:
                 [*params, key],
             )
             row = cursor.fetchone()
-            return self._entry_to_model(dict(row)) if row else MemoryEntry(
-                id=str(uuid.uuid4()),
-                scope=scope,
-                key=key,
-                value=value,
-                tags=tags or [],
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
-                ttl=ttl,
-                version=version,
-                last_writer_agent_id=self.agent_id,
+            return (
+                self._entry_to_model(dict(row))
+                if row
+                else MemoryEntry(
+                    id=str(uuid.uuid4()),
+                    scope=scope,
+                    key=key,
+                    value=value,
+                    tags=tags or [],
+                    created_at=datetime.now(),
+                    updated_at=datetime.now(),
+                    ttl=ttl,
+                    version=version,
+                    last_writer_agent_id=self.agent_id,
+                )
             )
         finally:
             conn.close()
@@ -338,8 +343,7 @@ class LayeredMemory:
         target: MemoryScope,
         key_filter: list[str] | None = None,
     ) -> str:
-        """
-        Migrate L1 (TMP) entries from session_id to target layer.
+        """Migrate L1 (TMP) entries from session_id to target layer.
 
         Creates a snapshot record in session_promotions and copies matching
         entries to the target layer. Does NOT delete source entries (Phase 2).
@@ -405,13 +409,24 @@ class LayeredMemory:
                 (id, session_id, target_layer, target_scope_id, key_filter, snapshot_count)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (promotion_id, session_id, target.layer.value, target.scope_id, key_filter_json, migrated),
+                (
+                    promotion_id,
+                    session_id,
+                    target.layer.value,
+                    target.scope_id,
+                    key_filter_json,
+                    migrated,
+                ),
             )
             conn.commit()
 
             logger.info(
                 "Promoted session %s -> %s/%s: %d entries migrated (promotion_id=%s)",
-                session_id, target.layer.value, target.scope_id, migrated, promotion_id,
+                session_id,
+                target.layer.value,
+                target.scope_id,
+                migrated,
+                promotion_id,
             )
             return promotion_id
 
@@ -426,8 +441,7 @@ class LayeredMemory:
         policy: str,
         trigger_count: int = 100,
     ) -> str:
-        """
-        Register a compaction hint in the hints table.
+        """Register a compaction hint in the hints table.
 
         Phase 1: no-op execution (an agent in Phase 2 reads the hints table
         and performs the actual compression).
@@ -447,7 +461,11 @@ class LayeredMemory:
             conn.commit()
             logger.info(
                 "Registered compaction hint: id=%s scope=%s/%s policy=%s trigger=%d",
-                hint_id, scope.layer.value, scope.scope_id, policy, trigger_count,
+                hint_id,
+                scope.layer.value,
+                scope.scope_id,
+                policy,
+                trigger_count,
             )
             return hint_id
         finally:

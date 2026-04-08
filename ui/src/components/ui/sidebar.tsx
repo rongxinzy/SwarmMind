@@ -53,12 +53,12 @@ const projectItems = [
   { label: "Partner Portal", meta: "待审批" },
 ]
 
-const primaryItems: Array<{ value: SidebarView; label: string; icon: React.ReactNode }> = [
+const primaryItems: { value: SidebarView; label: string; icon: React.ReactNode }[] = [
   { value: "workbench", label: "工作台", icon: <Home className="size-4" /> },
   { value: "chat", label: "对话", icon: <PenSquare className="size-4" /> },
 ]
 
-const capabilityItems: Array<{ value: SidebarView; label: string; icon: React.ReactNode }> = [
+const capabilityItems: { value: SidebarView; label: string; icon: React.ReactNode }[] = [
   { value: "projects", label: "项目", icon: <FolderKanban className="size-4" /> },
   { value: "teams", label: "Agent Team", icon: <Bot className="size-4" /> },
   { value: "skills", label: "技能中心", icon: <Sparkles className="size-4" /> },
@@ -66,7 +66,7 @@ const capabilityItems: Array<{ value: SidebarView; label: string; icon: React.Re
   { value: "assets", label: "资源库", icon: <Library className="size-4" /> },
 ]
 
-const utilityItems: Array<{ value: SidebarView; label: string; icon: React.ReactNode }> = [
+const utilityItems: { value: SidebarView; label: string; icon: React.ReactNode }[] = [
   { value: "recent", label: "最近记录", icon: <History className="size-4" /> },
   { value: "schedules", label: "定时任务", icon: <Clock3 className="size-4" /> },
 ]
@@ -229,7 +229,7 @@ export function Sidebar({
                 active={activeView === item.value}
                 icon={item.icon}
                 label={item.label}
-                onClick={() => handleSelect(item.value)}
+                onClick={() => { handleSelect(item.value); }}
               />
             ))}
           </div>
@@ -243,7 +243,7 @@ export function Sidebar({
                   active={activeView === item.value}
                   icon={item.icon}
                   label={item.label}
-                  onClick={() => handleSelect(item.value)}
+                  onClick={() => { handleSelect(item.value); }}
                 />
               ))}
             </div>
@@ -258,7 +258,7 @@ export function Sidebar({
                 <Button
                   key={project.label}
                   variant="ghost"
-                  onClick={() => handleSelect("projects")}
+                  onClick={() => { handleSelect("projects"); }}
                   className="h-auto min-h-10 w-full justify-start rounded-md border border-transparent px-3 py-2 hover:border-sidebar-border/60 hover:bg-sidebar-accent/60"
                 >
                   <div className="min-w-0 flex-1 text-left">
@@ -279,7 +279,7 @@ export function Sidebar({
                   active={activeView === item.value}
                   icon={item.icon}
                   label={item.label}
-                  onClick={() => handleSelect(item.value)}
+                  onClick={() => { handleSelect(item.value); }}
                 />
               ))}
             </div>
@@ -293,7 +293,7 @@ export function Sidebar({
                   <div key={conversation.id} className="group flex items-center gap-1">
                     <Button
                       variant="ghost"
-                      onClick={() => handleSelectConversation(conversation.id)}
+                      onClick={() => { handleSelectConversation(conversation.id); }}
                       className="h-auto min-h-10 min-w-0 flex-1 justify-start rounded-md border border-transparent px-3 py-2 hover:border-sidebar-border/60 hover:bg-sidebar-accent/60"
                     >
                       <div className="min-w-0 flex-1 text-left">
@@ -366,7 +366,7 @@ export function Sidebar({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-40 bg-black/20 md:hidden"
-              onClick={() => setIsOpen(false)}
+              onClick={() => { setIsOpen(false); }}
             />
             <motion.div
               initial={{ x: "-100%" }}
@@ -375,7 +375,7 @@ export function Sidebar({
               transition={{ type: "spring", damping: 24, stiffness: 280 }}
               className="fixed inset-y-0 left-0 z-50 w-[248px] border-r border-sidebar-border bg-sidebar md:hidden"
             >
-              {sidebarContent({ onClose: () => setIsOpen(false) })}
+              {sidebarContent({ onClose: () => { setIsOpen(false); } })}
             </motion.div>
           </>
         ) : null}
@@ -388,7 +388,7 @@ export function Sidebar({
       <div className="fixed left-0 right-0 top-0 z-30 border-b border-sidebar-border bg-background md:hidden">
         <div className="flex items-center justify-between px-4 py-4">
           <span className="truncate text-[16px] font-semibold text-foreground">{pageTitle || "SwarmMind"}</span>
-          <Button variant="icon" size="icon-sm" onClick={() => setIsOpen(true)}>
+          <Button variant="icon" size="icon-sm" onClick={() => { setIsOpen(true); }}>
             <Menu className="size-4" />
           </Button>
         </div>

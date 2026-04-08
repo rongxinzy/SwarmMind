@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class SwarmMindDeerFlowClient(DeerFlowClient):
     """DeerFlow client wrapper that injects SwarmMind product identity."""
 
-    def __init__(self, *args, system_prompt: str, **kwargs):
+    def __init__(self, *args, system_prompt: str, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._swarmmind_system_prompt = system_prompt
         # Note: ClarificationMiddleware is already added by DeerFlow's _build_middlewares
@@ -60,7 +60,11 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
             context["agent_name"] = self._agent_name
 
         seen_ids: set[str] = set()
-        cumulative_usage: dict[str, int] = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        cumulative_usage: dict[str, int] = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+        }
 
         async for chunk in self._agent.astream(state, config=config, context=context, stream_mode="values"):
             messages = chunk.get("messages", [])
@@ -87,7 +91,10 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
                                 "type": "ai",
                                 "content": "",
                                 "id": msg_id,
-                                "tool_calls": [{"name": tc["name"], "args": tc["args"], "id": tc.get("id")} for tc in msg.tool_calls],
+                                "tool_calls": [
+                                    {"name": tc["name"], "args": tc["args"], "id": tc.get("id")}
+                                    for tc in msg.tool_calls
+                                ],
                             },
                         )
 
@@ -136,7 +143,11 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
             cfg.get("subagent_enabled"),
         )
 
-        logger.info("[DEBUG] _ensure_agent called: subagent_enabled=%s, cfg=%s", cfg.get("subagent_enabled"), cfg)
+        logger.info(
+            "[DEBUG] _ensure_agent called: subagent_enabled=%s, cfg=%s",
+            cfg.get("subagent_enabled"),
+            cfg,
+        )
 
         if self._agent is not None and self._agent_config_key == key:
             logger.info("[DEBUG] Using cached agent")
@@ -160,9 +171,9 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
         tools = self._get_tools(model_name=model_name, subagent_enabled=subagent_enabled)
         logger.info("Tools loaded: count=%d, subagent_enabled=%s", len(tools), subagent_enabled)
         if subagent_enabled:
-            tool_names = [t.name if hasattr(t, 'name') else str(t) for t in tools]
+            tool_names = [t.name if hasattr(t, "name") else str(t) for t in tools]
             logger.info("Available tools: %s", tool_names)
-        
+
         kwargs: dict[str, Any] = {
             "model": deerflow_client_module.create_chat_model(name=model_name, thinking_enabled=thinking_enabled),
             "tools": tools,
@@ -185,7 +196,12 @@ class SwarmMindDeerFlowClient(DeerFlowClient):
 
         self._agent = deerflow_client_module.create_agent(**kwargs)
         self._agent_config_key = key
-        logger.info("SwarmMind agent created: agent_name=%s, model=%s, thinking=%s", self._agent_name, model_name, thinking_enabled)
+        logger.info(
+            "SwarmMind agent created: agent_name=%s, model=%s, thinking=%s",
+            self._agent_name,
+            model_name,
+            thinking_enabled,
+        )
 
 
 class DeerFlowRuntimeAdapter(BaseAgent):
@@ -203,7 +219,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         thinking_enabled: bool = True,
         subagent_enabled: bool = False,
         plan_mode: bool = False,
-    ):
+    ) -> None:
         # Initialize BaseAgent (sets self.memory, loads system_prompt from DB)
         super().__init__(agent_id="general", domain="general")
 
@@ -242,7 +258,8 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         """
         logger.info(
             "DeerFlowRuntimeAdapter acting on goal=%r proposal_id=%s",
-            goal[:100], action_proposal_id,
+            goal[:100],
+            action_proposal_id,
         )
 
         try:
@@ -282,12 +299,14 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         self.memory.write(
             scope=scope,
             key=f"goal:{action_proposal_id}",
-            value=json.dumps({
-                "goal": goal,
-                "result": final_text[:2000],
-                "agent": self.agent_id,
-                "tool_calls": len(tool_results),
-            }),
+            value=json.dumps(
+                {
+                    "goal": goal,
+                    "result": final_text[:2000],
+                    "agent": self.agent_id,
+                    "tool_calls": len(tool_results),
+                }
+            ),
             tags=[self.domain],
         )
 
@@ -296,16 +315,19 @@ class DeerFlowRuntimeAdapter(BaseAgent):
             self.memory.write(
                 scope=scope,
                 key=f"tools:{action_proposal_id}",
-                value=json.dumps({
-                    "tool_count": len(tool_results),
-                    "summary": "; ".join(tool_results[:5]),
-                }),
+                value=json.dumps(
+                    {
+                        "tool_count": len(tool_results),
+                        "summary": "; ".join(tool_results[:5]),
+                    }
+                ),
                 tags=[self.domain, "tools"],
             )
 
         logger.info(
             "DeerFlowRuntimeAdapter completed: proposal_id=%s text_length=%d",
-            action_proposal_id, len(final_text),
+            action_proposal_id,
+            len(final_text),
         )
 
         # Return updated proposal
@@ -466,7 +488,11 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                     elif isinstance(msg, ToolMessage):
                         tool_name = getattr(msg, "name", None) or "unknown"
                         tool_content = self._client._extract_text(msg.content)
-                        logger.info("Tool result: name=%s, content_preview=%s", tool_name, tool_content[:100] if tool_content else "(empty)")
+                        logger.info(
+                            "Tool result: name=%s, content_preview=%s",
+                            tool_name,
+                            tool_content[:100] if tool_content else "(empty)",
+                        )
                         if tool_content:
                             tool_results.append(f"[{tool_name}]: {tool_content[:200]}")
 

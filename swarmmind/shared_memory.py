@@ -2,7 +2,6 @@
 
 import logging
 import time
-from typing import Optional
 
 from swarmmind.config import MEMORY_MAX_RETRIES, MEMORY_RETRY_DELAY_MS
 from swarmmind.db import get_connection
@@ -12,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 class SharedMemoryConflict(Exception):
     """Raised when a write conflict cannot be resolved after max retries."""
+
     pass
 
 
 class SharedMemory:
-    """
-    Key-value store backed by SQLite.
+    """Key-value store backed by SQLite.
 
     Phase 1 protocol (last-write-wins):
     1. Read current value + updated_at
@@ -25,17 +24,16 @@ class SharedMemory:
     3. If conflict (409-like): retry up to MAX_RETRIES with 100ms backoff
     """
 
-    def __init__(self, agent_id: str):
+    def __init__(self, agent_id: str) -> None:
         self.agent_id = agent_id
 
-    def read(self, key: str) -> Optional[dict]:
+    def read(self, key: str) -> dict | None:
         """Read a key from working memory. Returns None if not found."""
         conn = get_connection()
         try:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT key, value, domain_tags, last_writer_agent_id, updated_at "
-                "FROM working_memory WHERE key = ?",
+                "SELECT key, value, domain_tags, last_writer_agent_id, updated_at FROM working_memory WHERE key = ?",
                 (key,),
             )
             row = cursor.fetchone()
@@ -55,10 +53,9 @@ class SharedMemory:
         self,
         key: str,
         value: str,
-        domain_tags: Optional[str] = None,
+        domain_tags: str | None = None,
     ) -> None:
-        """
-        Write a key to working memory. Implements last-write-wins with retry.
+        """Write a key to working memory. Implements last-write-wins with retry.
 
         Raises SharedMemoryConflict if all retries are exhausted.
         """
@@ -97,18 +94,20 @@ class SharedMemory:
                     if current and current["updated_at"] != prior_updated_at:
                         # Another agent wrote in between — conflict, retry
                         logger.debug(
-                            "SharedMemory conflict on key=%s (attempt %d/%d). "
-                            "prior_writer=%s, our_writer=%s",
-                            key, attempt + 1, MEMORY_MAX_RETRIES, prior_writer, self.agent_id,
+                            "SharedMemory conflict on key=%s (attempt %d/%d). prior_writer=%s, our_writer=%s",
+                            key,
+                            attempt + 1,
+                            MEMORY_MAX_RETRIES,
+                            prior_writer,
+                            self.agent_id,
                         )
                         if attempt < MEMORY_MAX_RETRIES - 1:
                             time.sleep(MEMORY_RETRY_DELAY_MS / 1000.0)
                             continue
-                        else:
-                            raise SharedMemoryConflict(
-                                f"Key {key} updated by {prior_writer} while we were writing. "
-                                f"Max retries ({MEMORY_MAX_RETRIES}) exhausted."
-                            )
+                        raise SharedMemoryConflict(
+                            f"Key {key} updated by {prior_writer} while we were writing. "
+                            f"Max retries ({MEMORY_MAX_RETRIES}) exhausted."
+                        )
 
                 logger.debug("SharedMemory write: key=%s by agent=%s", key, self.agent_id)
                 return

@@ -96,7 +96,7 @@ export function ClarificationCard({
                   key={index}
                   variant="outline"
                   size="sm"
-                  onClick={() => handleOptionClick(option)}
+                  onClick={() => { handleOptionClick(option); }}
                   disabled={hasResponded}
                   className="bg-background hover:bg-amber-100 dark:hover:bg-amber-900"
                 >
@@ -110,7 +110,7 @@ export function ClarificationCard({
           <div className="flex gap-2">
             <Textarea
               value={customResponse}
-              onChange={(e) => setCustomResponse(e.target.value)}
+              onChange={(e) => { setCustomResponse(e.target.value); }}
               onKeyDown={handleKeyDown}
               placeholder="输入您的回复..."
               disabled={hasResponded}

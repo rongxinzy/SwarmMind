@@ -6,6 +6,8 @@ import json
 
 import pytest
 
+pytestmark = pytest.mark.requires_llm
+
 from swarmmind.api import supervisor
 from swarmmind.db import get_connection, init_db, seed_default_agents
 from swarmmind.models import ConversationMode, GoalRequest, SendMessageRequest
@@ -127,15 +129,11 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     assert any(event["type"] == "thinking" for event in events)
     assert any(event["type"] == "assistant_message" for event in events)
     assert any(
-        event["type"] == "team_task"
-        and event["task"]["id"] == "task-1"
-        and event["task"]["status"] == "running"
+        event["type"] == "team_task" and event["task"]["id"] == "task-1" and event["task"]["status"] == "running"
         for event in events
     )
     assert any(
-        event["type"] == "team_task"
-        and event["task"]["id"] == "task-1"
-        and event["task"]["status"] == "completed"
+        event["type"] == "team_task" and event["task"]["id"] == "task-1" and event["task"]["status"] == "completed"
         for event in events
     )
     assert any(
@@ -167,7 +165,13 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
 
 
 @pytest.mark.parametrize(
-    ("message_request", "expected_mode", "expected_thinking", "expected_plan", "expected_subagents"),
+    (
+        "message_request",
+        "expected_mode",
+        "expected_thinking",
+        "expected_plan",
+        "expected_subagents",
+    ),
     [
         (
             SendMessageRequest(content="flash", mode=ConversationMode.FLASH),

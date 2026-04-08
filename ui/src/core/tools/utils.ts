@@ -10,7 +10,7 @@ interface ToolCall {
 
 export function explainLastToolCall(message: AIMessage): string {
   if (hasToolCalls(message)) {
-    const lastToolCall = message.tool_calls![message.tool_calls!.length - 1]! as ToolCall;
+    const lastToolCall = message.tool_calls![message.tool_calls!.length - 1] as ToolCall;
     return explainToolCall(lastToolCall);
   }
   return "思考中...";

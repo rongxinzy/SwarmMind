@@ -12,7 +12,7 @@ export function rehypeSplitWordsIntoSpans() {
         ) &&
         node.children
       ) {
-        const newChildren: Array<ElementContent> = [];
+        const newChildren: ElementContent[] = [];
         node.children.forEach((child) => {
           if (child.type === "text") {
             const segmenter = new Intl.Segmenter("zh", { granularity: "word" });

@@ -3,8 +3,6 @@
 import logging
 import os
 import sqlite3
-from pathlib import Path
-from typing import Optional
 
 from swarmmind.config import DB_PATH
 from swarmmind.prompting import SWARMMIND_PRODUCT_IDENTITY_PROMPT
@@ -190,8 +188,7 @@ def _get_db_path() -> str:
 
 
 def _migrate_conversation_title_columns(conn: sqlite3.Connection) -> None:
-    """
-    Backfill newer conversation title metadata columns for existing databases.
+    """Backfill newer conversation title metadata columns for existing databases.
 
     SQLite's CREATE TABLE IF NOT EXISTS will not alter old schemas, so we add
     missing columns here and mark legacy titled rows as already generated.
@@ -202,16 +199,12 @@ def _migrate_conversation_title_columns(conn: sqlite3.Connection) -> None:
 
     if "conversations" not in {
         row["name"]
-        for row in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'"
-        ).fetchall()
+        for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'").fetchall()
     }:
         return
 
     if "title_status" not in existing_columns:
-        cursor.execute(
-            "ALTER TABLE conversations ADD COLUMN title_status TEXT NOT NULL DEFAULT 'pending'"
-        )
+        cursor.execute("ALTER TABLE conversations ADD COLUMN title_status TEXT NOT NULL DEFAULT 'pending'")
     if "title_source" not in existing_columns:
         cursor.execute("ALTER TABLE conversations ADD COLUMN title_source TEXT")
     if "title_generated_at" not in existing_columns:
@@ -253,7 +246,7 @@ def _migrate_conversation_title_columns(conn: sqlite3.Connection) -> None:
 
 def get_connection(timeout: float = 30.0) -> sqlite3.Connection:
     """Get a SQLite connection with row factory and timeout.
-    
+
     Args:
         timeout: How long to wait for a lock before raising an error (seconds).
                 Default 30s to handle concurrent access during streaming.
@@ -283,8 +276,7 @@ def init_db() -> None:
 
 
 def health_check() -> dict:
-    """
-    Verify all required tables exist.
+    """Verify all required tables exist.
     Auto-creates missing tables (self-healing on first boot).
     Returns dict with status.
     """
@@ -307,9 +299,7 @@ def health_check() -> dict:
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-        )
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
         existing = {row["name"] for row in cursor.fetchall()}
 
         missing = [t for t in required_tables if t not in existing]
