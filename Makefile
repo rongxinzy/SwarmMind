@@ -16,7 +16,7 @@ install: ## Install all dependencies (backend + frontend)
 	cd $(UI_DIR) && pnpm install
 
 # ---- Build ----
-build: ## Build frontend (UI) for production
+build: format-py ## Build frontend (UI) for production (auto-formats Python first)
 	cd $(UI_DIR) && pnpm run build
 
 build-ui: build ## Alias for build
