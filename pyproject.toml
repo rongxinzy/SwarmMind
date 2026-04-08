@@ -19,4 +19,163 @@ dependencies = [
 ]
 
 [tool.uv]
-dev-dependencies = []
+dev-dependencies = [
+    "ruff>=0.6.0",
+    "mypy>=1.11.0",
+    "bandit>=1.7.9",
+    "pytest-cov>=5.0.0",
+]
+
+# ============================================
+# Ruff - Python Linter & Formatter (Strict)
+# ============================================
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    # Pyflakes
+    "F",
+    # Pycodestyle
+    "E", "W",
+    # Pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # pydocstyle
+    "D",
+    # flake8-annotations
+    "ANN",
+    # flake8-bandit (security)
+    "S",
+    # flake8-comprehensions
+    "C4",
+    # flake8-debugger
+    "T10",
+    # flake8-eradicate
+    "ERA",
+    # mccabe (complexity)
+    "C90",
+    # pep8-naming
+    "N",
+    # flake8-return
+    "RET",
+    # flake8-unused-arguments
+    "ARG",
+    # pylint
+    "PL",
+    # Perflint
+    "PERF",
+    # Ruff-specific rules
+    "RUF",
+]
+ignore = [
+    # D104: Missing docstring in public package (too strict for __init__.py)
+    "D104",
+    # D107: Missing docstring in __init__ (too verbose for dataclasses)
+    "D107",
+    # ANN101: Missing type annotation for self
+    "ANN101",
+    # ANN102: Missing type annotation for cls
+    "ANN102",
+    # S101: Use of assert detected (pytest uses asserts)
+    "S101",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-branches = 15
+max-returns = 8
+max-statements = 60
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+docstring-code-format = true
+
+[tool.ruff.lint.per-file-ignores]
+# Test files: allow missing docstrings, allow assert usage (handled above)
+"tests/**/*.py" = ["D", "ANN", "PLR2004"]
+
+# ============================================
+# Mypy - Static Type Checker (Strict)
+# ============================================
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+show_error_codes = true
+show_column_numbers = true
+show_absolute_path = true
+
+# ============================================
+# Pytest & Coverage (Strict)
+# ============================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=swarmmind",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=70",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["swarmmind"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+precision = 2
+fail_under = 70
+
+# ============================================
+# Bandit - Security Linter
+# ============================================
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]  # Skip assert check (handled by pytest)
