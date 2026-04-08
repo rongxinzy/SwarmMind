@@ -87,11 +87,7 @@ class LayeredMemory:
         """Check if a memory entry has expired based on its TTL."""
         if row.get("ttl") is None:
             return False
-        created = (
-            datetime.fromisoformat(row["created_at"])
-            if isinstance(row["created_at"], str)
-            else row["created_at"]
-        )
+        created = datetime.fromisoformat(row["created_at"]) if isinstance(row["created_at"], str) else row["created_at"]
         age = (datetime.now() - created).total_seconds()
         return age > row["ttl"]
 
@@ -235,8 +231,7 @@ class LayeredMemory:
                 if expected_version is not None and existing:
                     if existing["version"] != expected_version:
                         raise MemoryWriteConflict(
-                            f"CAS conflict: expected version {expected_version}, "
-                            f"found version {existing['version']}"
+                            f"CAS conflict: expected version {expected_version}, found version {existing['version']}"
                         )
 
                 new_version = (existing["version"] + 1) if existing else 1
@@ -286,9 +281,7 @@ class LayeredMemory:
                         if attempt < MEMORY_MAX_RETRIES - 1:
                             time.sleep(MEMORY_RETRY_DELAY_MS / 1000.0)
                             continue
-                        raise MemoryWriteConflict(
-                            f"CAS conflict on key {key} after {MEMORY_MAX_RETRIES} retries."
-                        )
+                        raise MemoryWriteConflict(f"CAS conflict on key {key} after {MEMORY_MAX_RETRIES} retries.")
 
                 logger.debug(
                     "LayeredMemory write: layer=%s scope_id=%s key=%s version=%d agent=%s",

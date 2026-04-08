@@ -31,9 +31,7 @@ def render_status(goal: str, ctx: MemoryContext | None = None, reasoning: bool =
         return f"当前还没有与“{_collapse_whitespace(goal)}”相关的共享上下文。"
 
     latest_entries = entries[-5:]
-    fragments = [
-        f"{entry.key}: {_collapse_whitespace(entry.value)[:120]}" for entry in latest_entries
-    ]
+    fragments = [f"{entry.key}: {_collapse_whitespace(entry.value)[:120]}" for entry in latest_entries]
     return (
         f"围绕“{_collapse_whitespace(goal)}”当前已沉淀 {len(entries)} 条共享上下文。"
         f"最近的关键信息包括：{'；'.join(fragments)}。"
