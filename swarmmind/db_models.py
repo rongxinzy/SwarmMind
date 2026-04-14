@@ -31,9 +31,7 @@ class WorkingMemoryDB(SQLModel, table=True):
     last_writer_agent_id: str | None = None
     updated_at: datetime | None = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_working_memory_tags", "domain_tags"),
-    )
+    __table_args__ = (Index("idx_working_memory_tags", "domain_tags"),)
 
 
 class StrategyTableDB(SQLModel, table=True):
@@ -62,9 +60,7 @@ class EventLogDB(SQLModel, table=True):
     outcome: str | None = None  # 'success' | 'failure' | 'pending'
     latency_ms: int | None = None
 
-    __table_args__ = (
-        Index("idx_event_log_timestamp", "timestamp"),
-    )
+    __table_args__ = (Index("idx_event_log_timestamp", "timestamp"),)
 
 
 class ActionProposalDB(SQLModel, table=True):
@@ -82,9 +78,7 @@ class ActionProposalDB(SQLModel, table=True):
     status: str = Field(default="pending")  # 'pending' | 'approved' | 'rejected' | 'executed'
     created_at: datetime | None = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_action_proposals_status", "status"),
-    )
+    __table_args__ = (Index("idx_action_proposals_status", "status"),)
 
 
 class StrategyChangeProposalDB(SQLModel, table=True):
@@ -116,9 +110,7 @@ class ConversationDB(SQLModel, table=True):
     created_at: datetime | None = Field(default_factory=datetime.utcnow)
     updated_at: datetime | None = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_conversations_updated_at", "updated_at"),
-    )
+    __table_args__ = (Index("idx_conversations_updated_at", "updated_at"),)
 
 
 class MessageDB(SQLModel, table=True):
@@ -132,9 +124,7 @@ class MessageDB(SQLModel, table=True):
     content: str
     created_at: datetime | None = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_messages_conversation", "conversation_id"),
-    )
+    __table_args__ = (Index("idx_messages_conversation", "conversation_id"),)
 
 
 class MemoryEntryDB(SQLModel, table=True):
@@ -189,9 +179,7 @@ class CompactionHintDB(SQLModel, table=True):
     fired_at: datetime | None = None
     created_at: datetime | None = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_compaction_scope", "scope_layer", "scope_id"),
-    )
+    __table_args__ = (Index("idx_compaction_scope", "scope_layer", "scope_id"),)
 
 
 class RuntimeModelDB(SQLModel, table=True):
@@ -230,6 +218,4 @@ class RuntimeModelAssignmentDB(SQLModel, table=True):
     is_default: int = Field(default=0)
     created_at: datetime | None = Field(default_factory=datetime.utcnow)
 
-    __table_args__ = (
-        Index("idx_runtime_model_assignments_subject", "subject_type", "subject_id"),
-    )
+    __table_args__ = (Index("idx_runtime_model_assignments_subject", "subject_type", "subject_id"),)

@@ -10,7 +10,7 @@ from sqlmodel import select
 
 from swarmmind.db import session_scope
 from swarmmind.db_models import CompactionHintDB, MemoryEntryDB, SessionPromotionDB
-from swarmmind.models import MemoryEntry, MemoryLayer, MemoryScope
+from swarmmind.models import MemoryLayer, MemoryScope
 
 
 class MemoryRepository:
@@ -74,6 +74,7 @@ class MemoryRepository:
             if expected_version is not None and entry:
                 if entry.version != expected_version:
                     from swarmmind.layered_memory import MemoryWriteConflict
+
                     raise MemoryWriteConflict(
                         f"CAS conflict: expected version {expected_version}, found version {entry.version}"
                     )
@@ -201,10 +202,7 @@ class MemoryRepository:
             results = session.exec(
                 select(MemoryEntryDB).where(
                     MemoryEntryDB.ttl.is_not(None),
-                    (
-                        func.strftime("%s", "now") - func.strftime("%s", MemoryEntryDB.created_at)
-                    )
-                    > MemoryEntryDB.ttl,
+                    (func.strftime("%s", "now") - func.strftime("%s", MemoryEntryDB.created_at)) > MemoryEntryDB.ttl,
                 ),
             ).all()
             count = 0

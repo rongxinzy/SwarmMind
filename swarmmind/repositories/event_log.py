@@ -39,6 +39,7 @@ class EventLogRepository:
         """Record supervisor approve/reject/timeout in event_log."""
         with session_scope() as session:
             from sqlmodel import select
+
             result = session.exec(
                 select(EventLogDB).where(
                     EventLogDB.action_proposal_id == action_proposal_id,
@@ -46,6 +47,4 @@ class EventLogRepository:
             ).first()
             if result is not None:
                 result.supervisor_decision = decision.value
-                result.outcome = (
-                    "success" if decision == SupervisorDecision.APPROVED else "failure"
-                )
+                result.outcome = "success" if decision == SupervisorDecision.APPROVED else "failure"

@@ -25,7 +25,8 @@ def _db_to_runtime_model(db_model: RuntimeModelDB) -> RuntimeModel:
 
 
 def _db_to_selectable_runtime_model(
-    db_model: RuntimeModelDB, is_default: bool,
+    db_model: RuntimeModelDB,
+    is_default: bool,
 ) -> RuntimeSelectableModel:
     return RuntimeSelectableModel(
         name=db_model.name,
@@ -100,9 +101,7 @@ class RuntimeCatalogRepository:
                 db_model.source = runtime_model.source
 
             # Remove stale assignments for disabled env models
-            disabled_names = {
-                m.name for m in prev_models if m.name != runtime_model.name
-            }
+            disabled_names = {m.name for m in prev_models if m.name != runtime_model.name}
             if disabled_names:
                 stale = session.exec(
                     select(RuntimeModelAssignmentDB).where(
@@ -153,7 +152,9 @@ class RuntimeCatalogRepository:
             return [_db_to_runtime_model(r) for r in results]
 
     def list_models_for_subject(
-        self, subject_type: str, subject_id: str,
+        self,
+        subject_type: str,
+        subject_id: str,
     ) -> list[RuntimeSelectableModel]:
         """Return models assigned to the given subject."""
         with self._with_session() as session:
@@ -176,10 +177,7 @@ class RuntimeCatalogRepository:
                     RuntimeModelDB.name.asc(),
                 ),
             ).all()
-            return [
-                _db_to_selectable_runtime_model(row[0], row[1])
-                for row in results
-            ]
+            return [_db_to_selectable_runtime_model(row[0], row[1]) for row in results]
 
 
 class _NoOpContextManager:

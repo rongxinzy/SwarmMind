@@ -3,7 +3,6 @@
 import json
 import logging
 import time
-import uuid
 from datetime import datetime
 
 from swarmmind.config import (
@@ -89,9 +88,7 @@ class LayeredMemory:
         if db_entry.ttl is None:
             return False
         created = (
-            datetime.fromisoformat(db_entry.created_at)
-            if isinstance(db_entry.created_at, str)
-            else db_entry.created_at
+            datetime.fromisoformat(db_entry.created_at) if isinstance(db_entry.created_at, str) else db_entry.created_at
         )
         age = (datetime.now() - created).total_seconds()
         return age > db_entry.ttl
@@ -127,9 +124,7 @@ class LayeredMemory:
         else:
             layer_filter = [l.value for l in MemoryLayer]
 
-        if layers and ctx:
-            visible_layer_values = {s.layer.value for s in ctx.visible_scopes}
-        elif ctx:
+        if (layers and ctx) or ctx:
             visible_layer_values = {s.layer.value for s in ctx.visible_scopes}
         elif layers:
             visible_layer_values = set(layer_filter)

@@ -84,14 +84,13 @@ def reset_fake_general_agent():
 def _conversation_message_count(conversation_id: str) -> int:
     from sqlalchemy import func
     from sqlmodel import select
+
     from swarmmind.db import get_session
     from swarmmind.db_models import MessageDB
 
     session = get_session()
     try:
-        return session.exec(
-            select(func.count(MessageDB.id)).where(MessageDB.conversation_id == conversation_id)
-        ).one()
+        return session.exec(select(func.count(MessageDB.id)).where(MessageDB.conversation_id == conversation_id)).one()
     finally:
         session.close()
 
