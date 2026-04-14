@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Sidebar, type SidebarView, VIEW_LABELS } from "@/components/ui/sidebar";
 import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat";
 import { cn } from "@/lib/utils";
+import { Toaster } from "sonner";
 
 const viewDescriptions: Record<SidebarView, string> = {
   workbench: "减少选择成本，让用户更快产出结构化结果。",
@@ -386,6 +387,7 @@ export default function App() {
           {renderContent()}
         </div>
       </main>
+      <Toaster position="top-right" />
     </div>
   );
 }
