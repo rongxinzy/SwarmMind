@@ -12,11 +12,18 @@ export default {
     },
     extend: {
       fontFamily: {
+        display: ["var(--font-display)"],
         sans: ["var(--font-sans)"],
         mono: ["var(--font-mono)"],
         heading: ["var(--font-heading)"],
       },
       colors: {
+        "status-running": "var(--status-running)",
+        "status-approval": "var(--status-approval)",
+        "status-blocked": "var(--status-blocked)",
+        "status-done": "var(--status-done)",
+        "status-draft": "var(--status-draft)",
+        "status-chat": "var(--status-chat)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
