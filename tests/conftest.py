@@ -11,6 +11,10 @@ import os
 import sys
 from types import ModuleType
 
+import pytest
+
+from swarmmind.db import dispose_engines
+
 
 def _ensure_litellm_stub() -> None:
     try:
@@ -64,3 +68,11 @@ _ensure_litellm_stub()
 _ensure_deerflow_stub()
 
 os.environ.setdefault("OPENAI_API_KEY", "test-openai-key")
+
+
+@pytest.fixture(autouse=True)
+def cleanup_db_engines():
+    """Keep test DB engine lifecycle bounded when URLs change across cases."""
+    dispose_engines()
+    yield
+    dispose_engines()

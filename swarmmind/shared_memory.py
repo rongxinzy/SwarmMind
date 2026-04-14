@@ -1,4 +1,4 @@
-"""Shared memory layer — SQLite-backed KV store with last-write-wins + 409 retry."""
+"""Shared memory layer backed by the configured SwarmMind control-plane database."""
 
 import logging
 import time
@@ -17,7 +17,7 @@ class SharedMemoryConflict(Exception):
 
 
 class SharedMemory:
-    """Key-value store backed by SQLite.
+    """Key-value store backed by the configured ORM database.
 
     Phase 1 protocol (last-write-wins):
     1. Read current value + updated_at

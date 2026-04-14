@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from swarmmind.services.trace_service import TraceService
+from swarmmind.services.trace_service import LEGACY_DEFAULT_CHECKPOINTER_PATH, TraceService
 
 
 @pytest.fixture
@@ -135,10 +135,35 @@ def temp_checkpointer_db():
 class TestTraceService:
     """Test TraceService collaboration trace reconstruction."""
 
-    def test_service_initialization(self):
-        """Test TraceService can be initialized with default path."""
+    def test_service_initialization_uses_legacy_default_without_runtime_env(self, monkeypatch):
+        """Test TraceService keeps the legacy repo-local fallback without runtime env."""
+        monkeypatch.delenv("DEER_FLOW_HOME", raising=False)
         service = TraceService()
-        assert service.checkpointer_path is not None
+
+        assert service.checkpointer_path == LEGACY_DEFAULT_CHECKPOINTER_PATH
+
+    def test_service_initialization_uses_runtime_home_parent_checkpoint_path(self, monkeypatch, tmp_path):
+        """Test TraceService follows SwarmMind runtime bundle layout under DEER_FLOW_HOME/home."""
+        runtime_root = tmp_path / "runtime-instance"
+        runtime_home = runtime_root / "home"
+        runtime_home.mkdir(parents=True)
+        monkeypatch.setenv("DEER_FLOW_HOME", str(runtime_home))
+
+        service = TraceService()
+
+        assert service.checkpointer_path == runtime_root / "checkpoints.db"
+
+    def test_service_initialization_prefers_existing_runtime_home_checkpoint(self, monkeypatch, tmp_path):
+        """Test TraceService uses an existing checkpoints.db inside DEER_FLOW_HOME."""
+        runtime_home = tmp_path / "custom-home"
+        runtime_home.mkdir(parents=True)
+        expected_path = runtime_home / "checkpoints.db"
+        expected_path.touch()
+        monkeypatch.setenv("DEER_FLOW_HOME", str(runtime_home))
+
+        service = TraceService()
+
+        assert service.checkpointer_path == expected_path
 
     def test_service_initialization_with_custom_path(self):
         """Test TraceService can be initialized with custom path."""

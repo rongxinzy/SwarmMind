@@ -1,11 +1,9 @@
 """Supervisor REST API — FastAPI server for human oversight."""
 
-import json
 import logging
-import threading
-import time
 import uuid
-from datetime import datetime
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,11 +16,10 @@ from swarmmind.context_broker import (
     dispatch,
     record_supervisor_decision,
 )
-from swarmmind.db import health_check, init_db, seed_default_agents
+from swarmmind.db import init_db, seed_default_agents
 from swarmmind.models import (
     Conversation,
     ConversationListResponse,
-    ConversationMode,
     ConversationRuntimeOptions,
     GoalRequest,
     MemoryContext,
@@ -47,121 +44,62 @@ from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.strategy import StrategyRepository
+from swarmmind.services.conversation_support import (
+    ConversationSupportService,
+    generate_title_with_deerflow,
+)
+from swarmmind.services.lifecycle import run_cleanup_scanner, startup_lifecycle
+from swarmmind.services.runtime_support import RuntimeSupportService
+from swarmmind.services.stream_events import (
+    general_agent_status_labels as service_general_agent_status_labels,
+)
+from swarmmind.services.stream_events import (
+    serialize_stream_event as service_serialize_stream_event,
+)
+from swarmmind.services.stream_events import (
+    task_card_title as service_task_card_title,
+)
+from swarmmind.services.stream_events import (
+    task_status_from_result as service_task_status_from_result,
+)
+from swarmmind.services.stream_events import (
+    tool_activity_label as service_tool_activity_label,
+)
+from swarmmind.services.stream_events import (
+    translate_general_agent_event as service_translate_general_agent_event,
+)
 
 conversation_repo = ConversationRepository()
 message_repo = MessageRepository()
 action_proposal_repo = ActionProposalRepository()
 strategy_repo = StrategyRepository()
 memory_repo = MemoryRepository()
+conversation_support = ConversationSupportService(
+    conversation_repo=conversation_repo,
+    message_repo=message_repo,
+    title_generator=generate_title_with_deerflow,
+)
+runtime_support = RuntimeSupportService(conversation_repo=conversation_repo)
 
 
-# Deferred import for deer-flow title generation (avoid circular imports)
 def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[str, str]:
-    """Generate title in isolated session using deer-flow's capabilities.
-
-    This replicates TitleMiddleware's logic but executes in a separate thread/session,
-    preventing title generation from appearing in the main conversation stream.
-    """
-    try:
-        from deerflow.config.title_config import get_title_config
-        from deerflow.models import create_chat_model
-    except ImportError:
-        # Fallback to simple truncation if deerflow not available
-        title = user_msg[:50] if len(user_msg) <= 50 else user_msg[:47] + "..."
-        return title or "New Conversation", "fallback"
-
-    config = get_title_config()
-
-    # Normalize content (same as TitleMiddleware._normalize_content)
-    def _normalize(content: object) -> str:
-        if isinstance(content, str):
-            return content
-        if isinstance(content, list):
-            parts = [_normalize(item) for item in content]
-            return "\n".join(part for part in parts if part)
-        if isinstance(content, dict):
-            text_value = content.get("text")
-            if isinstance(text_value, str):
-                return text_value
-            nested = content.get("content")
-            if nested is not None:
-                return _normalize(nested)
-        return ""
-
-    user_normalized = _normalize(user_msg)[:500]
-    assistant_normalized = _normalize(assistant_msg)[:500]
-
-    # Build prompt using deer-flow's template
-    prompt = config.prompt_template.format(
-        max_words=config.max_words,
-        user_msg=user_normalized,
-        assistant_msg=assistant_normalized,
-    )
-
-    # Create model with thinking disabled (title doesn't need reasoning)
-    model = create_chat_model(name=config.model_name, thinking_enabled=False)
-
-    try:
-        # Execute in isolated session (no thread state pollution)
-        response = model.invoke(prompt)
-
-        # Parse title (same as TitleMiddleware._parse_title)
-        title_content = _normalize(response.content).strip().strip('"').strip("'")
-        title = title_content[: config.max_chars] if len(title_content) > config.max_chars else title_content
-
-        if title:
-            return title, "llm"
-    except Exception:
-        logger.exception("Title generation failed, using fallback")
-
-    # Fallback to truncated user message
-    fallback_chars = min(config.max_chars, 50)
-    if len(user_normalized) > fallback_chars:
-        return user_normalized[:fallback_chars].rstrip() + "...", "fallback"
-    return user_normalized or "New Conversation", "fallback"
+    return generate_title_with_deerflow(user_msg, assistant_msg)
 
 
 from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
 from swarmmind.runtime import (
-    RuntimeConfigError,
-    RuntimeExecutionError,
-    RuntimeUnavailableError,
     ensure_default_runtime_instance,
 )
 from swarmmind.runtime.catalog import (
     ANONYMOUS_SUBJECT_ID,
     ANONYMOUS_SUBJECT_TYPE,
     list_models_for_subject,
-    resolve_model_for_subject,
     sync_env_runtime_model,
 )
 
 logger = logging.getLogger(__name__)
 
 NEW_CONVERSATION_TITLE = "New Conversation"
-
-MODE_RUNTIME_MAP: dict[ConversationMode, dict[str, bool]] = {
-    ConversationMode.FLASH: {
-        "thinking_enabled": False,
-        "plan_mode": False,
-        "subagent_enabled": False,
-    },
-    ConversationMode.THINKING: {
-        "thinking_enabled": True,
-        "plan_mode": False,
-        "subagent_enabled": False,
-    },
-    ConversationMode.PRO: {
-        "thinking_enabled": True,
-        "plan_mode": True,
-        "subagent_enabled": False,
-    },
-    ConversationMode.ULTRA: {
-        "thinking_enabled": True,
-        "plan_mode": True,
-        "subagent_enabled": True,
-    },
-}
 
 # ---- Pydantic models ----
 
@@ -181,10 +119,27 @@ class StrategyChangeApproveRequest(BaseModel):
 
 # ---- FastAPI app ----
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Bootstrap API dependencies and launch background cleanup workers."""
+    startup_lifecycle(
+        init_db=init_db,
+        seed_default_agents=seed_default_agents,
+        sync_env_runtime_model=sync_env_runtime_model,
+        ensure_default_runtime_instance=ensure_default_runtime_instance,
+        cleanup_scanner=_cleanup_scanner,
+        api_host=API_HOST,
+        api_port=API_PORT,
+    )
+    yield
+
+
 app = FastAPI(
     title="SwarmMind Supervisor API",
     version="0.1.0",
     description="Human oversight interface for AI agent teams.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -195,44 +150,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-def startup() -> None:
-    """Initialize DB on startup."""
-    init_db()
-    seed_default_agents()
-    sync_env_runtime_model()
-    ensure_default_runtime_instance()
-    logger.info("SwarmMind API started on %s:%s", API_HOST, API_PORT)
-    # Start cleanup scanner (proposals + expired memory) in background
-    threading.Thread(target=_cleanup_scanner, daemon=True).start()
-
-
 # ---- Timeout scanner ----
 
 
 def _cleanup_scanner():
     """Background thread: clean up stale proposals and expired memory entries."""
-    while True:
-        time.sleep(30)
-        try:
-            # 1. Auto-reject proposals pending beyond ACTION_TIMEOUT_SECONDS
-            stale = action_proposal_repo.list_stale(ACTION_TIMEOUT_SECONDS)
-            for proposal in stale:
-                logger.info(
-                    "Auto-rejecting stale proposal: id=%s (created=%s)",
-                    proposal.id,
-                    proposal.created_at,
-                )
-                action_proposal_repo.reject_proposal(proposal.id)
-                record_supervisor_decision(proposal.id, SupervisorDecision.TIMEOUT)
-
-            # 2. Delete expired memory entries (TTL elapsed)
-            deleted_memory = memory_repo.delete_expired()
-            if deleted_memory > 0:
-                logger.info("Cleaned up %d expired memory entries.", deleted_memory)
-        except Exception as e:
-            logger.error("Cleanup scanner error: %s", e)
+    run_cleanup_scanner(
+        action_proposal_repo=action_proposal_repo,
+        memory_repo=memory_repo,
+        action_timeout_seconds=ACTION_TIMEOUT_SECONDS,
+        record_supervisor_decision=record_supervisor_decision,
+        supervisor_timeout_decision=SupervisorDecision.TIMEOUT,
+        lifecycle_logger=logger,
+    )
 
 
 # ---- Supervisor endpoints ----
@@ -313,7 +243,7 @@ def post_dispatch(body: GoalRequest):
 @app.get("/health")
 def health() -> dict[str, str]:
     """Health check endpoint."""
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "ok", "timestamp": datetime.now(UTC).isoformat()}
 
 
 @app.get("/ready")
@@ -358,412 +288,74 @@ def list_runtime_models() -> RuntimeModelCatalogResponse:
 
 
 def _db_to_conversation(conv) -> Conversation:
-    return Conversation(
-        id=conv.id,
-        title=conv.title,
-        title_status=conv.title_status,
-        title_source=conv.title_source,
-        title_generated_at=(str(conv.title_generated_at) if conv.title_generated_at is not None else None),
-        runtime_profile_id=(str(conv.runtime_profile_id) if conv.runtime_profile_id is not None else None),
-        runtime_instance_id=(str(conv.runtime_instance_id) if conv.runtime_instance_id is not None else None),
-        thread_id=str(conv.thread_id) if conv.thread_id is not None else None,
-        created_at=str(conv.created_at) if conv.created_at is not None else "",
-        updated_at=str(conv.updated_at) if conv.updated_at is not None else "",
-    )
+    return conversation_support.db_to_conversation(conv)
 
 
 def _db_to_message(msg) -> Message:
-    return Message(
-        id=msg.id,
-        conversation_id=msg.conversation_id,
-        role=msg.role,
-        content=msg.content,
-        created_at=str(msg.created_at) if msg.created_at is not None else "",
-    )
+    return conversation_support.db_to_message(msg)
 
 
 def _serialize_stream_event(event_type: str, **payload) -> str:
-    return json.dumps({"type": event_type, **payload}, ensure_ascii=False) + "\n"
+    return service_serialize_stream_event(event_type, **payload)
 
 
 def _tool_activity_label(tool_name: str, args: dict | None = None) -> str:
-    args = args or {}
-
-    if tool_name == "search":
-        query = args.get("query")
-        if isinstance(query, str) and query.strip():
-            return f"检索资料：{query.strip()[:60]}"
-        return "检索外部资料"
-    if tool_name == "crawl":
-        return "抓取网页内容"
-    if tool_name == "fetch":
-        return "获取远端内容"
-    if tool_name == "view_image":
-        return "查看图像资料"
-    if tool_name == "read_file":
-        return "读取文件"
-    if tool_name == "write_file":
-        return "写入文件"
-    if tool_name == "edit_file":
-        return "编辑文件"
-    if tool_name == "bash":
-        return "执行命令"
-    if tool_name == "present_files":
-        return "整理输出产物"
-    if tool_name == "ask_clarification":
-        return "请求补充信息"
-    if tool_name == "tool_search":
-        return "搜索可用工具"
-
-    return f"执行工具：{tool_name}"
+    return service_tool_activity_label(tool_name, args)
 
 
 def _task_card_title(tool_args: dict | None) -> str:
-    if not isinstance(tool_args, dict):
-        return "新的协作分工"
-
-    description = tool_args.get("description")
-    if isinstance(description, str) and description.strip():
-        return description.strip()
-
-    prompt = tool_args.get("prompt")
-    if isinstance(prompt, str) and prompt.strip():
-        return prompt.strip().splitlines()[0][:80]
-
-    return "新的协作分工"
+    return service_task_card_title(tool_args)
 
 
 def _task_status_from_result(content: str) -> tuple[str, str | None]:
-    normalized = content.strip()
-    if normalized.startswith("Task Succeeded. Result:"):
-        return "completed", normalized.split("Task Succeeded. Result:", 1)[1].strip() or None
-    if normalized.startswith("Task failed."):
-        return "failed", normalized.split("Task failed.", 1)[1].strip() or None
-    if normalized.startswith("Task timed out"):
-        return "failed", normalized
-    return "running", normalized or None
+    return service_task_status_from_result(content)
 
 
 def _persist_user_message(conversation_id: str, content: str) -> Message:
-    conversation_repo.get_by_id(conversation_id)
-    msg = message_repo.create(conversation_id, "user", content)
-    conversation_repo.touch(conversation_id)
-    return _db_to_message(msg)
+    return conversation_support.persist_user_message(conversation_id, content)
 
 
 def _persist_assistant_message(conversation_id: str, content: str) -> Message:
-    msg = message_repo.create(conversation_id, "assistant", content)
-    conversation_repo.touch(conversation_id)
-    return _db_to_message(msg)
+    return conversation_support.persist_assistant_message(conversation_id, content)
 
 
 def _normalize_model_name(model_name: str | None) -> str | None:
-    if model_name is None:
-        return None
-
-    value = model_name.strip()
-    return value or None
+    return runtime_support.normalize_model_name(model_name)
 
 
 def _resolve_model_name_for_request(model_name: str | None) -> str:
-    normalized_model_name = _normalize_model_name(model_name)
-    try:
-        selected_model = resolve_model_for_subject(
-            requested_model_name=normalized_model_name,
-            subject_type=ANONYMOUS_SUBJECT_TYPE,
-            subject_id=ANONYMOUS_SUBJECT_ID,
-        )
-    except RuntimeConfigError as exc:
-        raise HTTPException(
-            status_code=400 if normalized_model_name else 503,
-            detail=str(exc),
-        ) from exc
-    return selected_model.name
+    return runtime_support.resolve_model_name_for_request(model_name)
 
 
 def _conversation_thread_id(conversation_id: str) -> str:
-    return conversation_id
+    return runtime_support.conversation_thread_id(conversation_id)
 
 
 def _bind_conversation_runtime(conversation_id: str) -> tuple[object, str]:
-    runtime_instance = ensure_default_runtime_instance()
-    thread_id = _conversation_thread_id(conversation_id)
-
-    conversation_repo.update_runtime(
-        conversation_id,
-        runtime_instance.runtime_profile_id,
-        runtime_instance.runtime_instance_id,
-        thread_id,
-    )
-
-    return runtime_instance, thread_id
+    return runtime_support.bind_conversation_runtime(conversation_id)
 
 
 def _format_runtime_error(exc: Exception) -> str:
-    if isinstance(exc, (RuntimeConfigError, RuntimeUnavailableError, RuntimeExecutionError)):
-        return f"DeerFlow Runtime error: {exc}"
-    return f"Unexpected DeerFlow execution error: {exc}"
+    return runtime_support.format_runtime_error(exc)
 
 
 def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOptions:
-    effective_mode = body.mode
-    logger.info(
-        "[DEBUG] _resolve_runtime_options: body.mode=%s, effective_mode=%s",
-        body.mode,
-        effective_mode,
-    )
-    if effective_mode is None:
-        effective_mode = ConversationMode.THINKING if body.reasoning else ConversationMode.FLASH
-
-    runtime_flags = MODE_RUNTIME_MAP[effective_mode]
-    logger.info("[DEBUG] _resolve_runtime_options: runtime_flags=%s", runtime_flags)
-    options = ConversationRuntimeOptions(
-        mode=effective_mode,
-        model_name=_resolve_model_name_for_request(body.model_name),
-        thinking_enabled=runtime_flags["thinking_enabled"],
-        plan_mode=runtime_flags["plan_mode"],
-        subagent_enabled=runtime_flags["subagent_enabled"],
-    )
-    logger.info(
-        "[DEBUG] _resolve_runtime_options: returning options with subagent_enabled=%s",
-        options.subagent_enabled,
-    )
-    return options
+    return runtime_support.resolve_runtime_options(body)
 
 
 def _general_agent_status_labels(runtime_options: ConversationRuntimeOptions) -> tuple[str, str]:
-    if runtime_options.mode == ConversationMode.ULTRA:
-        return (
-            "Agent Team 正在判断这轮探索需要怎样的协作方式",
-            "Agent Team 正在协作处理你的问题",
-        )
-    if runtime_options.mode == ConversationMode.PRO:
-        return (
-            "正在规划这轮任务的执行方式",
-            "正在按规划生成结果",
-        )
-    if runtime_options.mode == ConversationMode.THINKING:
-        return (
-            "正在分析你的问题",
-            "正在整理深入回复",
-        )
-    return (
-        "正在准备快速回复",
-        "正在快速生成结果",
-    )
+    return service_general_agent_status_labels(runtime_options)
 
 
 def _translate_general_agent_event(
     event: dict,
     runtime_options: ConversationRuntimeOptions,
 ) -> list[str]:
-    event_type = event.get("type")
-
-    if event_type == "assistant_reasoning":
-        if not runtime_options.thinking_enabled:
-            return []
-        content = event.get("content")
-        if isinstance(content, str) and content.strip():
-            return [
-                _serialize_stream_event(
-                    "thinking",
-                    message_id=event.get("message_id"),
-                    content=content,
-                ),
-            ]
-        return []
-
-    if event_type == "assistant_message":
-        content = event.get("content")
-        if isinstance(content, str) and content:
-            return [
-                _serialize_stream_event(
-                    "assistant_message",
-                    message_id=event.get("message_id"),
-                    content=content,
-                ),
-            ]
-        return []
-
-    if event_type == "assistant_tool_calls":
-        if not runtime_options.subagent_enabled:
-            return []
-        tool_calls = event.get("tool_calls")
-        if not isinstance(tool_calls, list):
-            return []
-
-        lines: list[str] = []
-        for tool_call in tool_calls:
-            if not isinstance(tool_call, dict):
-                continue
-
-            tool_name = tool_call.get("name")
-            tool_args = tool_call.get("args", {})
-            tool_call_id = tool_call.get("id")
-
-            if tool_name == "task":
-                lines.append(
-                    _serialize_stream_event(
-                        "team_task",
-                        task={
-                            "id": tool_call_id,
-                            "title": _task_card_title(tool_args if isinstance(tool_args, dict) else {}),
-                            "status": "running",
-                            "detail": "Agent Team 正在协同处理这个子任务。",
-                        },
-                    ),
-                )
-                continue
-
-            lines.append(
-                _serialize_stream_event(
-                    "team_activity",
-                    activity={
-                        "id": tool_call_id or str(uuid.uuid4()),
-                        "tool_name": tool_name,
-                        "label": _tool_activity_label(
-                            str(tool_name),
-                            tool_args if isinstance(tool_args, dict) else {},
-                        ),
-                        "status": "running",
-                    },
-                ),
-            )
-        return lines
-
-    if event_type == "tool_result":
-        tool_name = str(event.get("tool_name") or "unknown")
-        tool_call_id = event.get("tool_call_id")
-        content = str(event.get("content") or "").strip()
-
-        # Handle ask_clarification tool (available in all modes, not just subagent mode)
-        if tool_name == "ask_clarification":
-            return [
-                _serialize_stream_event(
-                    "clarification_request",
-                    clarification={
-                        "id": tool_call_id,
-                        "content": content,
-                    },
-                ),
-            ]
-
-        if not runtime_options.subagent_enabled:
-            return []
-
-        if tool_name == "task":
-            status, detail = _task_status_from_result(content)
-            return [
-                _serialize_stream_event(
-                    "team_task",
-                    task={
-                        "id": tool_call_id,
-                        "status": status,
-                        "detail": detail,
-                    },
-                ),
-            ]
-
-        return [
-            _serialize_stream_event(
-                "team_activity",
-                activity={
-                    "id": tool_call_id or str(uuid.uuid4()),
-                    "tool_name": tool_name,
-                    "label": _tool_activity_label(tool_name),
-                    "status": "completed",
-                    "detail": content[:240] if content else None,
-                },
-            ),
-        ]
-
-    # Handle custom events from task_tool (task_started, task_running, task_completed, task_failed)
-    if event_type == "custom_event":
-        if not runtime_options.subagent_enabled:
-            return []
-
-        custom_event_type = event.get("event_type")
-        task_id = event.get("task_id")
-
-        if custom_event_type == "task_started":
-            return [
-                _serialize_stream_event(
-                    "task_started",
-                    task={
-                        "id": task_id,
-                        "description": event.get("description"),
-                        "status": "in_progress",
-                    },
-                ),
-            ]
-
-        if custom_event_type == "task_running":
-            return [
-                _serialize_stream_event(
-                    "task_running",
-                    task={
-                        "id": task_id,
-                        "message": event.get("message"),
-                    },
-                ),
-            ]
-
-        if custom_event_type == "task_completed":
-            return [
-                _serialize_stream_event(
-                    "task_completed",
-                    task={
-                        "id": task_id,
-                        "result": event.get("result"),
-                        "status": "completed",
-                    },
-                ),
-            ]
-
-        if custom_event_type == "task_failed":
-            return [
-                _serialize_stream_event(
-                    "task_failed",
-                    task={
-                        "id": task_id,
-                        "error": event.get("error"),
-                        "status": "failed",
-                    },
-                ),
-            ]
-
-    return []
+    return service_translate_general_agent_event(event, runtime_options)
 
 
 def _maybe_generate_conversation_title(conversation_id: str) -> None:
-    """Generate a conversation title after the first complete exchange.
-
-    Uses deer-flow's title generation capabilities in an isolated session,
-    preventing title LLM calls from polluting the main conversation stream.
-    """
-    conversation = conversation_repo.get_by_id(conversation_id)
-    if conversation.title_status != "pending":
-        return
-
-    messages = message_repo.list_by_conversation(conversation_id)
-    user_messages = [msg.content for msg in messages if msg.role == "user"]
-    assistant_messages = [msg.content for msg in messages if msg.role == "assistant"]
-
-    if len(user_messages) != 1 or len(assistant_messages) < 1:
-        return
-
-    # Generate title in isolated session using deer-flow capabilities
-    title, source = _generate_title_with_deerflow(
-        user_messages[0],
-        assistant_messages[0],
-    )
-
-    conversation_repo.update_title(
-        conversation_id,
-        title or NEW_CONVERSATION_TITLE,
-        "generated" if source == "llm" else "fallback",
-        source,
-    )
+    conversation_support.maybe_generate_conversation_title(conversation_id, _generate_title_with_deerflow)
 
 
 @app.get("/conversations")
@@ -1062,7 +654,7 @@ class ClarificationResponseRequest(BaseModel):
 
 
 @app.post("/conversations/{conversation_id}/clarification")
-def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest) -> dict:
+def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest) -> Message:
     """Respond to a clarification request from the AI.
 
     This endpoint is called when the user responds to an ask_clarification tool call.
@@ -1073,40 +665,21 @@ def respond_to_clarification(conversation_id: str, body: ClarificationResponseRe
     conversation_repo.get_by_id(conversation_id)
 
     # Persist the clarification response as a user message with tool_call_id
-    result = message_repo.create_clarification_response(
+    result = message_repo.create(
         conversation_id=conversation_id,
         role="tool",
         content=body.response,
         tool_call_id=body.tool_call_id,
         name="ask_clarification_response",
     )
-    return {
-        "id": result["id"],
-        "role": result["role"],
-        "content": result["content"],
-        "tool_call_id": result["tool_call_id"],
-        "created_at": result["created_at"],
-    }
+    conversation_repo.touch(conversation_id)
+    return _db_to_message(result)
 
 
 # ---- Run ----
 
 if __name__ == "__main__":
     import uvicorn
-
-    # Initialize database on startup
-    logger.info("Initializing SwarmMind database...")
-    init_db()
-    health = health_check()
-    if health["status"] == "healed":
-        logger.info("Database healed and initialized with new schema.")
-    else:
-        logger.info("Database health check passed.")
-
-    # Seed default agents if needed
-    logger.info("Seeding default agents if needed...")
-    seed_default_agents()
-    logger.info("Default agents ready.")
 
     logging.basicConfig(level=logging.INFO)
     uvicorn.run(app, host=API_HOST, port=API_PORT)

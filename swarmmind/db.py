@@ -1,23 +1,51 @@
-"""SQLite database setup, schema, and health check."""
+"""Database setup, schema, and health check."""
 
 import logging
 import os
+import threading
+from collections.abc import Generator
+from contextlib import contextmanager
+from pathlib import Path
+from urllib.parse import urlparse
 
-from swarmmind.config import DB_PATH
+from alembic.config import Config
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import Session, SQLModel
+
+from alembic import command
+from swarmmind.config import DATABASE_URL, DB_INIT_MODE, DB_PATH
 from swarmmind.prompting import SWARMMIND_PRODUCT_IDENTITY_PROMPT
 
 logger = logging.getLogger(__name__)
 
 
 def _get_db_path() -> str:
-    """Read DB path dynamically so tests and runtime env overrides take effect."""
+    """Read legacy DB path dynamically so tests and runtime env overrides take effect."""
     return os.environ.get("SWARMMIND_DB_PATH", DB_PATH)
 
 
+def _get_database_url() -> str:
+    """Return the configured SQLAlchemy URL, falling back to local SQLite path."""
+    configured_url = os.environ.get("SWARMMIND_DATABASE_URL", DATABASE_URL)
+    if configured_url:
+        return configured_url
+
+    path = _get_db_path()
+    if not os.path.isabs(path):
+        path = os.path.abspath(path)
+    return f"sqlite:///{path}"
+
+
+def _is_sqlite_url(database_url: str) -> bool:
+    return urlparse(database_url).scheme == "sqlite"
+
+
 def init_db() -> None:
-    """Initialize database: create all tables and indexes."""
-    init_orm_db()
-    logger.info("Database initialized at %s", _get_db_path())
+    """Initialize database schema using the configured initialization mode."""
+    apply_schema()
+    logger.info("Database initialized at %s", _get_database_url())
 
 
 def health_check() -> dict:
@@ -49,7 +77,7 @@ def health_check() -> dict:
     missing = [t for t in required_tables if t not in existing]
     if missing:
         logger.warning("Missing tables detected: %s. Auto-creating schema.", missing)
-        init_orm_db()
+        apply_schema()
         return {"status": "healed", "missing_tables": missing}
 
     return {"status": "ok", "missing_tables": []}
@@ -96,26 +124,15 @@ def seed_default_agents() -> None:
     logger.info("Default agents seeded.")
 
 
-# ---------------------------------------------------------------------------
-# ORM layer (SQLModel / SQLAlchemy 2.0)
-# ---------------------------------------------------------------------------
-
-from collections.abc import Generator
-from contextlib import contextmanager
-
-from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
-from sqlmodel import Session, SQLModel
+_engine_lock = threading.Lock()
+_engine_cache: dict[str, Engine] = {}
 
 
-def _get_db_url() -> str:
-    """Return SQLAlchemy-compatible SQLite URL."""
-    path = _get_db_path()
-    # Use absolute path to avoid cwd issues in alembic
-    if not os.path.isabs(path):
-        path = os.path.abspath(path)
-    return f"sqlite:///{path}"
+def _dispose_engine(engine: object) -> None:
+    """Dispose an engine-like object when supported."""
+    dispose = getattr(engine, "dispose", None)
+    if callable(dispose):
+        dispose()
 
 
 def _set_sqlite_pragma(dbapi_conn, _connection_record):
@@ -127,19 +144,44 @@ def _set_sqlite_pragma(dbapi_conn, _connection_record):
 
 
 def get_engine() -> Engine:
-    """Return a SQLAlchemy engine bound to the current DB path.
+    """Return a SQLAlchemy engine bound to the current database URL.
 
-    NOTE: A new engine is created on every call so that tests which
-    override SWARMMIND_DB_PATH get the correct database without stale
-    singleton state.
+    Engines are cached per database URL. If the configured URL changes,
+    stale cached engines are disposed before a new engine is created.
     """
-    engine = create_engine(
-        _get_db_url(),
-        connect_args={"check_same_thread": False},
-        pool_pre_ping=True,
-    )
-    event.listen(engine, "connect", _set_sqlite_pragma)
-    return engine
+    database_url = _get_database_url()
+    with _engine_lock:
+        cached_engine = _engine_cache.get(database_url)
+        if cached_engine is not None:
+            return cached_engine
+
+        for cached_url, cached in list(_engine_cache.items()):
+            if cached_url != database_url:
+                _dispose_engine(cached)
+                del _engine_cache[cached_url]
+
+        engine_kwargs: dict = {
+            "pool_pre_ping": True,
+        }
+        if _is_sqlite_url(database_url):
+            engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+        engine = create_engine(
+            database_url,
+            **engine_kwargs,
+        )
+        if _is_sqlite_url(database_url):
+            event.listen(engine, "connect", _set_sqlite_pragma)
+        _engine_cache[database_url] = engine
+        return engine
+
+
+def dispose_engines() -> None:
+    """Dispose all cached engines. Useful for tests and shutdown hygiene."""
+    with _engine_lock:
+        for engine in _engine_cache.values():
+            _dispose_engine(engine)
+        _engine_cache.clear()
 
 
 def get_session() -> Session:
@@ -159,6 +201,41 @@ def session_scope() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
+
+
+def _project_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def _build_alembic_config() -> Config:
+    project_root = _project_root()
+    alembic_ini_path = project_root / "alembic.ini"
+    config = Config(str(alembic_ini_path))
+    config.set_main_option("script_location", str(project_root / "alembic"))
+    config.set_main_option("sqlalchemy.url", _get_database_url())
+    return config
+
+
+def run_migrations_to_head() -> None:
+    """Apply Alembic migrations to the configured database."""
+    command.upgrade(_build_alembic_config(), "head")
+
+
+def apply_schema() -> None:
+    """Apply schema using the configured initialization mode.
+
+    Modes:
+    - ``migrate``: migration-first, suitable for real deployments.
+    - ``create_all``: test/dev fallback that creates metadata directly.
+    """
+    mode = os.environ.get("SWARMMIND_DB_INIT_MODE", DB_INIT_MODE).strip().lower()
+    if mode == "create_all":
+        init_orm_db()
+        return
+    if mode == "migrate":
+        run_migrations_to_head()
+        return
+    raise ValueError(f"Unsupported SWARMMIND_DB_INIT_MODE: {mode}")
 
 
 def init_orm_db() -> None:
@@ -181,4 +258,4 @@ def init_orm_db() -> None:
     )
 
     SQLModel.metadata.create_all(bind=get_engine())
-    logger.info("ORM tables ensured at %s", _get_db_path())
+    logger.info("ORM tables ensured at %s", _get_database_url())

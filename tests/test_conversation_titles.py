@@ -14,7 +14,7 @@ from swarmmind.models import GoalRequest, SendMessageRequest
 def setup_db(tmp_path, monkeypatch):
     """Use a temporary DB for each test."""
     db_path = str(tmp_path / "test.db")
-    monkeypatch.setenv("SWARMMIND_DB_PATH", db_path)
+    monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
     init_db()
     seed_default_agents()
     yield

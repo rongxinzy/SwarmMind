@@ -8,6 +8,8 @@ from typing import Any
 from sqlalchemy import JSON, Column, Index, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
+from swarmmind.time_utils import utc_now
+
 
 class AgentDB(SQLModel, table=True):
     """Core agent registry."""
@@ -17,7 +19,7 @@ class AgentDB(SQLModel, table=True):
     agent_id: str = Field(primary_key=True)
     domain: str
     system_prompt: str
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=utc_now)
 
 
 class WorkingMemoryDB(SQLModel, table=True):
@@ -29,7 +31,7 @@ class WorkingMemoryDB(SQLModel, table=True):
     value: str
     domain_tags: str | None = None
     last_writer_agent_id: str | None = None
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow)
+    updated_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_working_memory_tags", "domain_tags"),)
 
@@ -51,7 +53,7 @@ class EventLogDB(SQLModel, table=True):
     __tablename__ = "event_log"
 
     id: int | None = Field(default=None, primary_key=True)
-    timestamp: datetime | None = Field(default_factory=datetime.utcnow)
+    timestamp: datetime | None = Field(default_factory=utc_now)
     goal: str
     situation_tag: str | None = None
     dispatched_agent_id: str | None = None
@@ -76,7 +78,7 @@ class ActionProposalDB(SQLModel, table=True):
     postconditions: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     confidence: float = Field(default=0.5)
     status: str = Field(default="pending")  # 'pending' | 'approved' | 'rejected' | 'executed'
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_action_proposals_status", "status"),)
 
@@ -91,7 +93,7 @@ class StrategyChangeProposalDB(SQLModel, table=True):
     proposed_agent_id: str = Field(foreign_key="agents.agent_id")
     reason: str | None = None
     status: str = Field(default="pending")  # 'pending' | 'approved' | 'rejected'
-    proposed_at: datetime | None = Field(default_factory=datetime.utcnow)
+    proposed_at: datetime | None = Field(default_factory=utc_now)
 
 
 class ConversationDB(SQLModel, table=True):
@@ -107,8 +109,8 @@ class ConversationDB(SQLModel, table=True):
     runtime_profile_id: str | None = None
     runtime_instance_id: str | None = None
     thread_id: str | None = None
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_conversations_updated_at", "updated_at"),)
 
@@ -122,7 +124,9 @@ class MessageDB(SQLModel, table=True):
     conversation_id: str = Field(foreign_key="conversations.id")
     role: str
     content: str
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    tool_call_id: str | None = None
+    name: str | None = None
+    created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_messages_conversation", "conversation_id"),)
 
@@ -138,8 +142,8 @@ class MemoryEntryDB(SQLModel, table=True):
     key: str
     value: str
     tags: list[str] | None = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
     ttl: int | None = None
     version: int = Field(default=1)
     last_writer_agent_id: str | None = None
@@ -162,7 +166,7 @@ class SessionPromotionDB(SQLModel, table=True):
     target_layer: str  # 'L3_project' or 'L2_team'
     target_scope_id: str
     key_filter: list[str] | None = Field(default=None, sa_column=Column(JSON))
-    promoted_at: datetime | None = Field(default_factory=datetime.utcnow)
+    promoted_at: datetime | None = Field(default_factory=utc_now)
     snapshot_count: int = Field(default=0)
 
 
@@ -177,7 +181,7 @@ class CompactionHintDB(SQLModel, table=True):
     policy: str  # 'dedup', 'compress', 'archive'
     trigger_count: int = Field(default=0)
     fired_at: datetime | None = None
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_compaction_scope", "scope_layer", "scope_id"),)
 
@@ -198,8 +202,8 @@ class RuntimeModelDB(SQLModel, table=True):
     supports_vision: int = Field(default=0)
     enabled: int = Field(default=1)
     source: str = Field(default="manual")
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (
         Index("idx_runtime_models_enabled", "enabled"),
@@ -216,6 +220,6 @@ class RuntimeModelAssignmentDB(SQLModel, table=True):
     subject_id: str = Field(primary_key=True)
     model_name: str = Field(foreign_key="runtime_models.name", primary_key=True)
     is_default: int = Field(default=0)
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_runtime_model_assignments_subject", "subject_type", "subject_id"),)

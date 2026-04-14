@@ -16,7 +16,7 @@ from swarmmind.models import ConversationMode, GoalRequest, SendMessageRequest
 @pytest.fixture(autouse=True)
 def setup_db(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
-    monkeypatch.setenv("SWARMMIND_DB_PATH", db_path)
+    monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
     init_db()
     seed_default_agents()
     yield
@@ -271,3 +271,37 @@ def test_reasoning_compatibility_uses_thinking_mode_without_team_events(monkeypa
     assert not any(event["type"] == "team_task" for event in events)
     assert not any(event["type"] == "team_activity" for event in events)
     assert FakeDeerFlowRuntimeAdapter.stream_runtime_options[-1].mode == ConversationMode.THINKING
+
+
+def test_streaming_messages_api_remains_compatible_when_message_schema_extends(monkeypatch):
+    monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
+    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
+
+    conversation = supervisor.create_conversation(
+        GoalRequest(goal="验证消息 schema 扩展后的兼容性"),
+    )
+
+    list(
+        supervisor._stream_conversation_message(
+            conversation.id,
+            SendMessageRequest(content="请给我一版结论", mode=ConversationMode.FLASH),
+        ),
+    )
+
+    response = supervisor.get_conversation_messages(conversation.id)
+    assert response.total == 2
+
+    for message in response.items:
+        dumped = message.model_dump()
+        assert dumped["id"]
+        assert dumped["conversation_id"] == conversation.id
+        assert dumped["role"] in {"user", "assistant"}
+        assert isinstance(dumped["content"], str) and dumped["content"]
+        assert isinstance(dumped["created_at"], str) and dumped["created_at"]
+
+        # Future-proof check: when Message adds tool metadata fields,
+        # user/assistant rows should still be readable as normal messages.
+        if "tool_call_id" in dumped:
+            assert dumped["tool_call_id"] in (None, "")
+        if "name" in dumped:
+            assert dumped["name"] in (None, "")

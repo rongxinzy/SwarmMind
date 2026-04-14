@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import func
@@ -13,6 +13,7 @@ from sqlmodel import select
 from swarmmind.db import session_scope
 from swarmmind.db_models import ActionProposalDB
 from swarmmind.models import ActionProposal, ProposalStatus
+from swarmmind.time_utils import utc_now
 
 
 def _db_to_action_proposal(db_proposal: ActionProposalDB) -> ActionProposal:
@@ -25,7 +26,7 @@ def _db_to_action_proposal(db_proposal: ActionProposalDB) -> ActionProposal:
         postconditions=json.loads(db_proposal.postconditions) if db_proposal.postconditions else None,
         confidence=db_proposal.confidence,
         status=ProposalStatus(db_proposal.status),
-        created_at=db_proposal.created_at or datetime.utcnow(),
+        created_at=db_proposal.created_at or utc_now(),
     )
 
 
@@ -59,7 +60,7 @@ class ActionProposalRepository:
                 postconditions=json.dumps(postconditions) if postconditions else None,
                 confidence=confidence,
                 status=ProposalStatus.PENDING.value,
-                created_at=datetime.utcnow(),
+                created_at=utc_now(),
             )
             session.add(db_proposal)
             session.commit()
@@ -137,7 +138,7 @@ class ActionProposalRepository:
     def list_stale(self, timeout_seconds: int) -> list[ActionProposalDB]:
         """Return proposals pending older than timeout_seconds."""
         with session_scope() as session:
-            cutoff = datetime.utcnow() - timedelta(seconds=timeout_seconds)
+            cutoff = utc_now() - timedelta(seconds=timeout_seconds)
             results = session.exec(
                 select(ActionProposalDB).where(
                     ActionProposalDB.status == ProposalStatus.PENDING.value,

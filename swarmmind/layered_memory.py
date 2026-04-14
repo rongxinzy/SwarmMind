@@ -37,7 +37,7 @@ class MemoryWriteForbidden(LayeredMemoryError):
 
 
 class LayeredMemory:
-    """4-layer scoped KV store backed by SQLite.
+    """4-layer scoped KV store backed by the configured ORM database.
 
     Layers (L1=L4, L4=USER_SOUL):
       L1 TMP    — session-scoped, TTL support (default 24h)

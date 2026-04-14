@@ -31,7 +31,7 @@ You are DeerFlow 2.0, an open-source super agent.
 
 def test_seed_default_agents_updates_general_identity_prompt(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
-    monkeypatch.setenv("SWARMMIND_DB_PATH", db_path)
+    monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
     init_db()
 
     from swarmmind.db import get_session

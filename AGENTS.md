@@ -92,7 +92,7 @@ SwarmMind 文档按性质分为两类，阅读和使用时请区分：
 - **Phase**: Phase A (ChatSession + Project + DeerFlow Gateway foundation)
 - **Frontend**: shadcn/ui (React 18 + Tailwind CSS + Vite)
 - **Backend**: Python (FastAPI)
-- **Storage**: SQLite (Phase 1)
+- **Storage**: SQLModel ORM + Alembic, dialect-aware via `SWARMMIND_DATABASE_URL` (SQLite default for local/dev)
 - **Python env**: uv
 
 ## Workspace Layout
@@ -133,7 +133,7 @@ SwarmMindProject/              ← 本地工作区根目录（无git管理）
 swarmmind/                         ← Python package root
 ├── __init__.py
 ├── config.py                      ✅ load_dotenv + LLM configuration
-├── db.py                          ✅ SQLite connection + ORM engine + session scope
+├── db.py                          ✅ dialect-aware engine + Alembic-backed schema init + session scope
 ├── db_models.py                   ✅ SQLModel ORM table definitions
 ├── models.py                      ✅ Pydantic models (API/service layer)
 ├── context_broker.py              ✅ dispatch() + keyword routing + strategy table
@@ -186,7 +186,7 @@ tests/
 
 本阶段描述的是**当前代码已实现**的工程状态。如需了解 Phase B/C/D 的设计目标，参见 `docs/architecture.md` §9。
 
-- [x] SQLite schema + health check + seeding
+- [x] ORM schema + health check + seeding
 - [x] SQLModel + Alembic + Repository layer migrated from raw sqlite3
 - [x] Pydantic models for all database tables
 - [x] SharedMemory (KV store + conflict resolution)
@@ -247,6 +247,21 @@ uv run python -m swarmmind.api.supervisor   # run API
 
 Secrets → `.env` (gitignored). Copy `.env.example` to `.env` and fill in keys.
 
+Database config in `.env`:
+
+```bash
+# Preferred: full SQLAlchemy URL, so switching SQLite / PostgreSQL / MySQL only needs config changes
+SWARMMIND_DATABASE_URL=sqlite:///swarmmind.db
+
+# Schema init strategy
+# - migrate: Alembic upgrade to head (default, recommended)
+# - create_all: SQLModel metadata bootstrap (tests / isolated dev only)
+SWARMMIND_DB_INIT_MODE=migrate
+
+# Legacy SQLite-only fallback; only used when SWARMMIND_DATABASE_URL is unset
+# SWARMMIND_DB_PATH=swarmmind.db
+```
+
 ## Running
 
 All dev/build commands via `make`:
@@ -284,6 +299,8 @@ make frontend      # start frontend only (first time)
 
 `.env` (gitignored):
 ```bash
+SWARMMIND_DATABASE_URL=sqlite:///swarmmind.db
+SWARMMIND_DB_INIT_MODE=migrate
 LLM_PROVIDER=openai
 LLM_MODEL=qwen3.5-plus
 ANTHROPIC_API_KEY=sk-sp-...

@@ -1,5 +1,6 @@
 """Middleware for intercepting clarification requests and presenting them to the user."""
 
+import logging
 from collections.abc import Callable
 from typing import override
 
@@ -9,6 +10,8 @@ from langchain_core.messages import ToolMessage
 from langgraph.graph import END
 from langgraph.prebuilt.tool_node import ToolCallRequest
 from langgraph.types import Command
+
+logger = logging.getLogger(__name__)
 
 
 class ClarificationMiddlewareState(AgentState):
@@ -100,15 +103,22 @@ class ClarificationMiddleware(AgentMiddleware[ClarificationMiddlewareState]):
         # Extract clarification arguments
         args = request.tool_call.get("args", {})
         question = args.get("question", "")
+        tool_call_id = request.tool_call.get("id", "")
+        clarification_type = args.get("clarification_type", "missing_info")
+        context = args.get("context")
+        options = args.get("options", [])
 
-        print("[ClarificationMiddleware] Intercepted clarification request")
-        print(f"[ClarificationMiddleware] Question: {question}")
+        logger.info(
+            "Intercepted clarification request: tool_call_id=%s clarification_type=%s has_context=%s options_count=%d question=%r",
+            tool_call_id,
+            clarification_type,
+            bool(context),
+            len(options) if isinstance(options, list) else 0,
+            question,
+        )
 
         # Format the clarification message
         formatted_message = self._format_clarification_message(args)
-
-        # Get the tool call ID
-        tool_call_id = request.tool_call.get("id", "")
 
         # Create a ToolMessage with the formatted question
         # This will be added to the message history

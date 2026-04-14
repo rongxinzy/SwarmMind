@@ -285,7 +285,8 @@ uv sync
 # Set your LLM API key (copy .env.example → .env and fill in)
 cp .env.example .env
 
-# Start the supervisor API (auto-inits DB on first run)
+# Start the supervisor API
+# DB is configured by SWARMMIND_DATABASE_URL and schema init mode by SWARMMIND_DB_INIT_MODE
 uv run python -m swarmmind.api.supervisor
 # API runs at http://localhost:8000
 
@@ -305,7 +306,7 @@ cd ui && npm install && npm run dev
 | **Human Interface** | Supervisor UI (shadcn/ui) + LLM Status Renderer | Submit goals, approve/reject, view status |
 | **Orchestration** | Context Broker | Routes goals to agents via strategy table |
 | **Agent Layer** | Finance Agent, Code Review Agent | Specialized domain actors with LLM inference |
-| **Memory Layer** | Shared Context (SQLite KV) | Persistent shared memory, conflict-resolved |
+| **Memory Layer** | Shared Context (ORM + Alembic, config-switched dialect) | Persistent shared memory, conflict-resolved |
 | **Supervisor API** | FastAPI REST API | Human oversight and approval endpoints |
 
 ---
@@ -318,7 +319,7 @@ cd ui && npm install && npm run dev
 - [x] Project concept & design
 - [x] Context Broker implementation
 - [x] Finance + Code Review agents
-- [x] Shared context layer (SQLite KV)
+- [x] Shared context layer (ORM-backed, SQLite local/dev default, config-switched for PostgreSQL/MySQL)
 - [x] Supervisor REST API (6 endpoints + pagination)
 - [x] Supervisor UI (React + shadcn/ui, 3 tabs)
 - [x] LLM Status Renderer

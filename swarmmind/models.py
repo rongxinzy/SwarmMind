@@ -244,6 +244,8 @@ class Message(BaseModel):
     conversation_id: str
     role: str  # 'user' | 'assistant'
     content: str
+    tool_call_id: str | None = None
+    name: str | None = None
     created_at: str
 
 

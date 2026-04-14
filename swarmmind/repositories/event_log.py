@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from swarmmind.db import session_scope
 from swarmmind.db_models import EventLogDB
 from swarmmind.models import SupervisorDecision
+from swarmmind.time_utils import utc_now
 
 
 class EventLogRepository:
@@ -27,7 +26,7 @@ class EventLogRepository:
                 dispatched_agent_id=dispatched_agent_id,
                 action_proposal_id=action_proposal_id,
                 outcome="pending",
-                timestamp=datetime.utcnow(),
+                timestamp=utc_now(),
             )
             session.add(entry)
 

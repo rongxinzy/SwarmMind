@@ -1,4 +1,4 @@
-"""Runtime model catalog backed by SQLite with env bootstrap for MVP.
+"""Runtime model catalog backed by the configured SwarmMind database.
 
 Design Principle: Zero hardcoded model/provider details.
 All model configuration comes from environment variables.
