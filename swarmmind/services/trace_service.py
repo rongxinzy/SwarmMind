@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,10 +19,42 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# 复用 deer-flow 的 runtime root 路径结构
-DEFAULT_CHECKPOINTER_PATH = (
+# 复用当前 SwarmMind runtime bundle 的 legacy 路径结构
+LEGACY_DEFAULT_CHECKPOINTER_PATH = (
     Path(__file__).resolve().parents[2] / ".runtime" / "deerflow" / "local-default" / "checkpoints.db"
 )
+DEFAULT_CHECKPOINTER_FILENAME = "checkpoints.db"
+
+
+def _resolve_default_checkpointer_path() -> Path:
+    """Resolve the default SqliteSaver path from runtime env when available.
+
+    Resolution order:
+    1. If ``DEER_FLOW_HOME`` is set, prefer an existing checkpointer next to or
+       inside that home directory.
+    2. If no checkpointer exists yet, keep SwarmMind's current bundle layout as
+       the default for ``.../home`` directories by choosing the parent sibling.
+    3. Fall back to the previous fixed repo-local path.
+    """
+    deer_flow_home = os.environ.get("DEER_FLOW_HOME")
+    if not deer_flow_home:
+        return LEGACY_DEFAULT_CHECKPOINTER_PATH
+
+    runtime_home = Path(deer_flow_home).expanduser()
+    direct_candidate = runtime_home / DEFAULT_CHECKPOINTER_FILENAME
+    sibling_candidate = runtime_home.parent / DEFAULT_CHECKPOINTER_FILENAME
+
+    for candidate in (direct_candidate, sibling_candidate):
+        if candidate.exists():
+            return candidate
+
+    if runtime_home.name == "home":
+        return sibling_candidate
+
+    return direct_candidate
+
+
+DEFAULT_CHECKPOINTER_PATH = _resolve_default_checkpointer_path()
 
 
 class TraceService:
@@ -38,7 +71,7 @@ class TraceService:
             checkpointer_path: Path to SqliteSaver database.
                 Defaults to deer-flow's default location.
         """
-        self.checkpointer_path = Path(checkpointer_path) if checkpointer_path else DEFAULT_CHECKPOINTER_PATH
+        self.checkpointer_path = Path(checkpointer_path) if checkpointer_path else _resolve_default_checkpointer_path()
 
     def get_conversation_trace(self, thread_id: str) -> dict[str, Any]:
         """获取会话的协作轨迹。

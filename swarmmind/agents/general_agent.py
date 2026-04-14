@@ -520,9 +520,9 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         Uses async stream mode internally to properly handle async tools like task_tool.
         This bridges the async _astream_events with the sync generator interface.
 
-        IMPORTANT: Runs async code in the main thread's event loop to prevent httpx
-        client binding issues. Subagents create their own event loops in threads,
-        which can cause conflicts if the main client is bound to a different loop.
+        IMPORTANT: Runs async DeerFlow execution inside a dedicated worker thread
+        with its own event loop. This isolates the runtime from any existing loop
+        in the caller while preserving the synchronous generator API.
         """
         import queue
         import threading
