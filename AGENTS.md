@@ -36,8 +36,8 @@ SwarmMind 文档按性质分为两类，阅读和使用时请区分：
 |------|------|----------|------|
 | `AGENTS.md` (本节) | 当前工程状态总览 | 高频，每次迭代更新 | 代码实现 + 架构映射 |
 | `docs/README.md` | 文档治理规则 | 中频 | 文档体系元数据 |
-| `docs/chat-ui-gap-analysis.md` | UI差距分析 | 一次性调研 | 对比 DeerFlow 与 SwarmMind 现状 |
-| `docs/ui-migration-plan.md` | UI移植执行计划 | 一次性执行文档 | 具体移植步骤 |
+| `docs/archive/chat-ui-gap-analysis.md` | UI差距分析（已归档） | 一次性调研 | 对比 DeerFlow 与 SwarmMind 现状 |
+| `docs/archive/ui-migration-plan.md` | UI移植执行计划（已归档） | 一次性执行文档 | 具体移植步骤 |
 
 **特征**:
 - 描述 "当前实现了什么" (what is implemented)
@@ -133,8 +133,9 @@ SwarmMindProject/              ← 本地工作区根目录（无git管理）
 swarmmind/                         ← Python package root
 ├── __init__.py
 ├── config.py                      ✅ load_dotenv + LLM configuration
-├── db.py                          ✅ SQLite schema + health check + seeding + migrations
-├── models.py                      ✅ Pydantic models (all database tables)
+├── db.py                          ✅ SQLite connection + ORM engine + session scope
+├── db_models.py                   ✅ SQLModel ORM table definitions
+├── models.py                      ✅ Pydantic models (API/service layer)
 ├── context_broker.py              ✅ dispatch() + keyword routing + strategy table
 ├── shared_memory.py               ✅ KV store + last-write-wins + 409 retry
 ├── layered_memory.py              ✅ 4-layer memory (L1_TMP, L2_TEAM, L3_PROJECT, L4_USER_SOUL)
@@ -142,6 +143,16 @@ swarmmind/                         ← Python package root
 ├── agents/
 │   ├── base.py                    ✅ BaseAgent (abstract base with memory utilities)
 │   └── general_agent.py           ✅ DeerFlowRuntimeAdapter (DeerFlow-driven adapter, compat alias: GeneralAgent)
+├── repositories/                  ✅ Repository layer (SQLModel + CRUD per domain)
+│   ├── agent.py
+│   ├── action_proposal.py
+│   ├── strategy.py
+│   ├── event_log.py
+│   ├── working_memory.py
+│   ├── memory.py
+│   ├── conversation.py
+│   ├── message.py
+│   └── runtime_catalog.py
 ├── runtime/
 │   ├── bootstrap.py               ✅ DeerFlow Runtime bootstrap + config generation
 │   ├── profile.py                 ✅ RuntimeProfile management
@@ -176,6 +187,7 @@ tests/
 本阶段描述的是**当前代码已实现**的工程状态。如需了解 Phase B/C/D 的设计目标，参见 `docs/architecture.md` §9。
 
 - [x] SQLite schema + health check + seeding
+- [x] SQLModel + Alembic + Repository layer migrated from raw sqlite3
 - [x] Pydantic models for all database tables
 - [x] SharedMemory (KV store + conflict resolution)
 - [x] ContextBroker (dispatch + keyword routing + strategy table)

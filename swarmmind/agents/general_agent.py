@@ -18,7 +18,6 @@ from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, Too
 
 from swarmmind.agents.base import BaseAgent
 from swarmmind.context_broker import update_proposal_result
-from swarmmind.db import get_connection
 from swarmmind.models import ActionProposal, ConversationRuntimeOptions, MemoryContext
 from swarmmind.prompting import rewrite_swarmmind_identity_prompt
 from swarmmind.runtime import RuntimeExecutionError, ensure_default_runtime_instance
@@ -331,14 +330,12 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         )
 
         # Return updated proposal
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM action_proposals WHERE id = ?", (action_proposal_id,))
-            row = cursor.fetchone()
-            return ActionProposal(**dict(row))
-        finally:
-            conn.close()
+        from swarmmind.repositories.action_proposal import ActionProposalRepository
+
+        proposal = ActionProposalRepository().get(action_proposal_id)
+        if proposal is None:
+            raise RuntimeError(f"Action proposal {action_proposal_id} not found after update")
+        return proposal
 
     async def _astream_events(
         self,

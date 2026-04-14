@@ -2,9 +2,10 @@
 
 from abc import ABC, abstractmethod
 
-from swarmmind.db import get_connection
 from swarmmind.layered_memory import LayeredMemory
-from swarmmind.models import MemoryContext, MemoryScope, ProposalStatus
+from swarmmind.models import MemoryContext, MemoryScope
+from swarmmind.repositories.action_proposal import ActionProposalRepository
+from swarmmind.repositories.agent import AgentRepository
 
 
 class AgentError(Exception):
@@ -25,19 +26,10 @@ class BaseAgent(ABC):
 
     def _load_system_prompt(self) -> str:
         """Load agent's system prompt from DB."""
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT system_prompt FROM agents WHERE agent_id = ?",
-                (self.agent_id,),
-            )
-            row = cursor.fetchone()
-            if not row:
-                raise AgentError(f"Agent {self.agent_id} not found in database.")
-            return row["system_prompt"]
-        finally:
-            conn.close()
+        prompt = AgentRepository().get_system_prompt(self.agent_id)
+        if prompt is None:
+            raise AgentError(f"Agent {self.agent_id} not found in database.")
+        return prompt
 
     @property
     @abstractmethod
@@ -69,13 +61,4 @@ class BaseAgent(ABC):
 
     def _create_rejected_proposal(self, proposal_id: str, description: str) -> None:
         """Update a proposal to rejected status with error description."""
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE action_proposals SET status = ?, description = ? WHERE id = ?",
-                (ProposalStatus.REJECTED.value, description, proposal_id),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        ActionProposalRepository().reject(proposal_id, description)

@@ -3,7 +3,6 @@
 import logging
 import uuid
 
-from swarmmind.db import get_connection
 from swarmmind.models import (
     ActionProposal,
     DispatchResponse,
@@ -11,6 +10,9 @@ from swarmmind.models import (
     ProposalStatus,
     SupervisorDecision,
 )
+from swarmmind.repositories.action_proposal import ActionProposalRepository
+from swarmmind.repositories.event_log import EventLogRepository
+from swarmmind.repositories.strategy import StrategyRepository
 
 logger = logging.getLogger(__name__)
 
@@ -85,17 +87,8 @@ def route_to_agent(situation_tag: str) -> str | None:
     DeerFlow-first mode always falls back to the ``general`` runtime entrypoint
     when no dedicated control-plane mapping exists yet.
     """
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT agent_id FROM strategy_table WHERE situation_tag = ?",
-            (situation_tag,),
-        )
-        row = cursor.fetchone()
-        return row["agent_id"] if row else "general"
-    finally:
-        conn.close()
+    agent_id = StrategyRepository().get_agent_id(situation_tag)
+    return agent_id if agent_id else "general"
 
 
 def create_action_proposal(
@@ -107,52 +100,14 @@ def create_action_proposal(
     confidence: float = 0.5,
 ) -> ActionProposal:
     """Create and persist an action proposal."""
-    proposal_id = str(uuid.uuid4())
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO action_proposals
-            (id, agent_id, description, target_resource, preconditions, postconditions, confidence, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                proposal_id,
-                agent_id,
-                description,
-                target_resource,
-                str(preconditions) if preconditions else None,
-                str(postconditions) if postconditions else None,
-                confidence,
-                ProposalStatus.PENDING.value,
-            ),
-        )
-        conn.commit()
-
-        cursor.execute("SELECT created_at FROM action_proposals WHERE id = ?", (proposal_id,))
-        created_at = cursor.fetchone()["created_at"]
-
-        logger.info(
-            "Action proposal created: id=%s agent_id=%s description=%s",
-            proposal_id,
-            agent_id,
-            description[:50],
-        )
-
-        return ActionProposal(
-            id=proposal_id,
-            agent_id=agent_id,
-            description=description,
-            target_resource=target_resource,
-            preconditions=preconditions,
-            postconditions=postconditions,
-            confidence=confidence,
-            status=ProposalStatus.PENDING,
-            created_at=created_at,
-        )
-    finally:
-        conn.close()
+    return ActionProposalRepository().create(
+        agent_id=agent_id,
+        description=description,
+        target_resource=target_resource,
+        preconditions=preconditions,
+        postconditions=postconditions,
+        confidence=confidence,
+    )
 
 
 def log_dispatch(
@@ -162,20 +117,12 @@ def log_dispatch(
     action_proposal_id: str,
 ) -> None:
     """Log a dispatch event to event_log."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO event_log
-            (goal, situation_tag, dispatched_agent_id, action_proposal_id, outcome)
-            VALUES (?, ?, ?, ?, 'pending')
-            """,
-            (goal, situation_tag, dispatched_agent_id, action_proposal_id),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    EventLogRepository().create(
+        goal=goal,
+        situation_tag=situation_tag,
+        dispatched_agent_id=dispatched_agent_id,
+        action_proposal_id=action_proposal_id,
+    )
 
 
 def dispatch(
@@ -235,20 +182,12 @@ def update_proposal_result(
     confidence: float = 1.0,
 ) -> None:
     """Update an action proposal after agent has processed it."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE action_proposals
-            SET description = ?, target_resource = ?, confidence = ?
-            WHERE id = ?
-            """,
-            (description, target_resource, confidence, proposal_id),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    ActionProposalRepository().update_result(
+        proposal_id=proposal_id,
+        description=description,
+        target_resource=target_resource,
+        confidence=confidence,
+    )
 
 
 def record_supervisor_decision(
@@ -256,24 +195,7 @@ def record_supervisor_decision(
     decision: SupervisorDecision,
 ) -> None:
     """Record supervisor approve/reject/timeout in event_log."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE event_log
-            SET supervisor_decision = ?, outcome = ?
-            WHERE action_proposal_id = ?
-            """,
-            (
-                decision.value,
-                "success" if decision == SupervisorDecision.APPROVED else "failure",
-                action_proposal_id,
-            ),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    EventLogRepository().record_supervisor_decision(action_proposal_id, decision)
 
 
 def update_strategy_on_outcome(
@@ -282,20 +204,5 @@ def update_strategy_on_outcome(
     success: bool,
 ) -> None:
     """Update success/failure counts in strategy_table after a completed task."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        del agent_id
-        if success:
-            cursor.execute(
-                "UPDATE strategy_table SET success_count = success_count + 1 WHERE situation_tag = ?",
-                (situation_tag,),
-            )
-        else:
-            cursor.execute(
-                "UPDATE strategy_table SET failure_count = failure_count + 1 WHERE situation_tag = ?",
-                (situation_tag,),
-            )
-        conn.commit()
-    finally:
-        conn.close()
+    del agent_id
+    StrategyRepository().update_outcome(situation_tag, success)

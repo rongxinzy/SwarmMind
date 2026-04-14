@@ -18,7 +18,7 @@ from swarmmind.context_broker import (
     dispatch,
     record_supervisor_decision,
 )
-from swarmmind.db import get_connection, health_check, init_db, seed_default_agents
+from swarmmind.db import health_check, init_db, seed_default_agents
 from swarmmind.models import (
     ActionProposal,
     Conversation,
@@ -41,6 +41,21 @@ from swarmmind.models import (
     SupervisorDecision,
 )
 from swarmmind.renderer import render_status
+from swarmmind.repositories.action_proposal import (
+    ActionProposalRepository,
+    _db_to_action_proposal,
+)
+from swarmmind.repositories.conversation import ConversationRepository
+from swarmmind.repositories.memory import MemoryRepository
+from swarmmind.repositories.message import MessageRepository
+from swarmmind.repositories.strategy import StrategyRepository
+
+
+conversation_repo = ConversationRepository()
+message_repo = MessageRepository()
+action_proposal_repo = ActionProposalRepository()
+strategy_repo = StrategyRepository()
+memory_repo = MemoryRepository()
 
 
 # Deferred import for deer-flow title generation (avoid circular imports)
@@ -204,50 +219,21 @@ def _cleanup_scanner():
     while True:
         time.sleep(30)
         try:
-            conn = get_connection()
-            try:
-                cursor = conn.cursor()
-
-                # 1. Auto-reject proposals pending beyond ACTION_TIMEOUT_SECONDS
-                # nosec: B608 - safe, ACTION_TIMEOUT_SECONDS is a constant, not user input
-                cursor.execute(
-                    f"""
-                    SELECT id, agent_id, description, created_at
-                    FROM action_proposals
-                    WHERE status = 'pending'
-                    AND datetime(created_at) < datetime('now', '-{ACTION_TIMEOUT_SECONDS} seconds')
-                    """,
+            # 1. Auto-reject proposals pending beyond ACTION_TIMEOUT_SECONDS
+            stale = action_proposal_repo.list_stale(ACTION_TIMEOUT_SECONDS)
+            for proposal in stale:
+                logger.info(
+                    "Auto-rejecting stale proposal: id=%s (created=%s)",
+                    proposal.id,
+                    proposal.created_at,
                 )
-                stale = cursor.fetchall()
-                for row in stale:
-                    logger.info(
-                        "Auto-rejecting stale proposal: id=%s (created=%s)",
-                        row["id"],
-                        row["created_at"],
-                    )
-                    cursor.execute(
-                        "UPDATE action_proposals SET status = ? WHERE id = ?",
-                        (ProposalStatus.REJECTED.value, row["id"]),
-                    )
-                    record_supervisor_decision(row["id"], SupervisorDecision.TIMEOUT)
-                if stale:
-                    conn.commit()
+                action_proposal_repo.reject_proposal(proposal.id)
+                record_supervisor_decision(proposal.id, SupervisorDecision.TIMEOUT)
 
-                # 2. Delete expired memory entries (TTL elapsed)
-                cursor.execute(
-                    """
-                    DELETE FROM memory_entries
-                    WHERE ttl IS NOT NULL
-                    AND (strftime('%s', 'now') - strftime('%s', created_at)) > ttl
-                    """,
-                )
-                deleted_memory = cursor.rowcount
-                if deleted_memory > 0:
-                    logger.info("Cleaned up %d expired memory entries.", deleted_memory)
-                    conn.commit()
-
-            finally:
-                conn.close()
+            # 2. Delete expired memory entries (TTL elapsed)
+            deleted_memory = memory_repo.delete_expired()
+            if deleted_memory > 0:
+                logger.info("Cleaned up %d expired memory entries.", deleted_memory)
         except Exception as e:
             logger.error("Cleanup scanner error: %s", e)
 
@@ -258,78 +244,28 @@ def _cleanup_scanner():
 @app.get("/pending")
 def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> PendingResponse:
     """List pending action proposals (paginated)."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) as total FROM action_proposals WHERE status = 'pending'")
-        total = cursor.fetchone()["total"]
-
-        cursor.execute(
-            "SELECT * FROM action_proposals WHERE status = 'pending' ORDER BY created_at ASC LIMIT ? OFFSET ?",
-            (limit, offset),
-        )
-        rows = cursor.fetchall()
-
-        items = [ActionProposal(**dict(row)) for row in rows]
-        return PendingResponse(items=items, total=total)
-    finally:
-        conn.close()
+    rows, total = action_proposal_repo.list_pending(limit=limit, offset=offset)
+    items = [_db_to_action_proposal(row) for row in rows]
+    return PendingResponse(items=items, total=total)
 
 
 @app.post("/approve/{proposal_id}")
-def approve(proposal_id: str) -> ActionProposal:
+def approve(proposal_id: str) -> dict:
     """Approve an action proposal."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE action_proposals SET status = ? WHERE id = ? AND status = 'pending'",
-            (ProposalStatus.APPROVED.value, proposal_id),
-        )
-        if cursor.rowcount == 0:
-            # Check if it exists at all
-            cursor.execute("SELECT status FROM action_proposals WHERE id = ?", (proposal_id,))
-            row = cursor.fetchone()
-            if row is None:
-                raise HTTPException(status_code=404, detail="Proposal not found")
-            raise HTTPException(
-                status_code=409,
-                detail=f"Proposal already in status: {row['status']}",
-            )
-        conn.commit()
-        record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
-        logger.info("Proposal %s approved by supervisor", proposal_id)
-        return {"status": "approved", "id": proposal_id}
-    finally:
-        conn.close()
+    action_proposal_repo.approve(proposal_id)
+    record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
+    logger.info("Proposal %s approved by supervisor", proposal_id)
+    return {"status": "approved", "id": proposal_id}
 
 
 @app.post("/reject/{proposal_id}")
 def reject(proposal_id: str, body: RejectRequest | None = None):
     """Reject an action proposal."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "UPDATE action_proposals SET status = ? WHERE id = ? AND status = 'pending'",
-            (ProposalStatus.REJECTED.value, proposal_id),
-        )
-        if cursor.rowcount == 0:
-            cursor.execute("SELECT status FROM action_proposals WHERE id = ?", (proposal_id,))
-            row = cursor.fetchone()
-            if row is None:
-                raise HTTPException(status_code=404, detail="Proposal not found")
-            raise HTTPException(
-                status_code=409,
-                detail=f"Proposal already in status: {row['status']}",
-            )
-        conn.commit()
-        record_supervisor_decision(proposal_id, SupervisorDecision.REJECTED)
-        logger.info("Proposal %s rejected by supervisor", proposal_id)
-        reason = body.reason if body else None
-        return {"status": "rejected", "id": proposal_id, "reason": reason}
-    finally:
-        conn.close()
+    action_proposal_repo.reject_proposal(proposal_id)
+    record_supervisor_decision(proposal_id, SupervisorDecision.REJECTED)
+    logger.info("Proposal %s rejected by supervisor", proposal_id)
+    reason = body.reason if body else None
+    return {"status": "rejected", "id": proposal_id, "reason": reason}
 
 
 @app.get("/status")
@@ -348,25 +284,17 @@ def get_status(goal: str = Query(..., max_length=2000)):
 @app.get("/strategy")
 def get_strategy() -> StrategyResponse:
     """View the strategy routing table."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT situation_tag, agent_id, success_count, failure_count FROM strategy_table ORDER BY situation_tag"
+    rows = strategy_repo.list_all()
+    entries = [
+        StrategyEntry(
+            situation_tag=row.situation_tag,
+            agent_id=row.agent_id,
+            success_count=row.success_count,
+            failure_count=row.failure_count,
         )
-        rows = cursor.fetchall()
-        entries = [
-            StrategyEntry(
-                situation_tag=row["situation_tag"],
-                agent_id=row["agent_id"],
-                success_count=row["success_count"],
-                failure_count=row["failure_count"],
-            )
-            for row in rows
-        ]
-        return StrategyResponse(entries=entries)
-    finally:
-        conn.close()
+        for row in rows
+    ]
+    return StrategyResponse(entries=entries)
 
 
 @app.post("/dispatch")
@@ -432,18 +360,28 @@ def list_runtime_models() -> RuntimeModelCatalogResponse:
 # ---- Conversation endpoints ----
 
 
-def _row_to_conversation(row) -> Conversation:
+def _db_to_conversation(conv) -> Conversation:
     return Conversation(
-        id=row["id"],
-        title=row["title"],
-        title_status=row["title_status"],
-        title_source=row["title_source"],
-        title_generated_at=(str(row["title_generated_at"]) if row["title_generated_at"] is not None else None),
-        runtime_profile_id=(str(row["runtime_profile_id"]) if row["runtime_profile_id"] is not None else None),
-        runtime_instance_id=(str(row["runtime_instance_id"]) if row["runtime_instance_id"] is not None else None),
-        thread_id=str(row["thread_id"]) if row["thread_id"] is not None else None,
-        created_at=str(row["created_at"]),
-        updated_at=str(row["updated_at"]),
+        id=conv.id,
+        title=conv.title,
+        title_status=conv.title_status,
+        title_source=conv.title_source,
+        title_generated_at=(str(conv.title_generated_at) if conv.title_generated_at is not None else None),
+        runtime_profile_id=(str(conv.runtime_profile_id) if conv.runtime_profile_id is not None else None),
+        runtime_instance_id=(str(conv.runtime_instance_id) if conv.runtime_instance_id is not None else None),
+        thread_id=str(conv.thread_id) if conv.thread_id is not None else None,
+        created_at=str(conv.created_at) if conv.created_at is not None else "",
+        updated_at=str(conv.updated_at) if conv.updated_at is not None else "",
+    )
+
+
+def _db_to_message(msg) -> Message:
+    return Message(
+        id=msg.id,
+        conversation_id=msg.conversation_id,
+        role=msg.role,
+        content=msg.content,
+        created_at=str(msg.created_at) if msg.created_at is not None else "",
     )
 
 
@@ -510,63 +448,16 @@ def _task_status_from_result(content: str) -> tuple[str, str | None]:
 
 
 def _persist_user_message(conversation_id: str, content: str) -> Message:
-    user_msg_id = str(uuid.uuid4())
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
-        if cursor.fetchone() is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-
-        cursor.execute(
-            "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
-            (user_msg_id, conversation_id, "user", content),
-        )
-        cursor.execute(
-            "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (conversation_id,),
-        )
-        conn.commit()
-
-        cursor.execute("SELECT * FROM messages WHERE id = ?", (user_msg_id,))
-        row = cursor.fetchone()
-        return Message(
-            id=str(row["id"]),
-            conversation_id=str(row["conversation_id"]),
-            role=str(row["role"]),
-            content=str(row["content"]),
-            created_at=str(row["created_at"]),
-        )
-    finally:
-        conn.close()
+    conversation_repo.get_by_id(conversation_id)
+    msg = message_repo.create(conversation_id, "user", content)
+    conversation_repo.touch(conversation_id)
+    return _db_to_message(msg)
 
 
 def _persist_assistant_message(conversation_id: str, content: str) -> Message:
-    assistant_msg_id = str(uuid.uuid4())
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
-            (assistant_msg_id, conversation_id, "assistant", content),
-        )
-        cursor.execute(
-            "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (conversation_id,),
-        )
-        conn.commit()
-
-        cursor.execute("SELECT * FROM messages WHERE id = ?", (assistant_msg_id,))
-        row = cursor.fetchone()
-        return Message(
-            id=str(row["id"]),
-            conversation_id=str(row["conversation_id"]),
-            role=str(row["role"]),
-            content=str(row["content"]),
-            created_at=str(row["created_at"]),
-        )
-    finally:
-        conn.close()
+    msg = message_repo.create(conversation_id, "assistant", content)
+    conversation_repo.touch(conversation_id)
+    return _db_to_message(msg)
 
 
 def _normalize_model_name(model_name: str | None) -> str | None:
@@ -601,25 +492,12 @@ def _bind_conversation_runtime(conversation_id: str) -> tuple[object, str]:
     runtime_instance = ensure_default_runtime_instance()
     thread_id = _conversation_thread_id(conversation_id)
 
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE conversations
-            SET runtime_profile_id = ?, runtime_instance_id = ?, thread_id = ?
-            WHERE id = ?
-            """,
-            (
-                runtime_instance.runtime_profile_id,
-                runtime_instance.runtime_instance_id,
-                thread_id,
-                conversation_id,
-            ),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    conversation_repo.update_runtime(
+        conversation_id,
+        runtime_instance.runtime_profile_id,
+        runtime_instance.runtime_instance_id,
+        thread_id,
+    )
 
     return runtime_instance, thread_id
 
@@ -866,156 +744,60 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
     Uses deer-flow's title generation capabilities in an isolated session,
     preventing title LLM calls from polluting the main conversation stream.
     """
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT id, title_status
-            FROM conversations
-            WHERE id = ?
-            """,
-            (conversation_id,),
-        )
-        conversation = cursor.fetchone()
-        if conversation is None or conversation["title_status"] != "pending":
-            return
+    conversation = conversation_repo.get_by_id(conversation_id)
+    if conversation.title_status != "pending":
+        return
 
-        cursor.execute(
-            """
-            SELECT role, content
-            FROM messages
-            WHERE conversation_id = ?
-            ORDER BY created_at ASC, id ASC
-            """,
-            (conversation_id,),
-        )
-        rows = cursor.fetchall()
-        user_messages = [row["content"] for row in rows if row["role"] == "user"]
-        assistant_messages = [row["content"] for row in rows if row["role"] == "assistant"]
+    messages = message_repo.list_by_conversation(conversation_id)
+    user_messages = [msg.content for msg in messages if msg.role == "user"]
+    assistant_messages = [msg.content for msg in messages if msg.role == "assistant"]
 
-        if len(user_messages) != 1 or len(assistant_messages) < 1:
-            return
+    if len(user_messages) != 1 or len(assistant_messages) < 1:
+        return
 
-        # Generate title in isolated session using deer-flow capabilities
-        title, source = _generate_title_with_deerflow(
-            user_messages[0],
-            assistant_messages[0],
-        )
+    # Generate title in isolated session using deer-flow capabilities
+    title, source = _generate_title_with_deerflow(
+        user_messages[0],
+        assistant_messages[0],
+    )
 
-        cursor.execute(
-            """
-            UPDATE conversations
-            SET
-                title = ?,
-                title_status = ?,
-                title_source = ?,
-                title_generated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-              AND title_status = 'pending'
-            """,
-            (
-                title or NEW_CONVERSATION_TITLE,
-                "generated" if source == "llm" else "fallback",
-                source,
-                conversation_id,
-            ),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    conversation_repo.update_title(
+        conversation_id,
+        title or NEW_CONVERSATION_TITLE,
+        "generated" if source == "llm" else "fallback",
+        source,
+    )
 
 
 @app.get("/conversations")
 def list_conversations() -> ConversationListResponse:
     """List all conversations ordered by updated_at descending."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) as total FROM conversations")
-        total = cursor.fetchone()["total"]
-
-        cursor.execute("SELECT * FROM conversations ORDER BY updated_at DESC")
-        rows = cursor.fetchall()
-        items = [_row_to_conversation(row) for row in rows]
-        return ConversationListResponse(items=items, total=total)
-    finally:
-        conn.close()
+    rows = conversation_repo.list_all()
+    items = [_db_to_conversation(row) for row in rows]
+    return ConversationListResponse(items=items, total=len(items))
 
 
 @app.post("/conversations")
 def create_conversation(body: GoalRequest) -> Conversation:
     """Create a new conversation with the first user message."""
-    conv_id = str(uuid.uuid4())
-
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO conversations (id, title, title_status)
-            VALUES (?, ?, ?)
-            """,
-            (conv_id, NEW_CONVERSATION_TITLE, "pending"),
-        )
-        conn.commit()
-
-        cursor.execute("SELECT * FROM conversations WHERE id = ?", (conv_id,))
-        row = cursor.fetchone()
-        return _row_to_conversation(row)
-    finally:
-        conn.close()
+    conv = conversation_repo.create(NEW_CONVERSATION_TITLE, "pending")
+    return _db_to_conversation(conv)
 
 
 @app.get("/conversations/{conversation_id}")
 def get_conversation(conversation_id: str) -> Conversation:
     """Get a single conversation by ID."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,))
-        row = cursor.fetchone()
-        if row is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        return _row_to_conversation(row)
-    finally:
-        conn.close()
+    conv = conversation_repo.get_by_id(conversation_id)
+    return _db_to_conversation(conv)
 
 
 @app.get("/conversations/{conversation_id}/messages")
 def get_conversation_messages(conversation_id: str) -> MessageListResponse:
     """Get all messages for a conversation."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
-        if cursor.fetchone() is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-
-        cursor.execute(
-            "SELECT COUNT(*) as total FROM messages WHERE conversation_id = ?",
-            (conversation_id,),
-        )
-        total = cursor.fetchone()["total"]
-
-        cursor.execute(
-            "SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC",
-            (conversation_id,),
-        )
-        rows = cursor.fetchall()
-        items = [
-            Message(
-                id=str(row["id"]),
-                conversation_id=str(row["conversation_id"]),
-                role=str(row["role"]),
-                content=str(row["content"]),
-                created_at=str(row["created_at"]),
-            )
-            for row in rows
-        ]
-        return MessageListResponse(items=items, total=total)
-    finally:
-        conn.close()
+    conversation_repo.get_by_id(conversation_id)
+    rows = message_repo.list_by_conversation(conversation_id)
+    items = [_db_to_message(row) for row in rows]
+    return MessageListResponse(items=items, total=len(items))
 
 
 @app.post("/conversations/{conversation_id}/messages", include_in_schema=False)
@@ -1024,27 +806,8 @@ def send_message(conversation_id: str, body: SendMessageRequest):
 
     All execution flows through the single DeerFlow Runtime Instance.
     """
-    # Save user message (validates conversation exists via FK or explicit check)
-    user_msg_id = str(uuid.uuid4())
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        # Validate conversation exists
-        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
-        if cursor.fetchone() is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-        # Insert user message
-        cursor.execute(
-            "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
-            (user_msg_id, conversation_id, "user", body.content),
-        )
-        cursor.execute(
-            "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (conversation_id,),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    # Save user message (validates conversation exists)
+    user_msg = _persist_user_message(conversation_id, body.content)
 
     # Build MemoryContext using conversation_id as session_id
     memory_ctx = MemoryContext(
@@ -1062,16 +825,7 @@ def send_message(conversation_id: str, body: SendMessageRequest):
     )
     proposal_id = dispatch_result.action_proposal_id
 
-    conn2 = get_connection()
-    try:
-        cursor2 = conn2.cursor()
-        cursor2.execute(
-            "UPDATE action_proposals SET status = ? WHERE id = ?",
-            (ProposalStatus.APPROVED.value, proposal_id),
-        )
-        conn2.commit()
-    finally:
-        conn2.close()
+    action_proposal_repo.approve(proposal_id)
     record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
 
     try:
@@ -1095,70 +849,22 @@ def send_message(conversation_id: str, body: SendMessageRequest):
         ai_response = _format_runtime_error(e)
 
     # Save assistant response
-    assistant_msg_id = str(uuid.uuid4())
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, ?, ?)",
-            (assistant_msg_id, conversation_id, "assistant", ai_response),
-        )
-        cursor.execute(
-            "UPDATE conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            (conversation_id,),
-        )
-        conn.commit()
-    finally:
-        conn.close()
+    assistant_msg = _persist_assistant_message(conversation_id, ai_response)
 
     _maybe_generate_conversation_title(conversation_id)
 
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM messages WHERE id = ?", (user_msg_id,))
-        row = cursor.fetchone()
-        user_msg = Message(
-            id=str(row["id"]),
-            conversation_id=str(row["conversation_id"]),
-            role=str(row["role"]),
-            content=str(row["content"]),
-            created_at=str(row["created_at"]),
-        )
-        cursor.execute("SELECT * FROM messages WHERE id = ?", (assistant_msg_id,))
-        row = cursor.fetchone()
-        assistant_msg = Message(
-            id=str(row["id"]),
-            conversation_id=str(row["conversation_id"]),
-            role=str(row["role"]),
-            content=str(row["content"]),
-            created_at=str(row["created_at"]),
-        )
-
-        return SendMessageResponse(
-            user_message=user_msg,
-            assistant_message=assistant_msg,
-        )
-    finally:
-        conn.close()
+    return SendMessageResponse(
+        user_message=user_msg,
+        assistant_message=assistant_msg,
+    )
 
 
 @app.delete("/conversations/{conversation_id}")
-def delete_conversation(conversation_id: str) -> Conversation:
+def delete_conversation(conversation_id: str) -> dict:
     """Delete a conversation and all its messages."""
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM conversations WHERE id = ?", (conversation_id,))
-        if cursor.fetchone() is None:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-
-        cursor.execute("DELETE FROM messages WHERE conversation_id = ?", (conversation_id,))
-        cursor.execute("DELETE FROM conversations WHERE id = ?", (conversation_id,))
-        conn.commit()
-        return {"status": "deleted", "id": conversation_id}
-    finally:
-        conn.close()
+    conversation_repo.get_by_id(conversation_id)
+    conversation_repo.delete(conversation_id)
+    return {"status": "deleted", "id": conversation_id}
 
 
 # ---- Collaboration Trace Endpoints ----
@@ -1182,18 +888,9 @@ def get_conversation_trace(conversation_id: str) -> dict:
     # 延迟导入，避免循环依赖
     from swarmmind.services.trace_service import trace_service
 
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, thread_id FROM conversations WHERE id = ?", (conversation_id,))
-        row = cursor.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Conversation not found")
-
-        # 优先使用 thread_id，否则用 conversation_id 作为 fallback
-        thread_id = row["thread_id"] or conversation_id
-    finally:
-        conn.close()
+    conv = conversation_repo.get_by_id(conversation_id)
+    # 优先使用 thread_id，否则用 conversation_id 作为 fallback
+    thread_id = conv.thread_id or conversation_id
 
     # 从 deer-flow checkpointer 读取轨迹
     try:
@@ -1254,16 +951,7 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
         )
         proposal_id = dispatch_result.action_proposal_id
 
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                "UPDATE action_proposals SET status = ? WHERE id = ?",
-                (ProposalStatus.APPROVED.value, proposal_id),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        action_proposal_repo.approve(proposal_id)
         record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
 
         runtime_instance, _thread_id = _bind_conversation_runtime(conversation_id)
@@ -1385,42 +1073,23 @@ def respond_to_clarification(conversation_id: str, body: ClarificationResponseRe
     conversation is resumed.
     """
     # Validate conversation exists
-    get_conversation(conversation_id)
+    conversation_repo.get_by_id(conversation_id)
 
     # Persist the clarification response as a user message with tool_call_id
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        now = datetime.now(UTC).isoformat()
-        message_id = str(uuid.uuid4())
-
-        # Store as a special message that will be treated as a tool response
-        cursor.execute(
-            """
-            INSERT INTO messages (id, conversation_id, role, content, created_at, tool_call_id, name)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                message_id,
-                conversation_id,
-                "tool",
-                body.response,
-                now,
-                body.tool_call_id,
-                "ask_clarification_response",
-            ),
-        )
-        conn.commit()
-
-        return {
-            "id": message_id,
-            "role": "tool",
-            "content": body.response,
-            "tool_call_id": body.tool_call_id,
-            "created_at": now,
-        }
-    finally:
-        conn.close()
+    result = message_repo.create_clarification_response(
+        conversation_id=conversation_id,
+        role="tool",
+        content=body.response,
+        tool_call_id=body.tool_call_id,
+        name="ask_clarification_response",
+    )
+    return {
+        "id": result["id"],
+        "role": result["role"],
+        "content": result["content"],
+        "tool_call_id": result["tool_call_id"],
+        "created_at": result["created_at"],
+    }
 
 
 # ---- Run ----
@@ -1438,18 +1107,9 @@ if __name__ == "__main__":
         logger.info("Database health check passed.")
 
     # Seed default agents if needed
-    conn = get_connection()
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM agents WHERE agent_id = 'general'")
-        count = cursor.fetchone()[0]
-        if count == 0:
-            logger.info("Seeding default agents...")
-            seed_default_agents()
-        else:
-            logger.info("Default agents already exist.")
-    finally:
-        conn.close()
+    logger.info("Seeding default agents if needed...")
+    seed_default_agents()
+    logger.info("Default agents ready.")
 
     logging.basicConfig(level=logging.INFO)
     uvicorn.run(app, host=API_HOST, port=API_PORT)

@@ -6,7 +6,7 @@ pytestmark = pytest.mark.requires_llm
 
 from swarmmind import context_broker
 from swarmmind.api import supervisor
-from swarmmind.db import get_connection, init_db, seed_default_agents
+from swarmmind.db import init_db, seed_default_agents
 from swarmmind.models import GoalRequest, SendMessageRequest
 
 
@@ -34,13 +34,14 @@ class FakeDeerFlowRuntimeAdapter:
 
 
 def _conversation_row(conversation_id: str):
-    conn = get_connection()
+    from swarmmind.db import get_session
+    from swarmmind.db_models import ConversationDB
+
+    session = get_session()
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,))
-        return cursor.fetchone()
+        return session.get(ConversationDB, conversation_id)
     finally:
-        conn.close()
+        session.close()
 
 
 class TestConversationTitles:
@@ -74,10 +75,10 @@ class TestConversationTitles:
 
         row = _conversation_row(conversation.id)
         assert response.assistant_message.content.startswith("Stub DeerFlow response")
-        assert row["title"] == "CRM MVP 模块边界"
-        assert row["title_status"] == "generated"
-        assert row["title_source"] == "llm"
-        assert row["title_generated_at"] is not None
+        assert row.title == "CRM MVP 模块边界"
+        assert row.title_status == "generated"
+        assert row.title_source == "llm"
+        assert row.title_generated_at is not None
 
     def test_subsequent_messages_do_not_regenerate_title(self, monkeypatch):
         calls: list[tuple[str, str]] = []
@@ -110,8 +111,8 @@ class TestConversationTitles:
         )
 
         row = _conversation_row(conversation.id)
-        assert row["title"] == "CRM MVP 模块边界"
-        assert row["title_status"] == "generated"
+        assert row.title == "CRM MVP 模块边界"
+        assert row.title_status == "generated"
         assert len(calls) == 1
 
     def test_title_generation_falls_back_when_llm_fails(self, monkeypatch):
@@ -137,5 +138,5 @@ class TestConversationTitles:
         )
 
         row = _conversation_row(conversation.id)
-        assert row["title_status"] == "fallback"
-        assert row["title_source"] == "fallback"
+        assert row.title_status == "fallback"
+        assert row.title_source == "fallback"

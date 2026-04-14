@@ -3,7 +3,7 @@
 import pytest
 
 from swarmmind.context_broker import derive_situation_tag, route_to_agent
-from swarmmind.db import get_connection, init_db, seed_default_agents
+from swarmmind.db import init_db, seed_default_agents
 
 
 @pytest.fixture(autouse=True)
@@ -113,50 +113,46 @@ class TestDispatchMemoryContext:
 class TestStrategyTableUpdate:
     def test_success_count_increments(self):
         from swarmmind.context_broker import update_strategy_on_outcome
+        from swarmmind.db import get_session
+        from swarmmind.db_models import StrategyTableDB
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT success_count FROM strategy_table WHERE situation_tag = ?",
-            ("finance_qa",),
-        )
-        before = cursor.fetchone()["success_count"]
-        conn.close()
+        session = get_session()
+        try:
+            row = session.get(StrategyTableDB, "finance_qa")
+            before = row.success_count if row else 0
+        finally:
+            session.close()
 
         update_strategy_on_outcome("finance_qa", "finance", success=True)
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT success_count FROM strategy_table WHERE situation_tag = ?",
-            ("finance_qa",),
-        )
-        after = cursor.fetchone()["success_count"]
-        conn.close()
+        session = get_session()
+        try:
+            row = session.get(StrategyTableDB, "finance_qa")
+            after = row.success_count if row else 0
+        finally:
+            session.close()
 
         assert after == before + 1
 
     def test_failure_count_increments(self):
         from swarmmind.context_broker import update_strategy_on_outcome
+        from swarmmind.db import get_session
+        from swarmmind.db_models import StrategyTableDB
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT failure_count FROM strategy_table WHERE situation_tag = ?",
-            ("finance_qa",),
-        )
-        before = cursor.fetchone()["failure_count"]
-        conn.close()
+        session = get_session()
+        try:
+            row = session.get(StrategyTableDB, "finance_qa")
+            before = row.failure_count if row else 0
+        finally:
+            session.close()
 
         update_strategy_on_outcome("finance_qa", "finance", success=False)
 
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT failure_count FROM strategy_table WHERE situation_tag = ?",
-            ("finance_qa",),
-        )
-        after = cursor.fetchone()["failure_count"]
-        conn.close()
+        session = get_session()
+        try:
+            row = session.get(StrategyTableDB, "finance_qa")
+            after = row.failure_count if row else 0
+        finally:
+            session.close()
 
         assert after == before + 1

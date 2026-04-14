@@ -24,8 +24,7 @@
 
 - `AGENTS.md` — 当前工程状态总览（含 Phase A 实现清单）
 - `docs/README.md` — 本文档，文档体系元数据
-- `docs/chat-ui-gap-analysis.md` — UI 差距分析（调研草稿）
-- `docs/ui-migration-plan.md` — UI 移植执行计划（执行文档）
+- `docs/archive/*` — 已完成的临时调研与执行文档（如 gap-analysis、migration-plan）
 
 **阅读场景**: 理解当前代码能做什么、如何运行、如何部署
 

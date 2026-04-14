@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from swarmmind.db import get_connection, init_db, seed_default_agents
+from swarmmind.db import init_db, seed_default_agents
 from swarmmind.prompting import SWARMMIND_PRODUCT_IDENTITY_PROMPT, rewrite_swarmmind_identity_prompt
 
 
@@ -34,28 +34,25 @@ def test_seed_default_agents_updates_general_identity_prompt(tmp_path, monkeypat
     monkeypatch.setenv("SWARMMIND_DB_PATH", db_path)
     init_db()
 
-    conn = get_connection()
+    from swarmmind.db import get_session
+    from swarmmind.db_models import AgentDB
+
+    session = get_session()
     try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO agents (agent_id, domain, system_prompt) VALUES (?, ?, ?)",
-            ("general", "general", "legacy prompt"),
-        )
-        conn.commit()
+        session.add(AgentDB(agent_id="general", domain="general", system_prompt="legacy prompt"))
+        session.commit()
     finally:
-        conn.close()
+        session.close()
 
     seed_default_agents()
 
-    conn = get_connection()
+    session = get_session()
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT system_prompt FROM agents WHERE agent_id = ?", ("general",))
-        row = cursor.fetchone()
+        row = session.get(AgentDB, "general")
     finally:
-        conn.close()
+        session.close()
 
     assert row is not None
-    assert "SwarmMind" in row["system_prompt"]
-    assert "北京容芯致远科技有限公司" in row["system_prompt"]
-    assert "有什么我可以帮你的吗？" in row["system_prompt"]
+    assert "SwarmMind" in row.system_prompt
+    assert "北京容芯致远科技有限公司" in row.system_prompt
+    assert "有什么我可以帮你的吗？" in row.system_prompt

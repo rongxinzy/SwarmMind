@@ -9,7 +9,7 @@ import pytest
 pytestmark = pytest.mark.requires_llm
 
 from swarmmind.api import supervisor
-from swarmmind.db import get_connection, init_db, seed_default_agents
+from swarmmind.db import init_db, seed_default_agents
 from swarmmind.models import ConversationMode, GoalRequest, SendMessageRequest
 
 
@@ -82,26 +82,29 @@ def reset_fake_general_agent():
 
 
 def _conversation_message_count(conversation_id: str) -> int:
-    conn = get_connection()
+    from sqlalchemy import func
+    from sqlmodel import select
+    from swarmmind.db import get_session
+    from swarmmind.db_models import MessageDB
+
+    session = get_session()
     try:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT COUNT(*) AS total FROM messages WHERE conversation_id = ?",
-            (conversation_id,),
-        )
-        return int(cursor.fetchone()["total"])
+        return session.exec(
+            select(func.count(MessageDB.id)).where(MessageDB.conversation_id == conversation_id)
+        ).one()
     finally:
-        conn.close()
+        session.close()
 
 
 def _conversation_row(conversation_id: str):
-    conn = get_connection()
+    from swarmmind.db import get_session
+    from swarmmind.db_models import ConversationDB
+
+    session = get_session()
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM conversations WHERE id = ?", (conversation_id,))
-        return cursor.fetchone()
+        return session.get(ConversationDB, conversation_id)
     finally:
-        conn.close()
+        session.close()
 
 
 def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monkeypatch):
@@ -159,9 +162,9 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     assert _conversation_message_count(conversation.id) == 2
     assert FakeDeerFlowRuntimeAdapter.stream_runtime_options[-1].mode == ConversationMode.ULTRA
     conversation_row = _conversation_row(conversation.id)
-    assert conversation_row["runtime_profile_id"] == "local-default"
-    assert conversation_row["runtime_instance_id"] == "local-default-instance"
-    assert conversation_row["thread_id"] == conversation.id
+    assert conversation_row.runtime_profile_id == "local-default"
+    assert conversation_row.runtime_instance_id == "local-default-instance"
+    assert conversation_row.thread_id == conversation.id
 
 
 @pytest.mark.parametrize(

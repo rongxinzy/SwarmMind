@@ -250,18 +250,17 @@ class TestSessionPromotion:
         assert promotion_id is not None
 
         # Verify promotion record exists
-        from swarmmind.db import get_connection
+        from swarmmind.db import get_session
+        from swarmmind.db_models import SessionPromotionDB
 
-        conn = get_connection()
+        session = get_session()
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM session_promotions WHERE id = ?", (promotion_id,))
-            row = cursor.fetchone()
+            row = session.get(SessionPromotionDB, promotion_id)
             assert row is not None
-            assert row["target_layer"] == "L3_project"
-            assert row["target_scope_id"] == "proj-123"
+            assert row.target_layer == "L3_project"
+            assert row.target_scope_id == "proj-123"
         finally:
-            conn.close()
+            session.close()
 
     def test_promote_session_copies_entries(self):
         lm = LayeredMemory("finance")
@@ -292,15 +291,14 @@ class TestCompactionHints:
 
         assert hint_id is not None
 
-        from swarmmind.db import get_connection
+        from swarmmind.db import get_session
+        from swarmmind.db_models import CompactionHintDB
 
-        conn = get_connection()
+        session = get_session()
         try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM compaction_hints WHERE id = ?", (hint_id,))
-            row = cursor.fetchone()
+            row = session.get(CompactionHintDB, hint_id)
             assert row is not None
-            assert row["policy"] == "dedup"
-            assert row["trigger_count"] == 50
+            assert row.policy == "dedup"
+            assert row.trigger_count == 50
         finally:
-            conn.close()
+            session.close()

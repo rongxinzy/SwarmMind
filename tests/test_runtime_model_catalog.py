@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from swarmmind.api import supervisor
-from swarmmind.db import get_connection, init_db, seed_default_agents
+from swarmmind.db import init_db, seed_default_agents
 from swarmmind.models import SendMessageRequest
 from swarmmind.runtime.catalog import (
     ANONYMOUS_SUBJECT_ID,
@@ -35,27 +35,24 @@ def test_sync_env_runtime_model_persists_catalog_and_default_assignment():
     assert synced_model.provider == "openai"
     assert synced_model.api_key_env_var == "OPENAI_API_KEY"
 
-    conn = get_connection()
+    from swarmmind.db import get_session
+    from swarmmind.db_models import RuntimeModelAssignmentDB, RuntimeModelDB
+
+    session = get_session()
     try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM runtime_models WHERE name = ?", (synced_model.name,))
-        model_row = cursor.fetchone()
-        cursor.execute(
-            """
-            SELECT * FROM runtime_model_assignments
-            WHERE subject_type = ? AND subject_id = ? AND model_name = ?
-            """,
+        model_row = session.get(RuntimeModelDB, synced_model.name)
+        assignment_row = session.get(
+            RuntimeModelAssignmentDB,
             (ANONYMOUS_SUBJECT_TYPE, ANONYMOUS_SUBJECT_ID, synced_model.name),
         )
-        assignment_row = cursor.fetchone()
     finally:
-        conn.close()
+        session.close()
 
     assert model_row is not None
-    assert model_row["enabled"] == 1
-    assert model_row["source"] == "env"
+    assert model_row.enabled == 1
+    assert model_row.source == "env"
     assert assignment_row is not None
-    assert assignment_row["is_default"] == 1
+    assert assignment_row.is_default == 1
 
 
 def test_list_runtime_models_endpoint_returns_visitor_default():
