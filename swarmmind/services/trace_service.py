@@ -123,16 +123,20 @@ class TraceService:
         try:
             cursor = conn.cursor()
             # 复用 SqliteSaver 的查询模式
-            cursor.execute(
-                """
-                SELECT thread_id, checkpoint_id, parent_checkpoint_id, type, 
-                       checkpoint, metadata
-                FROM checkpoints 
-                WHERE thread_id = ? AND checkpoint_ns = ''
-                ORDER BY checkpoint_id ASC
-                """,
-                (thread_id,),
-            )
+            try:
+                cursor.execute(
+                    """
+                    SELECT thread_id, checkpoint_id, parent_checkpoint_id, type, 
+                           checkpoint, metadata
+                    FROM checkpoints 
+                    WHERE thread_id = ? AND checkpoint_ns = ''
+                    ORDER BY checkpoint_id ASC
+                    """,
+                    (thread_id,),
+                )
+            except sqlite3.OperationalError as exc:
+                logger.warning("Checkpoint query failed for thread %s at %s: %s", thread_id, self.checkpointer_path, exc)
+                return []
 
             checkpoints = []
             for row in cursor.fetchall():

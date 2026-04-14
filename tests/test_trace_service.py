@@ -180,6 +180,21 @@ class TestTraceService:
         assert trace["events"] == []
         assert trace["checkpoint_count"] == 0
 
+    def test_get_trace_returns_empty_when_checkpoints_table_is_missing(self, tmp_path):
+        """Test get_conversation_trace degrades gracefully if upstream schema is absent."""
+        db_path = tmp_path / "missing-table.db"
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE unrelated (id INTEGER PRIMARY KEY)")
+        conn.commit()
+        conn.close()
+
+        service = TraceService(str(db_path))
+        trace = service.get_conversation_trace("any-thread")
+
+        assert trace["status"] == "empty"
+        assert trace["events"] == []
+        assert trace["checkpoint_count"] == 0
+
     def test_get_trace_reconstructs_events(self, temp_checkpointer_db):
         """Test get_conversation_trace correctly reconstructs events from checkpoints."""
         service = TraceService(temp_checkpointer_db)
