@@ -13,7 +13,11 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # Database
+# Preferred: a full SQLAlchemy URL so deployments can switch dialects by config only.
+# Legacy fallback: SWARMMIND_DB_PATH keeps local SQLite workflows working.
+DATABASE_URL = os.environ.get("SWARMMIND_DATABASE_URL")
 DB_PATH = os.environ.get("SWARMMIND_DB_PATH", "swarmmind.db")
+DB_INIT_MODE = os.environ.get("SWARMMIND_DB_INIT_MODE", "migrate")
 
 # LLM Provider
 LLM_PROVIDER = os.environ.get("LLM_PROVIDER", "openai")  # "openai" or "anthropic"

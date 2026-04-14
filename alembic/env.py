@@ -4,7 +4,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import engine_from_config
 
 from alembic import context
-from swarmmind.db import _get_db_url
+from swarmmind.db import _get_database_url
 import swarmmind.db_models  # noqa: F401
 from sqlmodel import SQLModel
 
@@ -22,7 +22,7 @@ if config.config_file_name is not None:
 target_metadata = SQLModel.metadata
 
 # Override DB URL from app configuration
-config.set_main_option("sqlalchemy.url", _get_db_url())
+config.set_main_option("sqlalchemy.url", _get_database_url())
 
 
 def run_migrations_offline() -> None:

@@ -19,7 +19,7 @@ from swarmmind.runtime.catalog import (
 @pytest.fixture(autouse=True)
 def setup_db(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
-    monkeypatch.setenv("SWARMMIND_DB_PATH", db_path)
+    monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     monkeypatch.setenv("LLM_MODEL", "qwen3.5-plus")
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")

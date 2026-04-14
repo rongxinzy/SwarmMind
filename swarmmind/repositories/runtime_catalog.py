@@ -158,8 +158,7 @@ class RuntimeCatalogRepository:
     ) -> list[RuntimeSelectableModel]:
         """Return models assigned to the given subject."""
         with self._with_session() as session:
-            # Use explicit join via WHERE clauses since SQLite + SQLModel
-            # handles this cleanly.
+            # Keep the join explicit so result mapping stays predictable across dialects.
             results = session.exec(
                 select(RuntimeModelDB, RuntimeModelAssignmentDB.is_default)
                 .join(

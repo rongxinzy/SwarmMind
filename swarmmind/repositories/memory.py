@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlmodel import select
 
 from swarmmind.db import session_scope
 from swarmmind.db_models import CompactionHintDB, MemoryEntryDB, SessionPromotionDB
 from swarmmind.models import MemoryLayer, MemoryScope
+from swarmmind.time_utils import utc_now
 
 
 class MemoryRepository:
@@ -93,8 +94,8 @@ class MemoryRepository:
                     ttl=ttl,
                     version=new_version,
                     last_writer_agent_id=agent_id,
-                    created_at=datetime.utcnow(),
-                    updated_at=datetime.utcnow(),
+                    created_at=utc_now(),
+                    updated_at=utc_now(),
                 )
                 session.add(entry)
             else:
@@ -103,7 +104,7 @@ class MemoryRepository:
                 entry.ttl = ttl
                 entry.version = new_version
                 entry.last_writer_agent_id = agent_id
-                entry.updated_at = datetime.utcnow()
+                entry.updated_at = utc_now()
 
             session.commit()
             session.refresh(entry)
@@ -149,8 +150,8 @@ class MemoryRepository:
                         ttl=None,
                         version=1,
                         last_writer_agent_id=row.last_writer_agent_id,
-                        created_at=datetime.utcnow(),
-                        updated_at=datetime.utcnow(),
+                        created_at=utc_now(),
+                        updated_at=utc_now(),
                     )
                     session.add(entry)
                 else:
@@ -158,7 +159,7 @@ class MemoryRepository:
                     entry.tags = row.tags
                     entry.version += 1
                     entry.last_writer_agent_id = row.last_writer_agent_id
-                    entry.updated_at = datetime.utcnow()
+                    entry.updated_at = utc_now()
                 migrated += 1
 
             promo = SessionPromotionDB(
@@ -195,18 +196,15 @@ class MemoryRepository:
 
     def delete_expired(self) -> int:
         """Delete memory entries whose TTL has elapsed. Returns delete count."""
-        from sqlalchemy import func
-
         with session_scope() as session:
-            # SQLite-compatible: strftime('%s', 'now') - strftime('%s', created_at) > ttl
-            results = session.exec(
-                select(MemoryEntryDB).where(
-                    MemoryEntryDB.ttl.is_not(None),
-                    (func.strftime("%s", "now") - func.strftime("%s", MemoryEntryDB.created_at)) > MemoryEntryDB.ttl,
-                ),
-            ).all()
+            now = utc_now()
+            results = session.exec(select(MemoryEntryDB).where(MemoryEntryDB.ttl.is_not(None))).all()
             count = 0
             for row in results:
-                session.delete(row)
-                count += 1
+                created_at = datetime.fromisoformat(row.created_at) if isinstance(row.created_at, str) else row.created_at
+                if created_at is None or row.ttl is None:
+                    continue
+                if created_at + timedelta(seconds=row.ttl) <= now:
+                    session.delete(row)
+                    count += 1
             return count

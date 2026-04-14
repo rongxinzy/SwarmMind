@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
 from fastapi import HTTPException
 from sqlmodel import select
 
 from swarmmind.db import session_scope
 from swarmmind.db_models import ConversationDB
+from swarmmind.time_utils import utc_now
 
 
 class ConversationRepository:
@@ -77,14 +77,14 @@ class ConversationRepository:
                 conv.title = title
                 conv.title_status = title_status
                 conv.title_source = title_source
-                conv.title_generated_at = datetime.utcnow()
+                conv.title_generated_at = utc_now()
 
     def touch(self, conversation_id: str) -> None:
         """Bump updated_at for a conversation."""
         with session_scope() as session:
             conv = session.get(ConversationDB, conversation_id)
             if conv is not None:
-                conv.updated_at = datetime.utcnow()
+                conv.updated_at = utc_now()
 
     def delete(self, conversation_id: str) -> None:
         """Delete a conversation and its messages (cascade via FK)."""
