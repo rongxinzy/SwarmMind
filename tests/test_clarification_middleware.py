@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import logging
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from langchain_core.messages import ToolMessage
@@ -28,7 +27,7 @@ def _build_request(*, name: str, args: dict | None = None, tool_call_id: str = "
     )
 
 
-def test_wrap_tool_call_intercepts_ask_clarification(caplog: pytest.LogCaptureFixture) -> None:
+def test_wrap_tool_call_intercepts_ask_clarification() -> None:
     middleware = ClarificationMiddleware()
     request = _build_request(
         name="ask_clarification",
@@ -42,7 +41,7 @@ def test_wrap_tool_call_intercepts_ask_clarification(caplog: pytest.LogCaptureFi
     )
     handler = Mock(side_effect=AssertionError("clarification requests should be intercepted"))
 
-    with caplog.at_level(logging.INFO):
+    with patch("swarmmind.agents.middlewares.clarification_middleware.logger") as mock_logger:
         result = middleware.wrap_tool_call(request, handler)
 
     assert isinstance(result, Command)
@@ -54,8 +53,11 @@ def test_wrap_tool_call_intercepts_ask_clarification(caplog: pytest.LogCaptureFi
     assert message.name == "ask_clarification"
     assert message.content == "❓ 当前需求缺少核心用户画像。\n\n请确认目标用户是谁？\n\n  1. 企业销售\n  2. 运营团队"
     handler.assert_not_called()
-    assert "tool_call_id=clarify-sync" in caplog.text
-    assert "clarification_type=missing_info" in caplog.text
+    mock_logger.info.assert_called_once()
+    log_args = mock_logger.info.call_args[0]
+    assert "Intercepted clarification request:" in log_args[0]
+    assert log_args[1] == "clarify-sync"
+    assert log_args[2] == "missing_info"
 
 
 @pytest.mark.asyncio
