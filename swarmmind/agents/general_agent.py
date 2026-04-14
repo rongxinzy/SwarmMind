@@ -5,7 +5,6 @@ Bridges SwarmMind control-plane calls to an embedded DeerFlow runtime instance.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import uuid
@@ -22,6 +21,7 @@ from swarmmind.models import ActionProposal, ConversationRuntimeOptions, MemoryC
 from swarmmind.prompting import rewrite_swarmmind_identity_prompt
 from swarmmind.runtime import RuntimeExecutionError, ensure_default_runtime_instance
 from swarmmind.runtime.models import RuntimeInstance
+from swarmmind.services.runtime_bridge import iter_async_generator_in_thread
 
 logger = logging.getLogger(__name__)
 
@@ -524,72 +524,12 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         with its own event loop. This isolates the runtime from any existing loop
         in the caller while preserving the synchronous generator API.
         """
-        import queue
-        import threading
-
-        result_queue: queue.Queue = queue.Queue()
-        exception_container = []
-        stop_event = threading.Event()
-
-        async def _run_async_stream():
-            """Run the async stream and put events into the queue."""
-            try:
-                async for event in self._astream_events(goal, ctx=ctx, runtime_options=runtime_options):
-                    result_queue.put(("event", event))
-            except Exception as e:
-                exception_container.append(e)
-            finally:
-                result_queue.put(("done", None))
-                stop_event.set()
-
-        def _run_in_thread():
-            """Run the async code in a new event loop in a separate thread.
-
-            NOTE: We create a new event loop in this thread to isolate the
-            DeerFlow agent execution from any existing event loop. This is
-            necessary because subagents also create their own event loops,
-            and we need to avoid httpx client binding conflicts.
-            """
-            # Set the event loop policy to create new loops per-thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                loop.run_until_complete(_run_async_stream())
-            finally:
-                # Clean up any remaining tasks
-                try:
-                    pending = asyncio.all_tasks(loop)
-                    if pending:
-                        for task in pending:
-                            task.cancel()
-                        loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
-                except Exception:  # nosec: B110 - cleanup code, safe to ignore
-                    pass
-                loop.close()
-
-        # Start the async execution in a separate thread
-        thread = threading.Thread(target=_run_in_thread, name="deerflow-stream")
-        thread.start()
-
-        # Yield events as they become available
-        try:
-            while not stop_event.is_set() or not result_queue.empty():
-                try:
-                    item_type, event = result_queue.get(timeout=0.1)
-                    if item_type == "done":
-                        break
-                    if item_type == "event":
-                        yield event
-                except queue.Empty:
-                    continue
-        finally:
-            thread.join(timeout=5.0)
-            if thread.is_alive():
-                logger.warning("Stream thread did not terminate within timeout")
-
-        # Re-raise any exception from the async execution
-        if exception_container:
-            raise exception_container[0]
+        yield from iter_async_generator_in_thread(
+            lambda: self._astream_events(goal, ctx=ctx, runtime_options=runtime_options),
+            thread_name="deerflow-stream",
+            join_timeout=5.0,
+            bridge_logger=logger,
+        )
 
         return self._last_final_text, self._last_tool_results
 

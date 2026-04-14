@@ -3,7 +3,7 @@
 from abc import ABC, abstractmethod
 
 from swarmmind.layered_memory import LayeredMemory
-from swarmmind.models import MemoryContext, MemoryScope
+from swarmmind.models import MemoryContext, MemoryLayer, MemoryScope
 from swarmmind.repositories.action_proposal import ActionProposalRepository
 from swarmmind.repositories.agent import AgentRepository
 
@@ -11,7 +11,6 @@ from swarmmind.repositories.agent import AgentRepository
 class AgentError(Exception):
     """Base exception for SwarmMind agent errors."""
 
-    pass
     pass
 
 
@@ -45,8 +44,6 @@ class BaseAgent(ABC):
         but since ctx always provides user_id as a fallback, we fall through
         to the most specific available scope (never L4 for regular agents).
         """
-        from swarmmind.models import MemoryLayer
-
         if ctx is None:
             # No context — use a default user scope (L4, but agent will be denied
             # unless they are soul_writer; this is intentional guardrail)
