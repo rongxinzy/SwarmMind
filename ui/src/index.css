@@ -27,25 +27,30 @@
     --neutral-800: #3A3832;
     --neutral-900: #1E1E1C;
 
-    /* Semantic Colors (Desaturated) */
-    --status-running: #5A7A96;
-    --status-running-bg: #EEF1F4;
-    --status-running-border: #D5DCE3;
-    --status-approval: #B8956F;
-    --status-approval-bg: #F5F0EA;
-    --status-approval-border: #E5DDD3;
-    --status-blocked: #A67C6B;
-    --status-blocked-bg: #F3EEEB;
-    --status-blocked-border: #E3D9D3;
-    --status-done: #7A9A7E;
-    --status-done-bg: #EDF2EE;
-    --status-done-border: #D5E0D7;
-    --status-chat: #8A8298;
-    --status-chat-bg: #F0EEF3;
-    --status-chat-border: #E0DCE6;
-    --status-draft: #9A9894;
-    --status-draft-bg: #F2F2F0;
-    --status-draft-border: #E5E5E3;
+    /* Semantic Colors (oklch) */
+    --status-running: oklch(0.72 0.17 140);
+    --status-running-bg: oklch(0.96 0.04 140);
+    --status-running-border: oklch(0.88 0.08 140);
+
+    --status-approval: oklch(0.72 0.17 55);
+    --status-approval-bg: oklch(0.97 0.04 55);
+    --status-approval-border: oklch(0.90 0.08 55);
+
+    --status-blocked: oklch(0.65 0.20 25);
+    --status-blocked-bg: oklch(0.97 0.04 25);
+    --status-blocked-border: oklch(0.90 0.08 25);
+
+    --status-done: oklch(0.55 0.15 250);
+    --status-done-bg: oklch(0.96 0.04 250);
+    --status-done-border: oklch(0.88 0.08 250);
+
+    --status-draft: oklch(0.55 0.05 270);
+    --status-draft-bg: oklch(0.97 0.02 270);
+    --status-draft-border: oklch(0.90 0.04 270);
+
+    --status-chat: oklch(0.55 0.12 270);
+    --status-chat-bg: oklch(0.96 0.04 270);
+    --status-chat-border: oklch(0.88 0.08 270);
 
     /* ShadCN Theme Mapping */
     --background: 45 8% 97%;        /* warm-paper #F7F7F5 */
@@ -91,8 +96,9 @@
     --user-bubble-border: 34 14% 85%;
 
     /* Typography */
-    --font-sans: "Geist", "Inter", "SF Pro Text", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    --font-mono: "Geist Mono", "SFMono-Regular", "IBM Plex Mono", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --font-display: "Newsreader", "Noto Serif SC", Georgia, serif;
+    --font-sans: "Geist", "PingFang SC", system-ui, sans-serif;
+    --font-mono: "Geist Mono", "Cascadia Code", monospace;
     --font-heading: "Geist", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
     --font-body: "Geist", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
   }
