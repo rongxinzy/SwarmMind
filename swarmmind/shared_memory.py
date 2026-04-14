@@ -102,6 +102,7 @@ class SharedMemory:
         """Read all entries matching a domain tag."""
         with session_scope() as session:
             from sqlmodel import select
+
             results = session.exec(
                 select(WorkingMemoryDB).where(
                     WorkingMemoryDB.domain_tags.contains(domain_tag),
@@ -122,6 +123,7 @@ class SharedMemory:
         """Read all entries in working memory."""
         with session_scope() as session:
             from sqlmodel import select
+
             results = session.exec(
                 select(WorkingMemoryDB).order_by(WorkingMemoryDB.updated_at.desc()),
             ).all()

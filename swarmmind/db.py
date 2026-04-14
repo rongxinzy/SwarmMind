@@ -100,10 +100,11 @@ def seed_default_agents() -> None:
 # ORM layer (SQLModel / SQLAlchemy 2.0)
 # ---------------------------------------------------------------------------
 
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Generator
 
 from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session, SQLModel
 
@@ -125,7 +126,7 @@ def _set_sqlite_pragma(dbapi_conn, _connection_record):
     cursor.close()
 
 
-def get_engine() -> "sqlalchemy.engine.Engine":
+def get_engine() -> Engine:
     """Return a SQLAlchemy engine bound to the current DB path.
 
     NOTE: A new engine is created on every call so that tests which

@@ -1,13 +1,11 @@
 """Context Broker — routes goals to agents, manages strategy table."""
 
 import logging
-import uuid
 
 from swarmmind.models import (
     ActionProposal,
     DispatchResponse,
     MemoryContext,
-    ProposalStatus,
     SupervisorDecision,
 )
 from swarmmind.repositories.action_proposal import ActionProposalRepository

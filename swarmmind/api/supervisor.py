@@ -5,7 +5,7 @@ import logging
 import threading
 import time
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,7 +20,6 @@ from swarmmind.context_broker import (
 )
 from swarmmind.db import health_check, init_db, seed_default_agents
 from swarmmind.models import (
-    ActionProposal,
     Conversation,
     ConversationListResponse,
     ConversationMode,
@@ -30,7 +29,6 @@ from swarmmind.models import (
     Message,
     MessageListResponse,
     PendingResponse,
-    ProposalStatus,
     RejectRequest,
     RuntimeModelCatalogResponse,
     RuntimeModelOption,
@@ -49,7 +47,6 @@ from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.strategy import StrategyRepository
-
 
 conversation_repo = ConversationRepository()
 message_repo = MessageRepository()
