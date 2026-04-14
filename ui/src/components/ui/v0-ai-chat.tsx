@@ -120,6 +120,7 @@ type StreamEvent =
   | { type: "task_failed"; task: { id: string; error?: string; status: "failed" } }
   // Clarification request from AI
   | { type: "clarification_request"; clarification: { id: string; content: string } }
+  | { type: "artifact"; path: string; filename?: string }
   | {
       type: "title";
       conversation: ConversationRecord;
@@ -681,6 +682,8 @@ function V0ChatInner({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [runtime, setRuntime] = useState<RuntimeState>(createEmptyRuntime());
   const [input, setInput] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedMode, setSelectedMode] =
     useState<ConversationMode>(DEFAULT_MODE);
@@ -706,6 +709,7 @@ function V0ChatInner({
   const resetDraftState = useCallback(() => {
     setCurrentConversationId(undefined);
     setMessages([]);
+    setAttachedFiles([]);
     setRuntime(createEmptyRuntime());
     setIsConversationLoading(false);
     setError(null);
@@ -966,6 +970,11 @@ function V0ChatInner({
             ),
           );
         }
+        if (event.phase === "completed") {
+          setTimeout(() => {
+            setRuntime((prev) => ({ ...prev, activities: [] }));
+          }, 2000);
+        }
         return;
 
       case "user_message":
@@ -1211,6 +1220,14 @@ function V0ChatInner({
         });
         return;
 
+      case "artifact":
+        setArtifacts((prev) => {
+          if (prev.includes(event.path)) return prev;
+          return [...prev, event.path];
+        });
+        setArtifactsOpen(true);
+        return;
+
       case "done":
         setIsLoading(false);
         setMessages((previous) =>
@@ -1290,6 +1307,21 @@ function V0ChatInner({
     [handleStreamEvent],
   );
 
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setAttachedFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name + f.size));
+      return [...prev, ...files.filter((f) => !existing.has(f.name + f.size))];
+    });
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const handleRemoveFile = useCallback((index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleSubmit = useCallback(
     async (prompt?: string) => {
       const text = (prompt ?? input).trim();
@@ -1300,10 +1332,14 @@ function V0ChatInner({
       }
 
       if (!prompt) setInput("");
+      setAttachedFiles([]);
 
       setError(null);
       setIsLoading(true);
       setPendingClarification(null); // Clear any pending clarification when sending new message
+      setArtifacts([]);
+      setArtifactsOpen(false);
+      setSelectedArtifact(null);
       shouldStickToBottomRef.current = true;
       setShowScrollToLatest(false);
       setRuntime({
@@ -1414,7 +1450,7 @@ function V0ChatInner({
   );
 
   // Artifacts state (simplified from DeerFlow)
-  const [artifacts] = useState<string[]>([]);
+  const [artifacts, setArtifacts] = useState<string[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
 
@@ -1697,7 +1733,76 @@ function V0ChatInner({
                 </div>
               )}
 
+              <AnimatePresence>
+                {runtime.activities.length > 0 && (
+                  <motion.div
+                    key="activities"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex flex-col gap-1 border-b border-[var(--warm-border)] px-4 py-2">
+                      {runtime.activities.slice(0, 5).map((activity) => (
+                        <div
+                          key={activity.id}
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          {activity.status === "running" ? (
+                            <Loader2 className="size-3 shrink-0 animate-spin text-[var(--status-running)]" />
+                          ) : (
+                            <Check className="size-3 shrink-0 text-[var(--status-done)]" />
+                          )}
+                          <span
+                            className={cn(
+                              "truncate",
+                              activity.status === "running"
+                                ? "text-[var(--neutral-700)]"
+                                : "text-[var(--neutral-500)]"
+                            )}
+                          >
+                            {activity.label}
+                          </span>
+                          {activity.detail && (
+                            <span className="ml-auto shrink-0 text-[var(--neutral-400)] max-w-[120px] truncate">
+                              {activity.detail}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {runtime.activities.length > 5 && (
+                        <p className="text-xs text-[var(--neutral-400)] pl-5">
+                          +{runtime.activities.length - 5} 个任务...
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div>
+                {attachedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 px-5 pt-3">
+                    {attachedFiles.map((file, index) => (
+                      <div
+                        key={`${file.name}-${index}`}
+                        className="flex items-center gap-1.5 rounded-md border border-[var(--warm-border)] bg-[var(--warm-ivory)] px-2.5 py-1 text-xs text-[var(--neutral-700)]"
+                      >
+                        <Paperclip className="size-3 shrink-0 text-[var(--neutral-500)]" />
+                        <span className="max-w-[120px] truncate">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFile(index)}
+                          className="ml-0.5 text-[var(--neutral-400)] hover:text-[var(--neutral-700)]"
+                          aria-label={`移除 ${file.name}`}
+                        >
+                          <XIcon className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <Textarea
                   value={input}
                   onChange={(e) => { setInput(e.target.value); }}
@@ -1723,15 +1828,25 @@ function V0ChatInner({
                       selected={selectedMode}
                       onSelect={setSelectedMode}
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled
-                      className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
-                      title="上传附件"
-                    >
-                      <Paperclip className="size-4" />
-                    </Button>
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileSelect}
+                        accept="image/*,.pdf,.txt,.md,.csv,.json,.py,.ts,.tsx,.js,.jsx"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
+                        title="上传附件"
+                      >
+                        <Paperclip className="size-4" />
+                      </Button>
+                    </>
                     {lastAssistantMessage && (
                       <Button
                         variant="ghost"
@@ -1826,6 +1941,19 @@ function ChatLayout({
         "relative flex flex-col h-full transition-all duration-300",
         artifactsOpen ? "w-[60%]" : "w-full"
       )}>
+        {artifacts.length > 0 && !artifactsOpen && (
+          <div className="absolute top-3 right-3 z-10">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setArtifactsOpen(true)}
+              className="gap-1.5 text-xs"
+            >
+              <FilesIcon className="size-3.5" />
+              {artifacts.length} 个产物
+            </Button>
+          </div>
+        )}
         {children}
       </div>
 

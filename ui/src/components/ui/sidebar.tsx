@@ -174,6 +174,7 @@ interface SidebarProps {
   onSelectConversation?: (id: string) => void
   onDeleteConversation?: (id: string) => Promise<void>
   pageTitle?: string
+  searchQuery?: string
 }
 
 export function Sidebar({
@@ -183,6 +184,7 @@ export function Sidebar({
   onSelectConversation,
   onDeleteConversation,
   pageTitle,
+  searchQuery = "",
 }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [deletingConversationId, setDeletingConversationId] = React.useState<string | null>(null)
@@ -325,7 +327,7 @@ export function Sidebar({
                 ))
               ) : (
                 <div className="px-3 py-3 text-[12px] leading-[18px] text-muted-foreground">
-                  还没有最近会话。
+                  {searchQuery.trim() ? "没有找到匹配的会话。" : "还没有最近会话。"}
                 </div>
               )}
             </div>
