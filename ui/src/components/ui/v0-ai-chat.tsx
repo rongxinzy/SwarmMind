@@ -33,6 +33,7 @@ import { FilesIcon, XIcon } from "lucide-react";
 import { SubtasksProvider, useUpdateSubtask, useSubtaskContext } from "@/core/tasks/context";
 import { SubtaskCard } from "@/components/workspace/messages/subtask-card";
 import { parseClarificationContent } from "@/core/messages/clarification";
+import { toast } from "sonner";
 
 interface V0ChatProps {
   conversationId?: string;
@@ -699,6 +700,7 @@ function V0ChatInner({
   >(undefined);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const [showScrollToLatest, setShowScrollToLatest] = useState(false);
   
   // Clarification request state
@@ -790,6 +792,7 @@ function V0ChatInner({
           return;
         }
 
+        setModelLoadError(`模型加载重试中 (${attempt}/${MODEL_FETCH_RETRY_COUNT})...`);
         await new Promise((resolve) =>
           window.setTimeout(resolve, MODEL_FETCH_RETRY_DELAY_MS * attempt),
         );
@@ -811,6 +814,7 @@ function V0ChatInner({
   }, []);
 
   const loadMessages = useCallback(async (nextConversationId: string) => {
+    streamAbortRef.current?.abort();
     setIsConversationLoading(true);
     setMessages([]);
     setRuntime(createEmptyRuntime());
@@ -1251,6 +1255,10 @@ function V0ChatInner({
       mode: ConversationMode,
       modelName: string,
     ) => {
+      streamAbortRef.current?.abort();
+      const abortController = new AbortController();
+      streamAbortRef.current = abortController;
+
       const payload: {
         content: string;
         mode: ConversationMode;
@@ -1269,6 +1277,7 @@ function V0ChatInner({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
+          signal: abortController.signal,
         },
       );
 
@@ -1280,28 +1289,44 @@ function V0ChatInner({
       const decoder = new TextDecoder();
       let buffer = "";
 
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
+      const timeoutId = setTimeout(() => {
+        abortController.abort();
+      }, 30_000);
 
-        buffer += decoder.decode(value, { stream: true });
-        let lineBreakIndex = buffer.indexOf("\n");
-        while (lineBreakIndex >= 0) {
-          const rawLine = buffer.slice(0, lineBreakIndex).trim();
-          buffer = buffer.slice(lineBreakIndex + 1);
+      try {
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
 
-          if (rawLine) {
-            handleStreamEvent(JSON.parse(rawLine) as StreamEvent);
+          buffer += decoder.decode(value, { stream: true });
+          let lineBreakIndex = buffer.indexOf("\n");
+          while (lineBreakIndex >= 0) {
+            const rawLine = buffer.slice(0, lineBreakIndex).trim();
+            buffer = buffer.slice(lineBreakIndex + 1);
+
+            if (rawLine) {
+              try {
+                handleStreamEvent(JSON.parse(rawLine) as StreamEvent);
+              } catch (e) {
+                console.warn("[stream] Failed to parse line:", rawLine, e);
+              }
+            }
+
+            lineBreakIndex = buffer.indexOf("\n");
           }
-
-          lineBreakIndex = buffer.indexOf("\n");
         }
-      }
 
-      const lastLine = buffer.trim();
-      if (lastLine) {
-        handleStreamEvent(JSON.parse(lastLine) as StreamEvent);
+        const lastLine = buffer.trim();
+        if (lastLine) {
+          try {
+            handleStreamEvent(JSON.parse(lastLine) as StreamEvent);
+          } catch (e) {
+            console.warn("[stream] Failed to parse line:", lastLine, e);
+          }
+        }
+      } finally {
+        clearTimeout(timeoutId);
       }
     },
     [handleStreamEvent],
@@ -1586,7 +1611,9 @@ function V0ChatInner({
                           />
                         );
                       }
-                    } catch {
+                    } catch (e) {
+                      toast.error("AI 澄清请求解析失败，请查看原始消息");
+                      console.warn("[clarification] parse failed:", e);
                       // Fall through to normal rendering
                     }
                   }
@@ -1619,19 +1646,25 @@ function V0ChatInner({
                   className="mt-4"
                 >
                   {(() => {
-                    const parsed = parseClarificationContent(pendingClarification.content);
-                    return (
-                      <ClarificationCard
-                        question={parsed.question}
-                        context={parsed.context}
-                        options={parsed.options}
-                        clarificationType={parsed.clarificationType}
-                        onRespond={(response) => {
-                          handleClarificationRespond(response, pendingClarification.id);
-                          setPendingClarification(null); // Clear after response
-                        }}
-                      />
-                    );
+                    try {
+                      const parsed = parseClarificationContent(pendingClarification.content);
+                      return (
+                        <ClarificationCard
+                          question={parsed.question}
+                          context={parsed.context}
+                          options={parsed.options}
+                          clarificationType={parsed.clarificationType}
+                          onRespond={(response) => {
+                            handleClarificationRespond(response, pendingClarification.id);
+                            setPendingClarification(null); // Clear after response
+                          }}
+                        />
+                      );
+                    } catch (e) {
+                      toast.error("AI 澄清请求解析失败，请查看原始消息");
+                      console.warn("[clarification] parse failed:", e);
+                      return null;
+                    }
                   })()}
                 </motion.div>
               )}
