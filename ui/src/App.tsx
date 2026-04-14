@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   BookOpenText,
   Bot,
@@ -98,10 +98,14 @@ function PageHeader({
   activeView,
   onPrimaryAction,
   onSecondaryAction,
+  searchQuery,
+  onSearchQueryChange,
 }: {
   activeView: SidebarView;
   onPrimaryAction: () => void;
   onSecondaryAction: () => void;
+  searchQuery: string;
+  onSearchQueryChange: (value: string) => void;
 }) {
   return (
     <header className="sticky top-[65px] z-20 border-b border-border bg-background md:top-0">
@@ -125,9 +129,9 @@ function PageHeader({
             <div className="relative w-full xl:max-w-[400px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                readOnly
-                value=""
-                placeholder="搜索项目、结果、知识与历史记录"
+                value={searchQuery}
+                onChange={(e) => { onSearchQueryChange(e.target.value); }}
+                placeholder="搜索会话记录..."
                 className="pl-9"
               />
             </div>
@@ -155,6 +159,7 @@ export default function App() {
     ConversationRecord[]
   >([]);
   const [draftResetToken, setDraftResetToken] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchRecentConversations = useCallback(async () => {
     try {
@@ -239,6 +244,14 @@ export default function App() {
       handleViewChange("recent");
     }
   };
+
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return recentConversations;
+    const q = searchQuery.trim().toLowerCase();
+    return recentConversations.filter((c) =>
+      c.title.toLowerCase().includes(q)
+    );
+  }, [recentConversations, searchQuery]);
 
   const renderContent = () => {
     switch (activeView) {
@@ -339,10 +352,11 @@ export default function App() {
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
-        recentConversations={recentConversations}
+        recentConversations={filteredConversations}
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
         pageTitle={VIEW_LABELS[activeView]}
+        searchQuery={searchQuery}
       />
 
       <main
@@ -358,6 +372,8 @@ export default function App() {
             activeView={activeView}
             onPrimaryAction={handlePrimaryAction}
             onSecondaryAction={handleSecondaryAction}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
           />
         )}
         <div

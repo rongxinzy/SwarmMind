@@ -29,6 +29,12 @@ jobs:
             exit 0
           fi
 
+          # Allow Claude Code agent branches (claude/<any-name>)
+          if [[ "$BRANCH_NAME" =~ ^claude/.+ ]]; then
+            echo "✅ Branch name '$BRANCH_NAME' is a Claude Code agent branch."
+            exit 0
+          fi
+
           echo "❌ ERROR: Branch name '$BRANCH_NAME' does not follow the naming convention."
           echo ""
           echo "Expected format: <type>/<short-description>"
@@ -42,11 +48,13 @@ jobs:
           echo "  - chore     - Build/tools/config"
           echo "  - perf      - Performance improvements"
           echo "  - hotfix    - Emergency fixes"
+          echo "  - claude    - Claude Code agent branches"
           echo ""
           echo "Examples:"
           echo "  ✅ feature/user-auth"
           echo "  ✅ fix/memory-leak"
           echo "  ✅ docs/api-guide"
+          echo "  ✅ claude/my-task"
           echo ""
           echo "See CONTRIBUTING.md for more details."
           exit 1
