@@ -65,6 +65,16 @@ class TraceService:
             "checkpoint_count": len(checkpoints),
         }
 
+    def build_error_trace(self, thread_id: str, summary: str) -> dict[str, Any]:
+        """Return a degraded trace payload for provider/service failures."""
+        return {
+            "thread_id": thread_id,
+            "status": "error",
+            "events": [],
+            "summary": summary,
+            "checkpoint_count": 0,
+        }
+
     def _build_trace_events(self, checkpoints: list[dict]) -> list[dict[str, Any]]:
         """Build trace events from checkpoints.
 
