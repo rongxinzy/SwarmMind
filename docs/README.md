@@ -1,6 +1,6 @@
 # SwarmMind 文档总览
 
-> 日期：2026-04-08
+> 日期：2026-04-15
 > 用途：定义当前文档体系的主入口，区分前瞻性设计与工程实现状态
 
 ## 0. 文档分类体系
@@ -24,7 +24,8 @@
 
 - `AGENTS.md` — 当前工程状态总览（含 Phase A 实现清单）
 - `docs/README.md` — 本文档，文档体系元数据
-- `docs/chat-mainline-execution-plan.md` — 当前主路径执行计划（临时执行文档，完成后归档）
+- `docs/chat-mainline-execution-plan.md` — 主路径执行计划草案（当前大部分内容尚未启动）
+- `docs/technical-debt-repayment-plan.md` — 技术债收口结论与剩余低利息债项
 - `docs/archive/*` — 已完成的临时调研与执行文档（如 gap-analysis、migration-plan）
 
 **阅读场景**: 理解当前代码能做什么、如何运行、如何部署
@@ -101,10 +102,9 @@
 
 用途:
 
-- 记录当前迭代的主线优先级判断
-- 约束执行顺序, 避免同时横向铺多个半成品模块
-- 作为完成后归档到 `docs/archive/` 的临时执行文档
-- 记录主路径相关结构债、运行债和测试债的偿还顺序
+- `docs/chat-mainline-execution-plan.md` 保留主线路线草案, 但当前大部分事项尚未进入实施
+- `docs/technical-debt-repayment-plan.md` 记录本轮债务收口结论, 不再维护中间态执行步骤
+- 两者都属于工程状态文档, 需要随着现实状态更新, 但不应反向覆盖架构文档
 
 ## 3. 清理规则
 
