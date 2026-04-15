@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from langchain_core.messages import AIMessage, AIMessageChunk
 
 from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
+from swarmmind.services.runtime_event_processing import extract_content_delta, extract_reasoning_delta
 
 
 def test_stream_events_yields_async_events_and_returns_final_result() -> None:
@@ -79,19 +80,19 @@ def test_run_deerflow_turn_collects_async_result_without_stream_wrapper() -> Non
 def test_extract_reasoning_delta_prefers_additional_kwargs() -> None:
     chunk = AIMessageChunk(content="", additional_kwargs={"reasoning_content": "step by step"})
 
-    assert DeerFlowRuntimeAdapter._extract_reasoning_delta(chunk) == "step by step"
+    assert extract_reasoning_delta(chunk) == "step by step"
 
 
 def test_extract_reasoning_delta_falls_back_to_thinking_blocks() -> None:
     chunk = AIMessageChunk(content=[{"type": "thinking", "thinking": "consider option A"}])
 
-    assert DeerFlowRuntimeAdapter._extract_reasoning_delta(chunk) == "consider option A"
+    assert extract_reasoning_delta(chunk) == "consider option A"
 
 
 def test_extract_content_delta_handles_text_blocks() -> None:
     chunk = AIMessageChunk(content=[{"type": "text", "text": "hello"}, {"type": "text", "text": " world"}])
 
-    assert DeerFlowRuntimeAdapter._extract_content_delta(chunk) == "hello world"
+    assert extract_content_delta(chunk) == "hello world"
 
 
 def test_extract_reasoning_collects_multiple_blocks() -> None:

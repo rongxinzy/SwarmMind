@@ -7,9 +7,15 @@ from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from swarmmind.api.conversation_routes import (
+    ClarificationResponseRequest as ConversationClarificationResponseRequest,
+)
+from swarmmind.api.conversation_routes import (
+    ConversationRouteDeps,
+    build_conversation_router,
+)
 from swarmmind.config import ACTION_TIMEOUT_SECONDS, API_HOST, API_PORT
 from swarmmind.context_broker import (
     derive_situation_tag,
@@ -383,49 +389,34 @@ def _conversation_execution_service() -> ConversationExecutionService:
     )
 
 
-@app.get("/conversations")
-def list_conversations() -> ConversationListResponse:
-    """List all conversations ordered by updated_at descending."""
+def _list_conversations() -> ConversationListResponse:
     rows = conversation_repo.list_all()
     items = [_db_to_conversation(row) for row in rows]
     return ConversationListResponse(items=items, total=len(items))
 
 
-@app.post("/conversations")
-def create_conversation(body: GoalRequest) -> Conversation:
-    """Create a new conversation with the first user message."""
+def _create_conversation(body: GoalRequest) -> Conversation:
     conv = conversation_repo.create(NEW_CONVERSATION_TITLE, "pending")
     return _db_to_conversation(conv)
 
 
-@app.get("/conversations/{conversation_id}")
-def get_conversation(conversation_id: str) -> Conversation:
-    """Get a single conversation by ID."""
+def _get_conversation(conversation_id: str) -> Conversation:
     conv = conversation_repo.get_by_id(conversation_id)
     return _db_to_conversation(conv)
 
 
-@app.get("/conversations/{conversation_id}/messages")
-def get_conversation_messages(conversation_id: str) -> MessageListResponse:
-    """Get all messages for a conversation."""
+def _get_conversation_messages(conversation_id: str) -> MessageListResponse:
     conversation_repo.get_by_id(conversation_id)
     rows = message_repo.list_by_conversation(conversation_id)
     items = [_db_to_message(row) for row in rows]
     return MessageListResponse(items=items, total=len(items))
 
 
-@app.post("/conversations/{conversation_id}/messages", include_in_schema=False)
-def send_message(conversation_id: str, body: SendMessageRequest):
-    """Internal compatibility endpoint for non-streaming conversation turns.
-
-    All execution flows through the single DeerFlow Runtime Instance.
-    """
+def _send_message(conversation_id: str, body: SendMessageRequest):
     return _conversation_execution_service().send_message(conversation_id, body)
 
 
-@app.delete("/conversations/{conversation_id}")
-def delete_conversation(conversation_id: str) -> dict:
-    """Delete a conversation and all its messages."""
+def _delete_conversation(conversation_id: str) -> dict:
     conversation_repo.get_by_id(conversation_id)
     conversation_repo.delete(conversation_id)
     return {"status": "deleted", "id": conversation_id}
@@ -434,21 +425,7 @@ def delete_conversation(conversation_id: str) -> dict:
 # ---- Collaboration Trace Endpoints ----
 
 
-@app.get("/conversations/{conversation_id}/trace")
-def get_conversation_trace(conversation_id: str) -> dict:
-    """获取会话的协作轨迹（回放用）。
-
-    复用 deer-flow checkpointer 数据，零侵入设计：
-    1. 从 conversations 表读取 thread_id
-    2. 从 deer-flow SqliteSaver 读取 checkpoints
-    3. 解析 ThreadState 转换为协作轨迹
-
-    Args:
-        conversation_id: SwarmMind conversation ID (maps to deer-flow thread_id)
-
-    Returns:
-        Collaboration trace with events, status, and summary.
-    """
+def _get_conversation_trace(conversation_id: str) -> dict:
     return conversation_trace_service.get_trace(conversation_id)
 
 
@@ -457,37 +434,41 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
     yield from _conversation_execution_service().stream_message(conversation_id, body)
 
 
-@app.post("/conversations/{conversation_id}/messages/stream")
-def send_message_stream(conversation_id: str, body: SendMessageRequest) -> StreamingResponse:
-    """Stream a ChatSession turn with runtime state and final persistence."""
-    # Validate before opening the streaming response so 404 is returned normally.
-    get_conversation(conversation_id)
-    return StreamingResponse(
-        _stream_conversation_message(conversation_id, body),
-        media_type="application/x-ndjson",
-    )
-
-
-class ClarificationResponseRequest(BaseModel):
-    """Request to respond to a clarification prompt."""
-
-    tool_call_id: str
-    response: str
-
-
-@app.post("/conversations/{conversation_id}/clarification")
-def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest) -> Message:
-    """Respond to a clarification request from the AI.
-
-    This endpoint is called when the user responds to an ask_clarification tool call.
-    The response is added as a ToolMessage to the conversation history, and the
-    conversation is resumed.
-    """
+def _respond_to_clarification(conversation_id: str, tool_call_id: str, response: str) -> Message:
     return _conversation_execution_service().respond_to_clarification(
         conversation_id,
-        body.tool_call_id,
-        body.response,
+        tool_call_id,
+        response,
     )
+
+
+conversation_router, conversation_handlers = build_conversation_router(
+    deps=ConversationRouteDeps(
+        list_conversations=_list_conversations,
+        create_conversation=_create_conversation,
+        get_conversation=_get_conversation,
+        get_conversation_messages=_get_conversation_messages,
+        send_message=_send_message,
+        delete_conversation=_delete_conversation,
+        get_conversation_trace=_get_conversation_trace,
+        stream_conversation_message=_stream_conversation_message,
+        respond_to_clarification=_respond_to_clarification,
+    ),
+)
+
+ClarificationResponseRequest = ConversationClarificationResponseRequest
+list_conversations = conversation_handlers.list_conversations
+create_conversation = conversation_handlers.create_conversation
+get_conversation = conversation_handlers.get_conversation
+get_conversation_messages = conversation_handlers.get_conversation_messages
+send_message = conversation_handlers.send_message
+delete_conversation = conversation_handlers.delete_conversation
+get_conversation_trace = conversation_handlers.get_conversation_trace
+_stream_conversation_message = conversation_handlers.stream_conversation_message
+send_message_stream = conversation_handlers.send_message_stream
+respond_to_clarification = conversation_handlers.respond_to_clarification
+
+app.include_router(conversation_router)
 
 
 # ---- Run ----

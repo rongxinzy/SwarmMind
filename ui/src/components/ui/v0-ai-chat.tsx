@@ -13,6 +13,8 @@ import { ChatLayout } from "@/components/workspace/chat-layout";
 import { MessageListSkeleton } from "@/components/workspace/chat-message-ui";
 import { ChatMessageArea } from "@/components/workspace/chat-message-area";
 import { SubtasksProvider, useUpdateSubtask, useSubtaskContext } from "@/core/tasks/context";
+import { isNearBottom, scrollContainerToLatest } from "@/core/chat/scroll";
+import { consumeNdjsonStream } from "@/core/chat/stream";
 import type {
   ChatMessage,
   ConversationMode,
@@ -173,11 +175,9 @@ function V0ChatInner({
       return;
     }
 
-    const distanceToBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-    const isNearBottom = distanceToBottom <= 72;
-    shouldStickToBottomRef.current = isNearBottom;
-    setShowScrollToLatest(!isNearBottom);
+    const nextIsNearBottom = isNearBottom(container);
+    shouldStickToBottomRef.current = nextIsNearBottom;
+    setShowScrollToLatest(!nextIsNearBottom);
   }, []);
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
@@ -185,11 +185,7 @@ function V0ChatInner({
     if (!container) {
       return;
     }
-
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior,
-    });
+    scrollContainerToLatest(container, behavior);
     shouldStickToBottomRef.current = true;
     setShowScrollToLatest(false);
   }, []);
@@ -729,46 +725,18 @@ function V0ChatInner({
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
       const timeoutId = setTimeout(() => {
         abortController.abort();
       }, 30_000);
 
       try {
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          let lineBreakIndex = buffer.indexOf("\n");
-          while (lineBreakIndex >= 0) {
-            const rawLine = buffer.slice(0, lineBreakIndex).trim();
-            buffer = buffer.slice(lineBreakIndex + 1);
-
-            if (rawLine) {
-              try {
-                handleStreamEvent(JSON.parse(rawLine) as StreamEvent);
-              } catch (e) {
-                console.warn("[stream] Failed to parse line:", rawLine, e);
-              }
-            }
-
-            lineBreakIndex = buffer.indexOf("\n");
-          }
-        }
-
-        const lastLine = buffer.trim();
-        if (lastLine) {
-          try {
-            handleStreamEvent(JSON.parse(lastLine) as StreamEvent);
-          } catch (e) {
-            console.warn("[stream] Failed to parse line:", lastLine, e);
-          }
-        }
+        await consumeNdjsonStream<StreamEvent>(
+          response.body,
+          handleStreamEvent,
+          (rawLine, error) => {
+            console.warn("[stream] Failed to parse line:", rawLine, error);
+          },
+        );
       } finally {
         clearTimeout(timeoutId);
       }

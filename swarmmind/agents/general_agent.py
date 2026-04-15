@@ -9,12 +9,11 @@ import json
 import logging
 import uuid
 from collections.abc import AsyncGenerator, Generator
-from dataclasses import dataclass, field
 from typing import Any
 
 import deerflow.client as deerflow_client_module
 from deerflow.client import DeerFlowClient, StreamEvent
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from swarmmind.agents.base import BaseAgent
 from swarmmind.context_broker import update_proposal_result
@@ -23,20 +22,15 @@ from swarmmind.prompting import rewrite_swarmmind_identity_prompt
 from swarmmind.runtime import RuntimeExecutionError, ensure_default_runtime_instance
 from swarmmind.runtime.models import RuntimeInstance
 from swarmmind.services.runtime_bridge import iter_async_generator_in_thread, run_coroutine_blocking
+from swarmmind.services.runtime_event_processing import (
+    StreamCaptureState,
+    iter_new_turn_messages,
+    process_custom_mode_chunk,
+    process_messages_mode_chunk,
+    process_values_mode_message,
+)
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class _StreamCaptureState:
-    """Mutable capture state for a single async DeerFlow turn."""
-
-    current_chunk_msg_id: str | None = None
-    accumulated_reasoning: str = ""
-    accumulated_content: str = ""
-    final_text: str = ""
-    tool_results: list[str] = field(default_factory=list)
-    seen_ids: set[str] = field(default_factory=set)
 
 
 class SwarmMindDeerFlowClient(DeerFlowClient):
@@ -377,7 +371,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         state: dict[str, Any] = {"messages": [HumanMessage(content=goal, id=current_user_message_id)]}
         runtime_context = {"thread_id": thread_id}
 
-        capture_state = _StreamCaptureState()
+        capture_state = StreamCaptureState()
 
         async for mode_tag, chunk in self._client._agent.astream(
             state,
@@ -387,18 +381,18 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         ):
             if mode_tag == "messages":
                 msg_chunk, _metadata = chunk
-                for event in self._process_messages_mode_chunk(msg_chunk, capture_state):
+                for event in process_messages_mode_chunk(msg_chunk, capture_state):
                     yield event
 
             elif mode_tag == "custom":
-                event = self._process_custom_mode_chunk(chunk)
+                event = process_custom_mode_chunk(chunk)
                 if event is not None:
                     yield event
 
             elif mode_tag == "values":
                 messages = chunk.get("messages", [])
-                for msg in self._iter_new_turn_messages(messages, current_user_message_id, capture_state.seen_ids):
-                    for event in self._process_values_mode_message(msg, capture_state):
+                for msg in iter_new_turn_messages(messages, current_user_message_id, capture_state.seen_ids):
+                    for event in process_values_mode_message(msg, capture_state, self._client._extract_text):
                         yield event
 
         # Fallback: if messages mode captured content but values mode didn't
@@ -456,157 +450,6 @@ class DeerFlowRuntimeAdapter(BaseAgent):
             pass
         return self._last_final_text, self._last_tool_results
 
-    def _process_messages_mode_chunk(
-        self,
-        msg_chunk: object,
-        capture_state: _StreamCaptureState,
-    ) -> list[dict[str, Any]]:
-        """Convert a streaming AI chunk into accumulated reasoning/content events."""
-        if not isinstance(msg_chunk, AIMessageChunk):
-            return []
-
-        chunk_id = getattr(msg_chunk, "id", None)
-        if chunk_id and chunk_id != capture_state.current_chunk_msg_id:
-            capture_state.current_chunk_msg_id = chunk_id
-            capture_state.accumulated_reasoning = ""
-            capture_state.accumulated_content = ""
-
-        if not capture_state.current_chunk_msg_id:
-            capture_state.current_chunk_msg_id = str(uuid.uuid4())
-
-        events: list[dict[str, Any]] = []
-        reasoning_delta = self._extract_reasoning_delta(msg_chunk)
-        if reasoning_delta:
-            capture_state.accumulated_reasoning += reasoning_delta
-            events.append(
-                {
-                    "type": "assistant_reasoning",
-                    "message_id": capture_state.current_chunk_msg_id,
-                    "content": capture_state.accumulated_reasoning,
-                }
-            )
-
-        content_delta = self._extract_content_delta(msg_chunk)
-        if content_delta:
-            capture_state.accumulated_content += content_delta
-            events.append(
-                {
-                    "type": "assistant_message",
-                    "message_id": capture_state.current_chunk_msg_id,
-                    "content": capture_state.accumulated_content,
-                }
-            )
-
-        return events
-
-    @staticmethod
-    def _process_custom_mode_chunk(event: object) -> dict[str, Any] | None:
-        """Normalize supported custom task events from DeerFlow."""
-        logger.debug("Custom event received: %s", event)
-        if not isinstance(event, dict) or event.get("type") not in {
-            "task_started",
-            "task_running",
-            "task_completed",
-            "task_failed",
-        }:
-            return None
-
-        logger.info("Task event: type=%s, task_id=%s", event.get("type"), event.get("task_id"))
-        return {
-            "type": "custom_event",
-            "event_type": event["type"],
-            "task_id": event.get("task_id"),
-            "description": event.get("description"),
-            "message": event.get("message"),
-            "result": event.get("result"),
-            "error": event.get("error"),
-        }
-
-    @staticmethod
-    def _iter_new_turn_messages(
-        messages: list[object],
-        current_user_message_id: str,
-        seen_ids: set[str],
-    ) -> Generator[object, None, None]:
-        """Yield unseen non-user messages after the current turn anchor."""
-        turn_anchor_index = next(
-            (
-                index
-                for index, message in enumerate(messages)
-                if isinstance(message, HumanMessage) and getattr(message, "id", None) == current_user_message_id
-            ),
-            -1,
-        )
-        if turn_anchor_index == -1:
-            return
-
-        for msg in messages[turn_anchor_index + 1 :]:
-            if isinstance(msg, HumanMessage):
-                continue
-
-            msg_id = getattr(msg, "id", None)
-            if msg_id and msg_id in seen_ids:
-                continue
-            if msg_id:
-                seen_ids.add(msg_id)
-            yield msg
-
-    def _process_values_mode_message(
-        self,
-        msg: object,
-        capture_state: _StreamCaptureState,
-    ) -> list[dict[str, Any]]:
-        """Convert full values-mode messages into runtime events and summaries."""
-        msg_id = getattr(msg, "id", None)
-
-        if isinstance(msg, AIMessage):
-            events: list[dict[str, Any]] = []
-            if msg.tool_calls:
-                tool_names = [tc.get("name") for tc in msg.tool_calls]
-                logger.info("AI tool calls: %s", tool_names)
-                events.append(
-                    {
-                        "type": "assistant_tool_calls",
-                        "message_id": msg_id,
-                        "tool_calls": [
-                            {
-                                "name": tool_call.get("name"),
-                                "args": tool_call.get("args", {}),
-                                "id": tool_call.get("id"),
-                            }
-                            for tool_call in msg.tool_calls
-                        ],
-                    }
-                )
-
-            content = self._client._extract_text(msg.content)
-            if content:
-                capture_state.final_text = content
-            return events
-
-        if isinstance(msg, ToolMessage):
-            tool_name = getattr(msg, "name", None) or "unknown"
-            tool_content = self._client._extract_text(msg.content)
-            logger.info(
-                "Tool result: name=%s, content_preview=%s",
-                tool_name,
-                tool_content[:100] if tool_content else "(empty)",
-            )
-            if tool_content:
-                capture_state.tool_results.append(f"[{tool_name}]: {tool_content[:200]}")
-
-            return [
-                {
-                    "type": "tool_result",
-                    "message_id": msg_id,
-                    "tool_name": tool_name,
-                    "tool_call_id": getattr(msg, "tool_call_id", None),
-                    "content": tool_content,
-                }
-            ]
-
-        return []
-
     def _resolve_runtime_options(
         self,
         runtime_options: ConversationRuntimeOptions | None = None,
@@ -643,41 +486,6 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                 return "\n\n".join(reasoning_parts)
 
         return None
-
-    @staticmethod
-    def _extract_reasoning_delta(chunk: AIMessageChunk) -> str | None:
-        """Extract incremental reasoning content from a streaming chunk."""
-        additional_kwargs = getattr(chunk, "additional_kwargs", None) or {}
-        reasoning = additional_kwargs.get("reasoning_content")
-        if isinstance(reasoning, str) and reasoning:
-            return reasoning
-
-        content = getattr(chunk, "content", None)
-        if isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "thinking":
-                    thinking = block.get("thinking", "")
-                    if thinking:
-                        return thinking
-
-        return None
-
-    @staticmethod
-    def _extract_content_delta(chunk: AIMessageChunk) -> str | None:
-        """Extract incremental text content from a streaming chunk."""
-        content = getattr(chunk, "content", None)
-        if isinstance(content, str) and content:
-            return content
-        if isinstance(content, list):
-            parts = []
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    text = block.get("text", "")
-                    if text:
-                        parts.append(text)
-            return "".join(parts) if parts else None
-        return None
-
 
 # Backward-compatible alias retained while call sites migrate away from the
 # misleading "GeneralAgent" name.

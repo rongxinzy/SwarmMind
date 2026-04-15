@@ -6,7 +6,14 @@ from types import SimpleNamespace
 
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 
-from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter, _StreamCaptureState
+from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
+from swarmmind.services.runtime_event_processing import (
+    StreamCaptureState,
+    iter_new_turn_messages,
+    process_custom_mode_chunk,
+    process_messages_mode_chunk,
+    process_values_mode_message,
+)
 
 
 class FakeStreamingAgent:
@@ -98,10 +105,9 @@ def test_stream_events_skips_history_messages_before_current_turn(monkeypatch):
 
 
 def test_process_messages_mode_chunk_accumulates_reasoning_and_content() -> None:
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
-    capture_state = _StreamCaptureState()
+    capture_state = StreamCaptureState()
 
-    first_events = agent._process_messages_mode_chunk(
+    first_events = process_messages_mode_chunk(
         AIMessageChunk(
             id="chunk-1",
             content="hello",
@@ -109,7 +115,7 @@ def test_process_messages_mode_chunk_accumulates_reasoning_and_content() -> None
         ),
         capture_state,
     )
-    second_events = agent._process_messages_mode_chunk(
+    second_events = process_messages_mode_chunk(
         AIMessageChunk(
             id="chunk-1",
             content=" world",
@@ -131,14 +137,13 @@ def test_process_messages_mode_chunk_accumulates_reasoning_and_content() -> None
 
 
 def test_process_messages_mode_chunk_resets_accumulators_for_new_message_id() -> None:
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
-    capture_state = _StreamCaptureState(
+    capture_state = StreamCaptureState(
         current_chunk_msg_id="chunk-1",
         accumulated_reasoning="previous reasoning",
         accumulated_content="previous content",
     )
 
-    events = agent._process_messages_mode_chunk(
+    events = process_messages_mode_chunk(
         AIMessageChunk(
             id="chunk-2",
             content="fresh",
@@ -157,9 +162,9 @@ def test_process_messages_mode_chunk_resets_accumulators_for_new_message_id() ->
 
 
 def test_process_custom_mode_chunk_filters_and_normalizes_task_events() -> None:
-    assert DeerFlowRuntimeAdapter._process_custom_mode_chunk("ignored") is None
-    assert DeerFlowRuntimeAdapter._process_custom_mode_chunk({"type": "other"}) is None
-    assert DeerFlowRuntimeAdapter._process_custom_mode_chunk(
+    assert process_custom_mode_chunk("ignored") is None
+    assert process_custom_mode_chunk({"type": "other"}) is None
+    assert process_custom_mode_chunk(
         {
             "type": "task_running",
             "task_id": "task-1",
@@ -185,7 +190,7 @@ def test_iter_new_turn_messages_skips_pre_turn_user_and_seen_messages() -> None:
     seen_ids = {"tool-1"}
 
     yielded = list(
-        DeerFlowRuntimeAdapter._iter_new_turn_messages(
+        iter_new_turn_messages(
             [
                 HumanMessage(content="history user", id="history-user"),
                 history_assistant,
@@ -205,17 +210,16 @@ def test_iter_new_turn_messages_skips_pre_turn_user_and_seen_messages() -> None:
 
 
 def test_process_values_mode_message_emits_tool_calls_and_tracks_final_text() -> None:
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
-    agent._client = SimpleNamespace(_extract_text=lambda content: content if isinstance(content, str) else "")
-    capture_state = _StreamCaptureState()
+    capture_state = StreamCaptureState()
 
-    events = agent._process_values_mode_message(
+    events = process_values_mode_message(
         AIMessage(
             content="final answer",
             id="assistant-1",
             tool_calls=[{"name": "search_docs", "args": {"q": "streaming"}, "id": "call-1"}],
         ),
         capture_state,
+        lambda content: content if isinstance(content, str) else "",
     )
 
     assert events == [
@@ -229,11 +233,9 @@ def test_process_values_mode_message_emits_tool_calls_and_tracks_final_text() ->
 
 
 def test_process_values_mode_message_emits_tool_result_and_summarizes_tool_output() -> None:
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
-    agent._client = SimpleNamespace(_extract_text=lambda content: content if isinstance(content, str) else "")
-    capture_state = _StreamCaptureState()
+    capture_state = StreamCaptureState()
 
-    events = agent._process_values_mode_message(
+    events = process_values_mode_message(
         ToolMessage(
             content="tool output",
             tool_call_id="call-1",
@@ -241,6 +243,7 @@ def test_process_values_mode_message_emits_tool_result_and_summarizes_tool_outpu
             id="tool-1",
         ),
         capture_state,
+        lambda content: content if isinstance(content, str) else "",
     )
 
     assert events == [
