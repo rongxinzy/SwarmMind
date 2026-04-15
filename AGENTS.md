@@ -142,17 +142,28 @@ swarmmind/                         ← Python package root
 ├── renderer.py                    ✅ LLM Status Renderer
 ├── agents/
 │   ├── base.py                    ✅ BaseAgent (abstract base with memory utilities)
-│   └── general_agent.py           ✅ DeerFlowRuntimeAdapter (DeerFlow-driven adapter, compat alias: GeneralAgent)
+│   └── general_agent.py           ✅ DeerFlowRuntimeAdapter (runtime orchestration shell, compat alias: GeneralAgent)
 ├── repositories/                  ✅ Repository layer (SQLModel + CRUD per domain)
 │   ├── agent.py
 │   ├── action_proposal.py
 │   ├── strategy.py
 │   ├── event_log.py
-│   ├── working_memory.py
 │   ├── memory.py
 │   ├── conversation.py
 │   ├── message.py
 │   └── runtime_catalog.py
+├── services/
+│   ├── conversation_execution.py  ✅ ChatSession send/stream orchestration
+│   ├── conversation_support.py    ✅ Message/title persistence helpers
+│   ├── conversation_trace_service.py ✅ conversation_id -> thread_id trace orchestration
+│   ├── lifecycle.py               ✅ startup lifecycle + cleanup scanner
+│   ├── runtime_bridge.py          ✅ sync/async bridge helpers for DeerFlow runtime calls
+│   ├── runtime_event_processing.py ✅ stream capture + event normalization helpers
+│   ├── runtime_support.py         ✅ runtime binding/model/runtime-option helpers
+│   ├── stream_events.py           ✅ DeerFlow event -> UI stream event translation
+│   ├── trace_checkpoint_storage.py ✅ raw checkpoint storage access
+│   ├── trace_provider.py          ✅ parsed checkpoint provider boundary
+│   └── trace_service.py           ✅ collaboration trace reconstruction
 ├── runtime/
 │   ├── bootstrap.py               ✅ DeerFlow Runtime bootstrap + config generation
 │   ├── profile.py                 ✅ RuntimeProfile management
@@ -160,11 +171,14 @@ swarmmind/                         ← Python package root
 │   ├── catalog.py                 ✅ Model catalog for runtime profiles
 │   └── errors.py                  ✅ Runtime error types
 └── api/
-    └── supervisor.py              ✅ FastAPI supervisor REST API
+    ├── supervisor.py              ✅ FastAPI app assembly + supervisor/system endpoints
+    └── conversation_routes.py     ✅ conversation route registration and compatibility exports
 
 ui/                                ← Supervisor web UI (Vite + React + shadcn/ui)
 ├── src/
-│   └── App.tsx                    ✅ Full supervisor UI
+│   ├── App.tsx                    ✅ Full supervisor UI shell
+│   ├── components/workspace/      ✅ Split chat workspace components
+│   └── core/chat/                 ✅ Chat stream/scroll/types helpers
 ├── vite.config.ts
 └── tailwind.config.js
 
@@ -175,6 +189,10 @@ tests/
 ├── test_layered_memory.py         ✅ Layered memory tests
 ├── test_conversation_titles.py    ✅ ChatSession title generation
 ├── test_conversation_stream.py    ✅ Streaming conversation tests
+├── test_conversation_trace_service.py ✅ Conversation trace orchestration tests
+├── test_runtime_bridge.py         ✅ Sync/async bridge tests
+├── test_general_agent_stream_bridge.py ✅ GeneralAgent sync/async bridge regression tests
+├── test_general_agent_stream_events.py ✅ GeneralAgent stream event processing tests
 └── test_runtime_model_catalog.py  ✅ Runtime model catalog tests
 ```
 
