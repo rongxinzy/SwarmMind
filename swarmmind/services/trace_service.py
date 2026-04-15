@@ -1,77 +1,41 @@
-"""协作轨迹服务 — 从 deer-flow checkpointer 读取并转换。
-
-设计原则：
-1. 零侵入 deer-flow — 只读取其持久化的 checkpoints
-2. 复用 langgraph SqliteSaver 的表结构
-3. 从 ThreadState 重建协作轨迹
-"""
+"""协作轨迹服务 — 从 trace provider 读取并转换。"""
 
 from __future__ import annotations
 
 import json
 import logging
-import os
-import sqlite3
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
+
+from swarmmind.services.trace_provider import (
+    LEGACY_DEFAULT_CHECKPOINTER_PATH as TRACE_LEGACY_DEFAULT_CHECKPOINTER_PATH,
+)
+from swarmmind.services.trace_provider import (
+    SqliteTraceCheckpointProvider,
+    TraceCheckpointProvider,
+)
 
 logger = logging.getLogger(__name__)
 
-
-# 复用当前 SwarmMind runtime bundle 的 legacy 路径结构
-LEGACY_DEFAULT_CHECKPOINTER_PATH = (
-    Path(__file__).resolve().parents[2] / ".runtime" / "deerflow" / "local-default" / "checkpoints.db"
-)
-DEFAULT_CHECKPOINTER_FILENAME = "checkpoints.db"
-
-
-def _resolve_default_checkpointer_path() -> Path:
-    """Resolve the default SqliteSaver path from runtime env when available.
-
-    Resolution order:
-    1. If ``DEER_FLOW_HOME`` is set, prefer an existing checkpointer next to or
-       inside that home directory.
-    2. If no checkpointer exists yet, keep SwarmMind's current bundle layout as
-       the default for ``.../home`` directories by choosing the parent sibling.
-    3. Fall back to the previous fixed repo-local path.
-    """
-    deer_flow_home = os.environ.get("DEER_FLOW_HOME")
-    if not deer_flow_home:
-        return LEGACY_DEFAULT_CHECKPOINTER_PATH
-
-    runtime_home = Path(deer_flow_home).expanduser()
-    direct_candidate = runtime_home / DEFAULT_CHECKPOINTER_FILENAME
-    sibling_candidate = runtime_home.parent / DEFAULT_CHECKPOINTER_FILENAME
-
-    for candidate in (direct_candidate, sibling_candidate):
-        if candidate.exists():
-            return candidate
-
-    if runtime_home.name == "home":
-        return sibling_candidate
-
-    return direct_candidate
-
-
-DEFAULT_CHECKPOINTER_PATH = _resolve_default_checkpointer_path()
+LEGACY_DEFAULT_CHECKPOINTER_PATH = TRACE_LEGACY_DEFAULT_CHECKPOINTER_PATH
 
 
 class TraceService:
-    """从 deer-flow checkpointer 解析协作轨迹。
+    """从 trace checkpoint provider 解析协作轨迹。"""
 
-    直接读取 langgraph SqliteSaver 的数据库，解析 ThreadState，
-    转换为 SwarmMind 的协作轨迹格式。
-    """
-
-    def __init__(self, checkpointer_path: Path | str | None = None) -> None:
+    def __init__(
+        self,
+        checkpointer_path=None,
+        checkpoint_provider: TraceCheckpointProvider | None = None,
+    ) -> None:
         """Initialize trace service.
 
         Args:
-            checkpointer_path: Path to SqliteSaver database.
-                Defaults to deer-flow's default location.
+            checkpointer_path: Optional path for the default sqlite-backed provider.
+            checkpoint_provider: Optional provider abstraction for raw checkpoint reads.
         """
-        self.checkpointer_path = Path(checkpointer_path) if checkpointer_path else _resolve_default_checkpointer_path()
+        self._checkpoint_provider = checkpoint_provider or SqliteTraceCheckpointProvider(checkpointer_path)
+        self.checkpointer_path = getattr(self._checkpoint_provider, "checkpointer_path", None)
 
     def get_conversation_trace(self, thread_id: str) -> dict[str, Any]:
         """获取会话的协作轨迹。
@@ -85,11 +49,7 @@ class TraceService:
         Returns:
             Dict with thread_id, status, events, summary.
         """
-        if not self.checkpointer_path.exists():
-            logger.warning("Checkpointer database not found at %s", self.checkpointer_path)
-            return self._empty_trace(thread_id)
-
-        checkpoints = self._load_checkpoints(thread_id)
+        checkpoints = self._checkpoint_provider.load_checkpoints(thread_id)
         if not checkpoints:
             logger.debug("No checkpoints found for thread %s", thread_id)
             return self._empty_trace(thread_id)
@@ -104,63 +64,6 @@ class TraceService:
             "summary": self._generate_summary(events),
             "checkpoint_count": len(checkpoints),
         }
-
-    def _load_checkpoints(self, thread_id: str) -> list[dict[str, Any]]:
-        """Load checkpoints from SqliteSaver database.
-
-        复用 deer-flow/langgraph 的 checkpoints 表结构:
-        - thread_id TEXT
-        - checkpoint_ns TEXT
-        - checkpoint_id TEXT
-        - parent_checkpoint_id TEXT
-        - type TEXT
-        - checkpoint BLOB (JSON serialized ThreadState)
-        - metadata BLOB
-        """
-        conn = sqlite3.connect(self.checkpointer_path, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-
-        try:
-            cursor = conn.cursor()
-            # 复用 SqliteSaver 的查询模式
-            try:
-                cursor.execute(
-                    """
-                    SELECT thread_id, checkpoint_id, parent_checkpoint_id, type, 
-                           checkpoint, metadata
-                    FROM checkpoints 
-                    WHERE thread_id = ? AND checkpoint_ns = ''
-                    ORDER BY checkpoint_id ASC
-                    """,
-                    (thread_id,),
-                )
-            except sqlite3.OperationalError as exc:
-                logger.warning("Checkpoint query failed for thread %s at %s: %s", thread_id, self.checkpointer_path, exc)
-                return []
-
-            checkpoints = []
-            for row in cursor.fetchall():
-                try:
-                    checkpoint_data = json.loads(row["checkpoint"]) if row["checkpoint"] else {}
-                    metadata = json.loads(row["metadata"]) if row["metadata"] else {}
-                except json.JSONDecodeError as e:
-                    logger.warning("Failed to parse checkpoint %s: %s", row["checkpoint_id"], e)
-                    continue
-
-                checkpoints.append(
-                    {
-                        "thread_id": row["thread_id"],
-                        "checkpoint_id": row["checkpoint_id"],
-                        "parent_checkpoint_id": row["parent_checkpoint_id"],
-                        "type": row["type"],
-                        "checkpoint": checkpoint_data,
-                        "metadata": metadata,
-                    }
-                )
-
-            return checkpoints
-        finally:
-            conn.close()
 
     def _build_trace_events(self, checkpoints: list[dict]) -> list[dict[str, Any]]:
         """Build trace events from checkpoints.

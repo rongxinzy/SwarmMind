@@ -5,7 +5,7 @@ import time
 
 from swarmmind.config import MEMORY_MAX_RETRIES, MEMORY_RETRY_DELAY_MS
 from swarmmind.db import session_scope
-from swarmmind.db_models import WorkingMemoryDB
+from swarmmind.db_models import SharedMemoryDB
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class SharedMemory:
     def read(self, key: str) -> dict | None:
         """Read a key from working memory. Returns None if not found."""
         with session_scope() as session:
-            entry = session.get(WorkingMemoryDB, key)
+            entry = session.get(SharedMemoryDB, key)
             if entry is None:
                 return None
             return {
@@ -54,12 +54,12 @@ class SharedMemory:
         """
         for attempt in range(MEMORY_MAX_RETRIES):
             with session_scope() as session:
-                entry = session.get(WorkingMemoryDB, key)
+                entry = session.get(SharedMemoryDB, key)
                 prior_updated_at = entry.updated_at if entry else None
                 prior_writer = entry.last_writer_agent_id if entry else None
 
                 if entry is None:
-                    entry = WorkingMemoryDB(
+                    entry = SharedMemoryDB(
                         key=key,
                         value=value,
                         domain_tags=domain_tags,
@@ -104,8 +104,8 @@ class SharedMemory:
             from sqlmodel import select
 
             results = session.exec(
-                select(WorkingMemoryDB).where(
-                    WorkingMemoryDB.domain_tags.contains(domain_tag),
+                select(SharedMemoryDB).where(
+                    SharedMemoryDB.domain_tags.contains(domain_tag),
                 ),
             ).all()
             return [
@@ -125,7 +125,7 @@ class SharedMemory:
             from sqlmodel import select
 
             results = session.exec(
-                select(WorkingMemoryDB).order_by(WorkingMemoryDB.updated_at.desc()),
+                select(SharedMemoryDB).order_by(SharedMemoryDB.updated_at.desc()),
             ).all()
             return [
                 {

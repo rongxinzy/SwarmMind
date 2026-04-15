@@ -22,8 +22,13 @@ class AgentDB(SQLModel, table=True):
     created_at: datetime | None = Field(default_factory=utc_now)
 
 
-class WorkingMemoryDB(SQLModel, table=True):
-    """Shared working memory (KV store)."""
+class SharedMemoryDB(SQLModel, table=True):
+    """Shared-memory backing store.
+
+    The physical table name remains ``working_memory`` for schema compatibility,
+    but the runtime entry point is ``SharedMemory`` rather than a separate
+    working-memory repository abstraction.
+    """
 
     __tablename__ = "working_memory"
 
