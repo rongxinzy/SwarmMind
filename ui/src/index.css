@@ -268,39 +268,60 @@
 
   /* Typography Utilities */
   .text-display {
-    @apply text-[28px] leading-[36px] font-semibold tracking-[-0.02em];
+    @apply font-display text-[40px] leading-[1.15] font-medium tracking-[-0.02em];
   }
 
   .text-heading {
-    @apply text-[22px] leading-[30px] font-semibold tracking-[-0.01em];
+    @apply font-display text-[32px] leading-[1.20] font-medium tracking-[-0.02em];
   }
 
   .text-subheading {
-    @apply text-[18px] leading-[26px] font-medium;
+    @apply font-display text-[24px] leading-[1.25] font-medium tracking-[-0.01em];
+  }
+
+  .text-surface-title {
+    @apply font-sans text-[20px] leading-[1.35] font-semibold tracking-[-0.01em];
   }
 
   .text-body-large {
-    @apply text-[16px] leading-[26px];
+    @apply font-sans text-[16px] leading-[1.65];
   }
 
   .text-body {
-    @apply text-[14px] leading-[22px];
+    @apply font-sans text-[14px] leading-[1.60];
+  }
+
+  .text-body-small {
+    @apply font-sans text-[13px] leading-[1.55];
   }
 
   .text-caption {
-    @apply text-[12px] leading-[18px] font-medium tracking-wide;
+    @apply font-sans text-[12px] leading-[1.45] font-medium tracking-wide;
   }
 
   .text-label {
-    @apply text-[11px] leading-[16px] font-medium tracking-[0.04em] uppercase;
+    @apply font-sans text-[11px] leading-[1.30] font-medium tracking-[0.05em] uppercase;
   }
 
   .section-kicker {
-    @apply text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase;
+    @apply text-[10px] leading-[1.30] font-medium tracking-[0.06em] text-muted-foreground uppercase;
   }
 
-  .field-label {
-    @apply text-[11px] leading-4 font-medium tracking-[0.04em] text-muted-foreground uppercase;
+  /* Bilingual Rules - CJK Optimization */
+  :lang(zh), [lang^="zh"] {
+    --font-sans: "Geist", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.75;
+  }
+
+  :lang(zh) .text-body, [lang^="zh"] .text-body {
+    line-height: 1.75;
+    letter-spacing: 0.02em;
+  }
+
+  :lang(zh) .text-display, [lang^="zh"] .text-display,
+  :lang(zh) .text-heading, [lang^="zh"] .text-heading {
+    line-height: 1.35;
+    font-weight: 600;
   }
 
   /* Skeleton Loading */

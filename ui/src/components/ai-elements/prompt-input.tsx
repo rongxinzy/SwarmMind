@@ -265,7 +265,7 @@ export function PromptInput({
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className={cn("relative", className)}
+      className={cn("composer-container relative", className)}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >
@@ -281,7 +281,7 @@ export function PromptInput({
 
       {/* File attachments */}
       {files.length > 0 && (
-        <div className="flex flex-wrap gap-2 p-3 border-b bg-secondary/30">
+        <div className="flex flex-wrap gap-space-2 p-space-3 border-b bg-[var(--warm-mist)]/50">
           {files.map((file) => (
             <FileAttachmentChip
               key={file.id}
@@ -301,20 +301,20 @@ export function PromptInput({
         onPaste={handlePaste}
         placeholder={placeholder}
         disabled={disabled}
-        className="min-h-[100px] resize-none border-0 bg-transparent px-4 py-3 text-sm focus-visible:ring-0 focus-visible:ring-offset-0"
+        className="min-h-[100px] resize-none border-0 bg-transparent px-space-4 py-space-3 text-body focus-visible:ring-0 focus-visible:ring-offset-0"
         rows={3}
       />
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 border-t bg-secondary/30 px-3 py-2">
-        <div className="flex items-center gap-1">
+      <div className="flex items-center justify-between gap-space-2 border-t bg-[var(--warm-mist)]/50 px-space-3 py-space-2">
+        <div className="flex items-center gap-space-1">
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
             disabled={disabled || files.length >= maxFiles}
             onClick={openFileDialog}
-            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 text-muted-foreground hover:text-foreground"
           >
             <PaperclipIcon className="size-4" />
           </Button>
