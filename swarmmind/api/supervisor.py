@@ -22,7 +22,6 @@ from swarmmind.models import (
     ConversationListResponse,
     ConversationRuntimeOptions,
     GoalRequest,
-    MemoryContext,
     Message,
     MessageListResponse,
     PendingResponse,
@@ -30,7 +29,6 @@ from swarmmind.models import (
     RuntimeModelCatalogResponse,
     RuntimeModelOption,
     SendMessageRequest,
-    SendMessageResponse,
     StrategyEntry,
     StrategyResponse,
     SupervisorDecision,
@@ -44,6 +42,7 @@ from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.strategy import StrategyRepository
+from swarmmind.services.conversation_execution import ConversationExecutionService
 from swarmmind.services.conversation_support import (
     ConversationSupportService,
     generate_title_with_deerflow,
@@ -358,6 +357,30 @@ def _maybe_generate_conversation_title(conversation_id: str) -> None:
     conversation_support.maybe_generate_conversation_title(conversation_id, _generate_title_with_deerflow)
 
 
+def _conversation_execution_service() -> ConversationExecutionService:
+    return ConversationExecutionService(
+        conversation_repo=conversation_repo,
+        message_repo=message_repo,
+        action_proposal_repo=action_proposal_repo,
+        runtime_adapter_cls=DeerFlowRuntimeAdapter,
+        dispatch_fn=dispatch,
+        derive_situation_tag_fn=derive_situation_tag,
+        record_supervisor_decision_fn=record_supervisor_decision,
+        approved_decision=SupervisorDecision.APPROVED,
+        persist_user_message_fn=_persist_user_message,
+        persist_assistant_message_fn=_persist_assistant_message,
+        maybe_generate_conversation_title_fn=_maybe_generate_conversation_title,
+        bind_conversation_runtime_fn=_bind_conversation_runtime,
+        format_runtime_error_fn=_format_runtime_error,
+        resolve_runtime_options_fn=_resolve_runtime_options,
+        general_agent_status_labels_fn=_general_agent_status_labels,
+        translate_general_agent_event_fn=_translate_general_agent_event,
+        serialize_stream_event_fn=_serialize_stream_event,
+        db_to_message_fn=_db_to_message,
+        execution_logger=logger,
+    )
+
+
 @app.get("/conversations")
 def list_conversations() -> ConversationListResponse:
     """List all conversations ordered by updated_at descending."""
@@ -395,57 +418,7 @@ def send_message(conversation_id: str, body: SendMessageRequest):
 
     All execution flows through the single DeerFlow Runtime Instance.
     """
-    # Save user message (validates conversation exists)
-    user_msg = _persist_user_message(conversation_id, body.content)
-
-    # Build MemoryContext using conversation_id as session_id
-    memory_ctx = MemoryContext(
-        user_id="supervisor",
-        session_id=conversation_id,
-    )
-    runtime_options = _resolve_runtime_options(body)
-    situation_tag = derive_situation_tag(body.content)
-
-    dispatch_result = dispatch(
-        body.content,
-        user_id="supervisor",
-        session_id=conversation_id,
-        override_situation_tag=situation_tag,
-    )
-    proposal_id = dispatch_result.action_proposal_id
-
-    action_proposal_repo.approve(proposal_id)
-    record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
-
-    try:
-        runtime_instance, _thread_id = _bind_conversation_runtime(conversation_id)
-        runtime_adapter = DeerFlowRuntimeAdapter(
-            runtime_instance=runtime_instance,
-            default_model=runtime_options.model_name,
-            thinking_enabled=runtime_options.thinking_enabled,
-            subagent_enabled=runtime_options.subagent_enabled,
-            plan_mode=runtime_options.plan_mode,
-        )
-        completed_proposal = runtime_adapter.act(
-            body.content,
-            proposal_id,
-            ctx=memory_ctx,
-            runtime_options=runtime_options,
-        )
-        ai_response = completed_proposal.description
-    except Exception as e:
-        logger.error("DeerFlowRuntimeAdapter execution error: %s", e)
-        ai_response = _format_runtime_error(e)
-
-    # Save assistant response
-    assistant_msg = _persist_assistant_message(conversation_id, ai_response)
-
-    _maybe_generate_conversation_title(conversation_id)
-
-    return SendMessageResponse(
-        user_message=user_msg,
-        assistant_message=assistant_msg,
-    )
+    return _conversation_execution_service().send_message(conversation_id, body)
 
 
 @app.delete("/conversations/{conversation_id}")
@@ -499,140 +472,7 @@ def get_conversation_trace(conversation_id: str) -> dict:
 
 def _stream_conversation_message(conversation_id: str, body: SendMessageRequest):
     """Stream a ChatSession turn with SwarmMind runtime semantics."""
-    user_message = _persist_user_message(conversation_id, body.content)
-    yield _serialize_stream_event(
-        "status",
-        phase="accepted",
-        label="消息已加入当前会话",
-    )
-    yield _serialize_stream_event(
-        "user_message",
-        message={
-            "id": user_message.id,
-            "role": user_message.role,
-            "content": user_message.content,
-            "created_at": user_message.created_at,
-        },
-    )
-
-    memory_ctx = MemoryContext(
-        user_id="supervisor",
-        session_id=conversation_id,
-    )
-    runtime_options = _resolve_runtime_options(body)
-    routing_label, running_label = _general_agent_status_labels(runtime_options)
-
-    ai_response = ""
-    situation_tag = derive_situation_tag(body.content)
-
-    try:
-        yield _serialize_stream_event(
-            "status",
-            phase="routing",
-            label=routing_label,
-        )
-
-        dispatch_result = dispatch(
-            body.content,
-            user_id="supervisor",
-            session_id=conversation_id,
-            override_situation_tag=situation_tag,
-        )
-        proposal_id = dispatch_result.action_proposal_id
-
-        action_proposal_repo.approve(proposal_id)
-        record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
-
-        runtime_instance, _thread_id = _bind_conversation_runtime(conversation_id)
-        runtime_adapter = DeerFlowRuntimeAdapter(
-            runtime_instance=runtime_instance,
-            default_model=runtime_options.model_name,
-            thinking_enabled=runtime_options.thinking_enabled,
-            subagent_enabled=runtime_options.subagent_enabled,
-            plan_mode=runtime_options.plan_mode,
-        )
-
-        yield _serialize_stream_event(
-            "status",
-            phase="running",
-            label=running_label,
-        )
-
-        stream = runtime_adapter.stream_events(
-            body.content,
-            ctx=memory_ctx,
-            runtime_options=runtime_options,
-        )
-        event_count = 0
-        while True:
-            try:
-                event = next(stream)
-                event_count += 1
-                if event_count <= 5 or event_count % 10 == 0:
-                    logger.info("Stream event #%d: type=%s", event_count, event.get("type"))
-            except StopIteration as stop:
-                ai_response, _tool_results = stop.value
-                logger.info("Stream completed: events=%d, response_length=%d", event_count, len(ai_response))
-                break
-            except Exception as stream_error:
-                logger.error("Stream event error: %s", stream_error, exc_info=True)
-                raise
-
-            try:
-                for line in _translate_general_agent_event(event, runtime_options):
-                    yield line
-            except Exception as translate_error:
-                logger.error("Event translation error: %s, event=%s", translate_error, event)
-                raise
-
-        if not ai_response.strip():
-            ai_response = "本轮运行已完成，但没有生成可展示的最终回答。"
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Conversation stream error: %s", e, exc_info=True)
-        ai_response = _format_runtime_error(e)
-        yield _serialize_stream_event(
-            "status",
-            phase="error",
-            label="DeerFlow Runtime 执行失败",
-        )
-        yield _serialize_stream_event(
-            "assistant_message",
-            message_id=f"assistant-error-{uuid.uuid4()}",
-            content=ai_response,
-        )
-
-    assistant_message = _persist_assistant_message(conversation_id, ai_response)
-    _maybe_generate_conversation_title(conversation_id)
-    conversation = get_conversation(conversation_id)
-
-    yield _serialize_stream_event(
-        "assistant_final",
-        message={
-            "id": assistant_message.id,
-            "role": assistant_message.role,
-            "content": assistant_message.content,
-            "created_at": assistant_message.created_at,
-        },
-    )
-    yield _serialize_stream_event(
-        "title",
-        conversation={
-            "id": conversation.id,
-            "title": conversation.title,
-            "title_status": conversation.title_status,
-            "title_source": conversation.title_source,
-            "title_generated_at": conversation.title_generated_at,
-            "updated_at": conversation.updated_at,
-        },
-    )
-    yield _serialize_stream_event(
-        "status",
-        phase="completed",
-        label="本轮会话已完成",
-    )
-    yield _serialize_stream_event("done")
+    yield from _conversation_execution_service().stream_message(conversation_id, body)
 
 
 @app.post("/conversations/{conversation_id}/messages/stream")
@@ -661,19 +501,11 @@ def respond_to_clarification(conversation_id: str, body: ClarificationResponseRe
     The response is added as a ToolMessage to the conversation history, and the
     conversation is resumed.
     """
-    # Validate conversation exists
-    conversation_repo.get_by_id(conversation_id)
-
-    # Persist the clarification response as a user message with tool_call_id
-    result = message_repo.create(
-        conversation_id=conversation_id,
-        role="tool",
-        content=body.response,
-        tool_call_id=body.tool_call_id,
-        name="ask_clarification_response",
+    return _conversation_execution_service().respond_to_clarification(
+        conversation_id,
+        body.tool_call_id,
+        body.response,
     )
-    conversation_repo.touch(conversation_id)
-    return _db_to_message(result)
 
 
 # ---- Run ----

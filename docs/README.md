@@ -24,6 +24,7 @@
 
 - `AGENTS.md` — 当前工程状态总览（含 Phase A 实现清单）
 - `docs/README.md` — 本文档，文档体系元数据
+- `docs/chat-mainline-execution-plan.md` — 当前主路径执行计划（临时执行文档，完成后归档）
 - `docs/archive/*` — 已完成的临时调研与执行文档（如 gap-analysis、migration-plan）
 
 **阅读场景**: 理解当前代码能做什么、如何运行、如何部署
@@ -92,6 +93,18 @@
 - 原 `marketing-campaign`、`hr-recruiting` 场景稿已删除。
 - 它们留下的有效结论已收敛到 `docs/architecture.md` 的“跨业务场景边界”。
 - 当前只保留 `enterprise-crm` 作为规范场景样本。
+
+### D. 当前执行计划 [B]
+
+- `docs/chat-mainline-execution-plan.md`
+- `docs/technical-debt-repayment-plan.md`
+
+用途:
+
+- 记录当前迭代的主线优先级判断
+- 约束执行顺序, 避免同时横向铺多个半成品模块
+- 作为完成后归档到 `docs/archive/` 的临时执行文档
+- 记录主路径相关结构债、运行债和测试债的偿还顺序
 
 ## 3. 清理规则
 

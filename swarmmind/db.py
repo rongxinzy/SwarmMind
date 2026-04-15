@@ -252,9 +252,9 @@ def init_orm_db() -> None:
         RuntimeModelAssignmentDB,
         RuntimeModelDB,
         SessionPromotionDB,
+        SharedMemoryDB,
         StrategyChangeProposalDB,
         StrategyTableDB,
-        WorkingMemoryDB,
     )
 
     SQLModel.metadata.create_all(bind=get_engine())
