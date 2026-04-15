@@ -1,34 +1,31 @@
 "use client";
 
+import type { ChangeEvent, KeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  ArrowDown,
-  ArrowUp,
-  Brain,
-  Check,
-  Copy,
-  Lightbulb,
-  Loader2,
-  Paperclip,
-  Rocket,
-  Sparkles,
-} from "lucide-react";
+import { ArrowDown } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { ArtifactsProvider } from "@/components/workspace/artifacts/context";
+import { ChatComposerPanel } from "@/components/workspace/chat-composer-panel";
+import { ChatEmptyState } from "@/components/workspace/chat-empty-state";
 import { ChatLayout } from "@/components/workspace/chat-layout";
-import { MessageBubble, MessageListSkeleton, StreamingDots } from "@/components/workspace/chat-message-ui";
-import { ClarificationCard } from "@/components/workspace/messages/clarification-card";
-import { ModePicker, ModelPicker } from "@/components/workspace/chat-controls";
+import { MessageListSkeleton } from "@/components/workspace/chat-message-ui";
+import { ChatMessageArea } from "@/components/workspace/chat-message-area";
 import { SubtasksProvider, useUpdateSubtask, useSubtaskContext } from "@/core/tasks/context";
-import { SubtaskCard } from "@/components/workspace/messages/subtask-card";
-import { parseClarificationContent } from "@/core/messages/clarification";
-import { cn } from "@/lib/utils";
-import { XIcon } from "lucide-react";
-import { toast } from "sonner";
+import type {
+  ChatMessage,
+  ConversationMode,
+  ConversationRecord,
+  RuntimeActivity,
+  RuntimeModelCatalogResponse,
+  RuntimeModelOption,
+  RuntimeState,
+  StoredMessage,
+  StreamEvent,
+} from "@/core/chat/types";
+
+export type { ConversationRecord } from "@/core/chat/types";
 
 interface V0ChatProps {
   conversationId?: string;
@@ -36,108 +33,6 @@ interface V0ChatProps {
   onConversationCreated?: (id: string) => void;
   onConversationsChange?: (items: ConversationRecord[]) => void;
 }
-
-export interface ConversationRecord {
-  id: string;
-  title: string;
-  title_status: "pending" | "generated" | "fallback" | "manual";
-  updated_at: string;
-  created_at: string;
-}
-
-interface StoredMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  created_at?: string;
-}
-
-interface RuntimeModelOption {
-  name: string;
-  provider: string;
-  model: string;
-  display_name?: string | null;
-  description?: string | null;
-  supports_vision: boolean;
-  is_default: boolean;
-}
-
-interface RuntimeModelCatalogResponse {
-  models: RuntimeModelOption[];
-  default_model?: string | null;
-}
-
-interface RuntimeActivity {
-  id: string;
-  label: string;
-  status: "running" | "completed";
-  detail?: string;
-}
-
-interface RuntimeState {
-  phase: "idle" | "accepted" | "routing" | "running" | "completed" | "error";
-  label: string;
-  activities: RuntimeActivity[];
-}
-
-interface StreamEventUserMessage {
-  id: string;
-  role: "user";
-  content: string;
-  created_at?: string;
-}
-
-interface StreamEventAssistantMessage {
-  id: string;
-  role: "assistant";
-  content: string;
-  created_at?: string;
-}
-
-type StreamEvent =
-  | { type: "status"; phase: RuntimeState["phase"]; label: string }
-  | { type: "user_message"; message: StreamEventUserMessage }
-  | { type: "thinking"; message_id: string; content: string }
-  | { type: "assistant_message"; message_id: string; content: string }
-  | { type: "assistant_final"; message: StreamEventAssistantMessage }
-  | {
-      type: "team_activity";
-      activity: {
-        id: string;
-        label: string;
-        status: RuntimeActivity["status"];
-        detail?: string | null;
-      };
-    }
-  // Task events for SubtaskCard (DeerFlow compatible)
-  | { type: "task_started"; task: { id: string; description: string; status: "in_progress" } }
-  | { type: "task_running"; task: { id: string; message?: unknown } }
-  | { type: "task_completed"; task: { id: string; result?: string; status: "completed" } }
-  | { type: "task_failed"; task: { id: string; error?: string; status: "failed" } }
-  // Clarification request from AI
-  | { type: "clarification_request"; clarification: { id: string; content: string } }
-  | { type: "artifact"; path: string; filename?: string }
-  | {
-      type: "title";
-      conversation: ConversationRecord;
-    }
-  | { type: "done" };
-
-type ChatMessage = StoredMessage & {
-  pendingPersist?: boolean;
-  isStreaming?: boolean;
-  thinking?: string;
-  isReasoningStreaming?: boolean;
-};
-
-type ConversationMode = "flash" | "thinking" | "pro" | "ultra";
-
-const QUICK_PROMPTS = [
-  "帮我整理本周项目进展，输出 3 条重点结论。",
-  "生成一版 CRM MVP 范围说明，控制在一页内。",
-  "把下面的会议讨论改写成正式纪要。",
-  "总结当前续费风险，并给出 3 条行动建议。",
-];
 
 const MODEL_FETCH_RETRY_COUNT = 3;
 const MODEL_FETCH_RETRY_DELAY_MS = 400;
@@ -208,22 +103,6 @@ function upsertActivity(
     ...patch,
   };
   return next;
-}
-
-function statusTone(phase: RuntimeState["phase"]) {
-  if (phase === "error") return "status-pill-blocked";
-  if (phase === "completed") return "status-pill-done";
-  if (phase === "routing" || phase === "running" || phase === "accepted")
-    return "status-pill-running";
-  return "status-pill-draft";
-}
-
-function statusLabel(phase: RuntimeState["phase"]) {
-  if (phase === "accepted") return "已提交";
-  if (phase === "routing" || phase === "running") return "生成中";
-  if (phase === "completed") return "已完成";
-  if (phase === "error") return "失败";
-  return "待开始";
 }
 
 // Internal component that uses useUpdateSubtask (must be inside SubtasksProvider)
@@ -897,7 +776,7 @@ function V0ChatInner({
     [handleStreamEvent],
   );
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
     setAttachedFiles((prev) => {
@@ -1065,210 +944,23 @@ function V0ChatInner({
           {isConversationLoading ? (
             <MessageListSkeleton />
           ) : isEmpty ? (
-            <div className="flex flex-1 flex-col px-6 pt-14">
-              <div className="mx-auto w-full max-w-[560px]">
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-                  className="mb-7"
-                >
-                  <div className="inline-flex size-10 items-center justify-center rounded-xl border bg-[var(--warm-ivory)] text-[var(--neutral-600)]"
-                    style={{ boxShadow: 'var(--shadow-whisper)' }}
-                  >
-                    <Sparkles className="size-4" />
-                  </div>
-                  <p className="mt-5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                    Exploratory Session
-                  </p>
-                  <h2 className="mt-2 text-[28px] leading-[36px] font-semibold tracking-[-0.02em] text-foreground">
-                    临时会话
-                  </h2>
-                  <p className="mt-2 max-w-[440px] text-[14px] leading-[22px] text-muted-foreground">
-                    用一个明确任务开始探索。首次发送成功后，系统才会创建正式会话记录。
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.15, duration: 0.2 }}
-                  className="mb-3 flex items-center gap-2"
-                >
-                  <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    快速开始
-                  </p>
-                  <span className="h-px flex-1 bg-border/50" />
-                </motion.div>
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {[
-                    { icon: Rocket, prompt: QUICK_PROMPTS[0] },
-                    { icon: Lightbulb, prompt: QUICK_PROMPTS[1] },
-                    { icon: Brain, prompt: QUICK_PROMPTS[2] },
-                    { icon: Sparkles, prompt: QUICK_PROMPTS[3] },
-                  ].map(({ icon: Icon, prompt }, i) => (
-                    <motion.button
-                      key={prompt}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        delay: 0.2 + i * 0.06,
-                        duration: 0.25,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      onClick={() => {
-                        setInput(prompt);
-                        void handleSubmit(prompt);
-                      }}
-                      className="group flex items-start gap-3 rounded-xl border bg-[var(--warm-ivory)] px-4 py-3.5 text-left transition-all duration-200 hover:border-[var(--warm-ring)] hover:bg-[var(--neutral-150)]"
-                    >
-                      <span
-                        className={cn(
-                          "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-black/5 transition-colors",
-                          i === 0
-                            ? "bg-[#e2e8ee] text-[#49617a]"
-                            : i === 1
-                              ? "bg-[#ece3d6] text-[#756046]"
-                              : i === 2
-                                ? "bg-[#eae6ef] text-[#66597c]"
-                                : "bg-[#e4ebe4] text-[#4c6554]",
-                        )}
-                      >
-                        <Icon className="size-4" />
-                      </span>
-                      <span className="text-[13px] leading-[20px] text-muted-foreground group-hover:text-foreground">
-                        {prompt}
-                      </span>
-                    </motion.button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <ChatEmptyState
+              onPromptSelect={(prompt) => {
+                setInput(prompt);
+                void handleSubmit(prompt);
+              }}
+            />
           ) : (
-            <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5 px-6 py-6">
-              <AnimatePresence initial={false}>
-                {messages.map((message) => {
-                  // Check if this is a clarification message from tool
-                  // Try to parse as clarification if message looks like it
-                  if (
-                    message.role === "assistant" &&
-                    (message.content.includes("需要") ||
-                     message.content.includes("?") ||
-                     message.content.includes("选择") ||
-                     message.content.includes("确认"))
-                  ) {
-                    // Try to parse as clarification
-                    try {
-                      const parsed = parseClarificationContent(message.content);
-                      // Only render as clarification if it has the expected format
-                      if (parsed.question && parsed.clarificationType) {
-                        return (
-                          <ClarificationCard
-                            key={message.id}
-                            question={parsed.question}
-                            context={parsed.context}
-                            options={parsed.options}
-                            clarificationType={parsed.clarificationType}
-                            onRespond={(response) => {
-                              // Use message.id as tool_call_id fallback
-                              handleClarificationRespond(response, message.id);
-                            }}
-                          />
-                        );
-                      }
-                    } catch (e) {
-                      toast.error("AI 澄清请求解析失败，请查看原始消息");
-                      console.warn("[clarification] parse failed:", e);
-                      // Fall through to normal rendering
-                    }
-                  }
-                  
-                  return (
-                    <motion.div
-                      key={message.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                    >
-                      <MessageBubble
-                        key={message.id}
-                        message={message}
-                        isMessageStreaming={
-                          message.isStreaming || message.isReasoningStreaming
-                        }
-                      />
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-              
-              {/* Render ClarificationCard if there's a pending clarification */}
-              {pendingClarification && (
-                <motion.div
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  className="mt-4"
-                >
-                  {(() => {
-                    try {
-                      const parsed = parseClarificationContent(pendingClarification.content);
-                      return (
-                        <ClarificationCard
-                          question={parsed.question}
-                          context={parsed.context}
-                          options={parsed.options}
-                          clarificationType={parsed.clarificationType}
-                          onRespond={(response) => {
-                            handleClarificationRespond(response, pendingClarification.id);
-                            setPendingClarification(null); // Clear after response
-                          }}
-                        />
-                      );
-                    } catch (e) {
-                      toast.error("AI 澄清请求解析失败，请查看原始消息");
-                      console.warn("[clarification] parse failed:", e);
-                      return null;
-                    }
-                  })()}
-                </motion.div>
-              )}
-              
-              {/* Render SubtaskCards for active tasks */}
-              {Object.values(tasks).length > 0 && (
-                <div className="flex flex-col gap-3 mt-4">
-                  <div className="text-muted-foreground text-sm">
-                    正在执行 {Object.values(tasks).length} 个子任务...
-                  </div>
-                  {Object.values(tasks).map((task) => (
-                    <SubtaskCard
-                      key={task.id}
-                      taskId={task.id}
-                      isLoading={isLoading}
-                    />
-                  ))}
-                </div>
-              )}
-              
-              {isLoading &&
-                !messages.some(
-                  (m) => m.content.trim().length > 0 && m.role === "assistant",
-                ) && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex justify-start"
-                  >
-                    <div className="flex items-center gap-2 rounded-xl border border-[var(--warm-border)] bg-[var(--neutral-150)] px-4 py-2">
-                      <StreamingDots />
-                      <span className="text-[13px] text-muted-foreground">
-                        正在生成回复
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-            </div>
+            <ChatMessageArea
+              isLoading={isLoading}
+              messages={messages}
+              pendingClarification={pendingClarification}
+              tasks={tasks}
+              onClarificationRespond={handleClarificationRespond}
+              onPendingClarificationHandled={() => {
+                setPendingClarification(null);
+              }}
+            />
           )}
         </div>
 
@@ -1298,199 +990,38 @@ function V0ChatInner({
         </AnimatePresence>
       </div>
 
-      {/* Pinned bottom: status + composer as unified container */}
-      <div className="sticky bottom-0 z-20"
-        style={{
-          background: 'linear-gradient(to top, var(--warm-paper) 0%, var(--warm-paper) 85%, transparent 100%)',
+      <ChatComposerPanel
+        attachedFiles={attachedFiles}
+        error={error}
+        fetchModels={() => {
+          void fetchModels();
         }}
-      >
-        <div className="relative border-t border-[var(--warm-border)]/50 bg-[var(--warm-paper)]">
-          <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-2.5">
-            <div
-              className="rounded-2xl border border-[var(--warm-border)] bg-[var(--warm-ivory)] transition-all duration-200 focus-within:border-[var(--warm-ring)]"
-              style={{
-                boxShadow: 'var(--shadow-whisper)',
-              }}
-            >
-              {(runtime.phase !== "idle" || error) && (
-                <div
-                  className="border-b border-[var(--warm-border)] bg-[var(--neutral-150)] px-5 py-2.5"
-                  aria-live="polite"
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-[13px] text-muted-foreground">
-                      {error || runtime.label}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className={cn("text-[11px]", statusTone(runtime.phase))}
-                    >
-                      {statusLabel(runtime.phase)}
-                    </Badge>
-                  </div>
-                </div>
-              )}
-
-              <AnimatePresence>
-                {runtime.activities.length > 0 && (
-                  <motion.div
-                    key="activities"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                    className="overflow-hidden"
-                  >
-                    <div className="flex flex-col gap-1 border-b border-[var(--warm-border)] px-4 py-2">
-                      {runtime.activities.slice(0, 5).map((activity) => (
-                        <div
-                          key={activity.id}
-                          className="flex items-center gap-2 text-xs"
-                        >
-                          {activity.status === "running" ? (
-                            <Loader2 className="size-3 shrink-0 animate-spin text-[var(--status-running)]" />
-                          ) : (
-                            <Check className="size-3 shrink-0 text-[var(--status-done)]" />
-                          )}
-                          <span
-                            className={cn(
-                              "truncate",
-                              activity.status === "running"
-                                ? "text-[var(--neutral-700)]"
-                                : "text-[var(--neutral-500)]"
-                            )}
-                          >
-                            {activity.label}
-                          </span>
-                          {activity.detail && (
-                            <span className="ml-auto shrink-0 text-[var(--neutral-400)] max-w-[120px] truncate">
-                              {activity.detail}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                      {runtime.activities.length > 5 && (
-                        <p className="text-xs text-[var(--neutral-400)] pl-5">
-                          +{runtime.activities.length - 5} 个任务...
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              <div>
-                {attachedFiles.length > 0 && (
-                  <div className="flex flex-wrap gap-2 px-5 pt-3">
-                    {attachedFiles.map((file, index) => (
-                      <div
-                        key={`${file.name}-${index}`}
-                        className="flex items-center gap-1.5 rounded-md border border-[var(--warm-border)] bg-[var(--warm-ivory)] px-2.5 py-1 text-xs text-[var(--neutral-700)]"
-                      >
-                        <Paperclip className="size-3 shrink-0 text-[var(--neutral-500)]" />
-                        <span className="max-w-[120px] truncate">{file.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFile(index)}
-                          className="ml-0.5 text-[var(--neutral-400)] hover:text-[var(--neutral-700)]"
-                          aria-label={`移除 ${file.name}`}
-                        >
-                          <XIcon className="size-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <Textarea
-                  value={input}
-                  onChange={(e) => { setInput(e.target.value); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSubmit();
-                    }
-                  }}
-                  placeholder={
-                    isModelsLoading
-                      ? "正在加载模型..."
-                      : selectedModel
-                        ? "输入问题或任务..."
-                        : "当前没有可用模型，暂时无法开始会话"
-                  }
-                  className="min-h-[100px] resize-none border-none bg-card px-5 py-4 text-[15px] leading-[24px] tracking-[-0.003em] focus-visible:ring-0"
-                  disabled={isComposerDisabled}
-                />
-                <div className="flex flex-col gap-2 border-t border-[var(--warm-border)] bg-[var(--neutral-150)]/70 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ModePicker
-                      selected={selectedMode}
-                      onSelect={setSelectedMode}
-                    />
-                    <>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={handleFileSelect}
-                        accept="image/*,.pdf,.txt,.md,.csv,.json,.py,.ts,.tsx,.js,.jsx"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
-                        title="上传附件"
-                      >
-                        <Paperclip className="size-4" />
-                      </Button>
-                    </>
-                    {lastAssistantMessage && (
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
-                        onClick={() =>
-                          navigator.clipboard.writeText(
-                            lastAssistantMessage.content,
-                          )
-                        }
-                        title="复制回复"
-                      >
-                        <Copy className="size-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
-                    <ModelPicker
-                      models={modelOptions}
-                      selected={selectedModel}
-                      onSelect={setSelectedModel}
-                      isLoading={isModelsLoading}
-                      loadError={modelLoadError}
-                      onRetry={() => {
-                        void fetchModels();
-                      }}
-                    />
-                    <Button
-                      onClick={() => void handleSubmit()}
-                      disabled={!input.trim() || isComposerDisabled}
-                      size="icon-sm"
-                      className="size-10 rounded-md shadow-none"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <ArrowUp className="size-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        fileInputRef={fileInputRef}
+        handleFileSelect={handleFileSelect}
+        handleRemoveFile={handleRemoveFile}
+        handleSubmit={() => {
+          void handleSubmit();
+        }}
+        input={input}
+        isComposerDisabled={isComposerDisabled}
+        isLoading={isLoading}
+        isModelsLoading={isModelsLoading}
+        lastAssistantMessage={lastAssistantMessage}
+        modelLoadError={modelLoadError}
+        modelOptions={modelOptions}
+        onInputChange={setInput}
+        onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            void handleSubmit();
+          }
+        }}
+        runtime={runtime}
+        selectedMode={selectedMode}
+        selectedModel={selectedModel}
+        setSelectedMode={setSelectedMode}
+        setSelectedModel={setSelectedModel}
+      />
     </div>
     </ChatLayout>
     </ArtifactsProvider>

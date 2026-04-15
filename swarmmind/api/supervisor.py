@@ -47,6 +47,7 @@ from swarmmind.services.conversation_support import (
     ConversationSupportService,
     generate_title_with_deerflow,
 )
+from swarmmind.services.conversation_trace_service import ConversationTraceService
 from swarmmind.services.lifecycle import run_cleanup_scanner, startup_lifecycle
 from swarmmind.services.runtime_support import RuntimeSupportService
 from swarmmind.services.stream_events import (
@@ -79,6 +80,7 @@ conversation_support = ConversationSupportService(
     title_generator=generate_title_with_deerflow,
 )
 runtime_support = RuntimeSupportService(conversation_repo=conversation_repo)
+conversation_trace_service = ConversationTraceService(conversation_repo=conversation_repo)
 
 
 def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[str, str]:
@@ -447,27 +449,7 @@ def get_conversation_trace(conversation_id: str) -> dict:
     Returns:
         Collaboration trace with events, status, and summary.
     """
-    # 延迟导入，避免循环依赖
-    from swarmmind.services.trace_service import trace_service
-
-    conv = conversation_repo.get_by_id(conversation_id)
-    # 优先使用 thread_id，否则用 conversation_id 作为 fallback
-    thread_id = conv.thread_id or conversation_id
-
-    # 从 deer-flow checkpointer 读取轨迹
-    try:
-        trace = trace_service.get_conversation_trace(thread_id)
-        return trace
-    except Exception as e:
-        logger.error("Failed to get trace for thread %s: %s", thread_id, e)
-        # 降级返回空轨迹，不阻断主流程
-        return {
-            "thread_id": thread_id,
-            "status": "error",
-            "events": [],
-            "summary": f"读取轨迹失败: {e!s}",
-            "checkpoint_count": 0,
-        }
+    return conversation_trace_service.get_trace(conversation_id)
 
 
 def _stream_conversation_message(conversation_id: str, body: SendMessageRequest):

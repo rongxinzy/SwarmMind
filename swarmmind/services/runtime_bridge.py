@@ -1,4 +1,4 @@
-"""Helpers for bridging async runtime streams into sync iterators."""
+"""Helpers for bridging async runtime execution into sync call sites."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from typing import TypeVar
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+R = TypeVar("R")
 
 
 def iter_async_generator_in_thread[T](
@@ -73,3 +74,58 @@ def iter_async_generator_in_thread[T](
 
     if exception_container:
         raise exception_container[0]
+
+
+def run_coroutine_blocking[R](
+    async_factory: Callable[[], asyncio.Future[R] | asyncio.Awaitable[R]],
+    *,
+    thread_name: str = "runtime-call",
+    join_timeout: float = 5.0,
+    bridge_logger: logging.Logger = logger,
+) -> R:
+    """Run a coroutine to completion from synchronous code.
+
+    If the caller is not already inside an event loop, the coroutine runs
+    directly via ``asyncio.run``. When a loop is already active in the current
+    thread, execution is isolated in a dedicated worker thread with its own
+    event loop.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(async_factory())
+
+    result_queue: queue.Queue[tuple[str, R | BaseException]] = queue.Queue()
+
+    def _run_in_thread() -> None:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result_queue.put(("result", loop.run_until_complete(async_factory())))
+        except BaseException as exc:
+            result_queue.put(("error", exc))
+        finally:
+            try:
+                pending = asyncio.all_tasks(loop)
+                if pending:
+                    for task in pending:
+                        task.cancel()
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception:  # nosec: B110 - cleanup code, safe to ignore
+                pass
+            loop.close()
+
+    thread = threading.Thread(target=_run_in_thread, name=thread_name, daemon=True)
+    thread.start()
+
+    try:
+        item_type, payload = result_queue.get()
+    finally:
+        thread.join(timeout=join_timeout)
+        if thread.is_alive():
+            bridge_logger.warning("Async bridge thread %s did not terminate within timeout", thread_name)
+
+    if item_type == "error":
+        raise payload
+
+    return payload

@@ -54,6 +54,28 @@ def test_stream_events_reraises_async_failure() -> None:
         raise AssertionError("RuntimeError was not re-raised")
 
 
+def test_run_deerflow_turn_collects_async_result_without_stream_wrapper() -> None:
+    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
+
+    async def fake_astream_events(goal, ctx=None, runtime_options=None):
+        assert goal == "investigate"
+        assert ctx.session_id == "conv-1"
+        yield {"type": "assistant_message", "content": "partial"}
+        agent._last_final_text = "final answer"
+        agent._last_tool_results = ["tool:done"]
+
+    agent._astream_events = fake_astream_events
+
+    final_text, tool_results = agent._run_deerflow_turn(
+        "investigate",
+        ctx=SimpleNamespace(session_id="conv-1"),
+        runtime_options=SimpleNamespace(),
+    )
+
+    assert final_text == "final answer"
+    assert tool_results == ["tool:done"]
+
+
 def test_extract_reasoning_delta_prefers_additional_kwargs() -> None:
     chunk = AIMessageChunk(content="", additional_kwargs={"reasoning_content": "step by step"})
 

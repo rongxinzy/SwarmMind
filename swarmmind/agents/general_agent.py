@@ -22,7 +22,7 @@ from swarmmind.models import ActionProposal, ConversationRuntimeOptions, MemoryC
 from swarmmind.prompting import rewrite_swarmmind_identity_prompt
 from swarmmind.runtime import RuntimeExecutionError, ensure_default_runtime_instance
 from swarmmind.runtime.models import RuntimeInstance
-from swarmmind.services.runtime_bridge import iter_async_generator_in_thread
+from swarmmind.services.runtime_bridge import iter_async_generator_in_thread, run_coroutine_blocking
 
 logger = logging.getLogger(__name__)
 
@@ -439,18 +439,22 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         ctx: MemoryContext | None = None,
         runtime_options: ConversationRuntimeOptions | None = None,
     ) -> tuple[str, list[str]]:
-        final_text = ""
-        tool_results: list[str] = []
+        return run_coroutine_blocking(
+            lambda: self._acollect_turn(goal, ctx=ctx, runtime_options=runtime_options),
+            thread_name="deerflow-act",
+            join_timeout=5.0,
+            bridge_logger=logger,
+        )
 
-        stream = self.stream_events(goal, ctx=ctx, runtime_options=runtime_options)
-        while True:
-            try:
-                next(stream)
-            except StopIteration as stop:
-                final_text, tool_results = stop.value
-                break
-
-        return final_text, tool_results
+    async def _acollect_turn(
+        self,
+        goal: str,
+        ctx: MemoryContext | None = None,
+        runtime_options: ConversationRuntimeOptions | None = None,
+    ) -> tuple[str, list[str]]:
+        async for _ in self._astream_events(goal, ctx=ctx, runtime_options=runtime_options):
+            pass
+        return self._last_final_text, self._last_tool_results
 
     def _process_messages_mode_chunk(
         self,
