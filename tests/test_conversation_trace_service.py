@@ -24,7 +24,13 @@ class FakeConversationRepo:
 
 class FakeTraceReader:
     def __init__(self, response: dict | None = None, error: Exception | None = None) -> None:
-        self._response = response or {"thread_id": "resolved-thread", "status": "completed", "events": [], "summary": "ok", "checkpoint_count": 1}
+        self._response = response or {
+            "thread_id": "resolved-thread",
+            "status": "completed",
+            "events": [],
+            "summary": "ok",
+            "checkpoint_count": 1,
+        }
         self._error = error
         self.calls: list[str] = []
 
@@ -52,7 +58,15 @@ def test_get_trace_prefers_conversation_thread_id() -> None:
 
 def test_get_trace_falls_back_to_conversation_id_when_thread_missing() -> None:
     repo = FakeConversationRepo(FakeConversation(thread_id=None))
-    reader = FakeTraceReader(response={"thread_id": "conversation-2", "status": "empty", "events": [], "summary": "暂无执行记录", "checkpoint_count": 0})
+    reader = FakeTraceReader(
+        response={
+            "thread_id": "conversation-2",
+            "status": "empty",
+            "events": [],
+            "summary": "暂无执行记录",
+            "checkpoint_count": 0,
+        }
+    )
     service = ConversationTraceService(conversation_repo=repo, trace_reader=reader)
 
     trace = service.get_trace("conversation-2")

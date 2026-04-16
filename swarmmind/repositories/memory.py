@@ -201,7 +201,9 @@ class MemoryRepository:
             results = session.exec(select(MemoryEntryDB).where(MemoryEntryDB.ttl.is_not(None))).all()
             count = 0
             for row in results:
-                created_at = datetime.fromisoformat(row.created_at) if isinstance(row.created_at, str) else row.created_at
+                created_at = (
+                    datetime.fromisoformat(row.created_at) if isinstance(row.created_at, str) else row.created_at
+                )
                 if created_at is None or row.ttl is None:
                     continue
                 if created_at + timedelta(seconds=row.ttl) <= now:

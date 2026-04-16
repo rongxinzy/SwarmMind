@@ -15,7 +15,9 @@ from swarmmind.services.stream_events import (
 )
 
 
-def _opts(mode: ConversationMode, *, thinking: bool, subagent: bool, plan_mode: bool = False) -> ConversationRuntimeOptions:
+def _opts(
+    mode: ConversationMode, *, thinking: bool, subagent: bool, plan_mode: bool = False
+) -> ConversationRuntimeOptions:
     return ConversationRuntimeOptions(
         mode=mode,
         model_name="test-model",

@@ -3,10 +3,10 @@ import { Brain, Lightbulb, Rocket, Sparkles, type LucideIcon } from "lucide-reac
 
 import { cn } from "@/lib/utils";
 
-const QUICK_PROMPT_ITEMS: Array<{
+const QUICK_PROMPT_ITEMS: {
   icon: LucideIcon;
   prompt: string;
-}> = [
+}[] = [
   { icon: Rocket, prompt: "帮我整理本周项目进展，输出 3 条重点结论。" },
   { icon: Lightbulb, prompt: "生成一版 CRM MVP 范围说明，控制在一页内。" },
   { icon: Brain, prompt: "把下面的会议讨论改写成正式纪要。" },

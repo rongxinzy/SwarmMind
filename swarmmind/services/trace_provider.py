@@ -38,7 +38,9 @@ class SqliteTraceCheckpointProvider:
         storage: TraceCheckpointStorage | None = None,
         provider_logger: logging.Logger = logger,
     ) -> None:
-        self._storage = storage or SqliteTraceCheckpointStorage(checkpointer_path=checkpointer_path, storage_logger=provider_logger)
+        self._storage = storage or SqliteTraceCheckpointStorage(
+            checkpointer_path=checkpointer_path, storage_logger=provider_logger
+        )
         self.checkpointer_path = self._storage.checkpointer_path
         self._logger = provider_logger
 
