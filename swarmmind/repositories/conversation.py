@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 
 from fastapi import HTTPException
 from sqlmodel import delete, select
-
-from datetime import timedelta
 
 from swarmmind.db import session_scope
 from swarmmind.db_models import ConversationDB
@@ -109,9 +108,7 @@ class ConversationRepository:
         """Get the next most recently updated conversation after deleting the given one."""
         with session_scope() as session:
             result = session.exec(
-                select(ConversationDB)
-                .where(ConversationDB.id != deleted_id)
-                .order_by(ConversationDB.updated_at.desc())
+                select(ConversationDB).where(ConversationDB.id != deleted_id).order_by(ConversationDB.updated_at.desc())
             ).first()
             if result is None:
                 return None

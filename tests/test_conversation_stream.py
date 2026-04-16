@@ -130,14 +130,8 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     assert events[0]["type"] == "status"
     assert any(event["type"] == "status.thinking" for event in events)
     assert any(event["type"] == "content.accumulated" for event in events)
-    assert any(
-        event["type"] == "status.running" and event.get("text") == "收集竞品资料"
-        for event in events
-    )
-    assert any(
-        event["type"] == "status.running" and event.get("text") == "已完成竞品资料汇总"
-        for event in events
-    )
+    assert any(event["type"] == "status.running" and event.get("text") == "收集竞品资料" for event in events)
+    assert any(event["type"] == "status.running" and event.get("text") == "已完成竞品资料汇总" for event in events)
     # Task-related tool calls now emit team_activity events.
     assert any(event["type"] == "team_activity" for event in events)
     assert events[-1]["type"] == "done"

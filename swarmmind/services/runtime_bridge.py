@@ -25,7 +25,7 @@ _bridge_loop_lock = threading.Lock()
 
 def _ensure_bridge_loop() -> asyncio.AbstractEventLoop:
     """Return the global bridge event loop, creating it if necessary."""
-    global _bridge_loop, _bridge_loop_thread
+    global _bridge_loop, _bridge_loop_thread  # noqa: PLW0603
     with _bridge_loop_lock:
         if _bridge_loop is None or _bridge_loop_thread is None or not _bridge_loop_thread.is_alive():
             _bridge_loop = asyncio.new_event_loop()
@@ -165,7 +165,7 @@ def run_coroutine_blocking[R](
 
     try:
         return future.result(timeout=join_timeout)
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         future.cancel()
         bridge_logger.warning("Async bridge call did not complete within timeout")
         raise TimeoutError("Async bridge call timed out") from exc

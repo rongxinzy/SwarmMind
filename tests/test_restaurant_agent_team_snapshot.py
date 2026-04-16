@@ -14,7 +14,6 @@ import pytest
 from swarmmind.models import ConversationMode, ConversationRuntimeOptions
 from swarmmind.services.stream_events import translate_general_agent_event
 
-
 SNAPSHOTS_DIR = Path(__file__).with_suffix("").parent / "snapshots"
 NDJSON_PATH = SNAPSHOTS_DIR / "ultra_restaurant_agent_team.ndjson"
 META_PATH = SNAPSHOTS_DIR / "ultra_restaurant_agent_team.meta.json"
@@ -36,10 +35,10 @@ RUNTIME_OPTIONS = ConversationRuntimeOptions(
 def _load_events() -> list[dict]:
     events = []
     with NDJSON_PATH.open("r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                events.append(json.loads(line))
+        for raw_line in f:
+            stripped = raw_line.strip()
+            if stripped:
+                events.append(json.loads(stripped))
     return events
 
 
@@ -82,9 +81,9 @@ def test_semantic_layer_event_translation():
     events = _load_events()
     semantic_events: list[dict] = []
 
-    for event in events:
-        for line in translate_general_agent_event(event, RUNTIME_OPTIONS):
-            semantic_events.append(json.loads(line))
+    semantic_events.extend(
+        json.loads(line) for event in events for line in translate_general_agent_event(event, RUNTIME_OPTIONS)
+    )
 
     types = [e["type"] for e in semantic_events]
 
@@ -114,9 +113,9 @@ def test_business_content_validation():
     events = _load_events()
     semantic_events: list[dict] = []
 
-    for event in events:
-        for line in translate_general_agent_event(event, RUNTIME_OPTIONS):
-            semantic_events.append(json.loads(line))
+    semantic_events.extend(
+        json.loads(line) for event in events for line in translate_general_agent_event(event, RUNTIME_OPTIONS)
+    )
 
     # Final assistant_message content should contain at least 2 of the keywords
     assistant_messages = [e for e in events if e["type"] == "assistant_message"]

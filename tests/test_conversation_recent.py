@@ -40,7 +40,7 @@ def test_recent_returns_204_when_no_conversations():
 
 
 def test_recent_returns_204_for_empty_conversation_without_messages():
-    conv = supervisor.create_conversation(GoalRequest(goal="空会话"))
+    _ = supervisor.create_conversation(GoalRequest(goal="空会话"))
     response = supervisor.get_recent_conversation()
     from fastapi.responses import Response
 

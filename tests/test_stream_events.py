@@ -199,25 +199,27 @@ def test_translate_ui_semantic_event_maps_all_required_types():
     events = []
 
     # status.thinking
-    events.extend(translate_general_agent_event(
-        {"type": "assistant_reasoning", "content": "推理中..."}, ultra
-    ))
+    events.extend(translate_general_agent_event({"type": "assistant_reasoning", "content": "推理中..."}, ultra))
     # status.running (from tool call)
-    events.extend(translate_general_agent_event(
-        {"type": "assistant_tool_calls", "tool_calls": [{"name": "task", "args": {"description": "任务"}}]}, ultra
-    ))
+    events.extend(
+        translate_general_agent_event(
+            {"type": "assistant_tool_calls", "tool_calls": [{"name": "task", "args": {"description": "任务"}}]}, ultra
+        )
+    )
     # status.clarification
-    events.extend(translate_general_agent_event(
-        {"type": "tool_result", "tool_name": "ask_clarification", "content": "问题？"}, flash
-    ))
+    events.extend(
+        translate_general_agent_event(
+            {"type": "tool_result", "tool_name": "ask_clarification", "content": "问题？"}, flash
+        )
+    )
     # status.artifact (from tool call)
-    events.extend(translate_general_agent_event(
-        {"type": "assistant_tool_calls", "tool_calls": [{"name": "present_files", "args": {}}]}, ultra
-    ))
+    events.extend(
+        translate_general_agent_event(
+            {"type": "assistant_tool_calls", "tool_calls": [{"name": "present_files", "args": {}}]}, ultra
+        )
+    )
     # content.accumulated
-    events.extend(translate_general_agent_event(
-        {"type": "assistant_message", "content": "正文"}, flash
-    ))
+    events.extend(translate_general_agent_event({"type": "assistant_message", "content": "正文"}, flash))
 
     parsed = [json.loads(e) for e in events]
     types = {e["type"] for e in parsed}
@@ -231,9 +233,7 @@ def test_translate_ui_semantic_event_maps_all_required_types():
 def test_flash_mode_suppresses_thinking_and_running_events():
     flash = _opts(ConversationMode.FLASH, thinking=False, subagent=False)
 
-    reasoning = translate_general_agent_event(
-        {"type": "assistant_reasoning", "content": "思考..."}, flash
-    )
+    reasoning = translate_general_agent_event({"type": "assistant_reasoning", "content": "思考..."}, flash)
     tool_calls = translate_general_agent_event(
         {"type": "assistant_tool_calls", "tool_calls": [{"name": "task", "args": {}}]}, flash
     )
