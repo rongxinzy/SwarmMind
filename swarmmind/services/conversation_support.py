@@ -93,6 +93,7 @@ class ConversationSupportService:
             runtime_profile_id=(str(conv.runtime_profile_id) if conv.runtime_profile_id is not None else None),
             runtime_instance_id=(str(conv.runtime_instance_id) if conv.runtime_instance_id is not None else None),
             thread_id=str(conv.thread_id) if conv.thread_id is not None else None,
+            promoted_project_id=str(conv.promoted_project_id) if conv.promoted_project_id is not None else None,
             created_at=str(conv.created_at) if conv.created_at is not None else "",
             updated_at=str(conv.updated_at) if conv.updated_at is not None else "",
         )
@@ -106,13 +107,14 @@ class ConversationSupportService:
             content=msg.content,
             tool_call_id=msg.tool_call_id,
             name=msg.name,
+            run_id=msg.run_id,
             created_at=str(msg.created_at) if msg.created_at is not None else "",
         )
 
-    def persist_user_message(self, conversation_id: str, content: str) -> Message:
+    def persist_user_message(self, conversation_id: str, content: str, run_id: str | None = None) -> Message:
         """Persist a user message and update the conversation timestamp."""
         self._conversation_repo.get_by_id(conversation_id)
-        msg = self._message_repo.create(conversation_id, "user", content)
+        msg = self._message_repo.create(conversation_id, "user", content, run_id=run_id)
         self._conversation_repo.touch(conversation_id)
         return self.db_to_message(msg)
 

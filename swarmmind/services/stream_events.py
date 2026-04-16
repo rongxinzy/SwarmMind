@@ -105,39 +105,36 @@ def translate_general_agent_event(
     event: dict,
     runtime_options: ConversationRuntimeOptions,
 ) -> list[str]:
-    """Translate DeerFlow/GeneralAgent events into supervisor stream events."""
+    """Translate DeerFlow/GeneralAgent events into UI semantic layer stream events."""
     event_type = event.get("type")
 
+    # 1. status.thinking
     if event_type == "assistant_reasoning":
         if not runtime_options.thinking_enabled:
             return []
-        content = event.get("content")
+        content = event.get("content", "")
         if isinstance(content, str) and content.strip():
             return [
                 serialize_stream_event(
-                    "thinking",
-                    message_id=event.get("message_id"),
-                    content=content,
+                    "status.thinking",
+                    mode=runtime_options.mode.value,
+                    text=content,
                 ),
             ]
         return []
 
+    # 5. content.accumulated
     if event_type == "assistant_message":
-        content = event.get("content")
+        content = event.get("content", "")
         if isinstance(content, str) and content:
-            return [
-                serialize_stream_event(
-                    "assistant_message",
-                    message_id=event.get("message_id"),
-                    content=content,
-                ),
-            ]
+            return [serialize_stream_event("content.accumulated", text=content)]
         return []
 
+    # 2. status.running & 4. status.artifact (from tool calls)
     if event_type == "assistant_tool_calls":
         if not runtime_options.subagent_enabled:
             return []
-        tool_calls = event.get("tool_calls")
+        tool_calls = event.get("tool_calls", [])
         if not isinstance(tool_calls, list):
             return []
 
@@ -145,140 +142,232 @@ def translate_general_agent_event(
         for tool_call in tool_calls:
             if not isinstance(tool_call, dict):
                 continue
-
             tool_name = tool_call.get("name")
             tool_args = tool_call.get("args", {})
-            tool_call_id = tool_call.get("id")
+            tool_id = tool_call.get("id") or str(uuid.uuid4())
 
             if tool_name == "task":
+                title = task_card_title(tool_args if isinstance(tool_args, dict) else {})
                 lines.append(
                     serialize_stream_event(
-                        "team_task",
+                        "task_started",
                         task={
-                            "id": tool_call_id,
-                            "title": task_card_title(tool_args if isinstance(tool_args, dict) else {}),
-                            "status": "running",
-                            "detail": "Agent Team 正在协同处理这个子任务。",
+                            "id": tool_id,
+                            "description": title,
+                            "status": "in_progress",
                         },
                     ),
                 )
-                continue
-
-            lines.append(
-                serialize_stream_event(
-                    "team_activity",
-                    activity={
-                        "id": tool_call_id or str(uuid.uuid4()),
-                        "tool_name": tool_name,
-                        "label": tool_activity_label(
-                            str(tool_name),
-                            tool_args if isinstance(tool_args, dict) else {},
-                        ),
-                        "status": "running",
-                    },
-                ),
-            )
+                lines.append(
+                    serialize_stream_event(
+                        "team_activity",
+                        activity={
+                            "id": f"activity-{tool_id}",
+                            "label": title,
+                            "status": "running",
+                            "detail": "子任务已启动",
+                        },
+                    ),
+                )
+                lines.append(
+                    serialize_stream_event(
+                        "status.running",
+                        step=1,
+                        total_steps=None,
+                        text=title,
+                    ),
+                )
+            elif tool_name in ("present_files", "write_file", "edit_file"):
+                lines.append(
+                    serialize_stream_event(
+                        "status.artifact",
+                        name=tool_activity_label(tool_name, tool_args if isinstance(tool_args, dict) else {}),
+                        artifact_type=tool_name,
+                    ),
+                )
         return lines
 
+    # 3. status.clarification, 2. status.running, 4. status.artifact (from tool results)
     if event_type == "tool_result":
         tool_name = str(event.get("tool_name") or "unknown")
-        tool_call_id = event.get("tool_call_id")
         content = str(event.get("content") or "").strip()
+        tool_call_id = event.get("tool_call_id") or str(uuid.uuid4())
 
-        # ask_clarification is available in all modes, not just subagent mode.
         if tool_name == "ask_clarification":
-            return [
-                serialize_stream_event(
-                    "clarification_request",
-                    clarification={
-                        "id": tool_call_id,
-                        "content": content,
-                    },
-                ),
-            ]
+            return [serialize_stream_event("status.clarification", question=content)]
 
         if not runtime_options.subagent_enabled:
             return []
 
         if tool_name == "task":
-            status, detail = task_status_from_result(content)
+            task_status, detail = task_status_from_result(content)
+            if task_status == "completed":
+                lines = [
+                    serialize_stream_event(
+                        "task_completed",
+                        task={
+                            "id": tool_call_id,
+                            "status": "completed",
+                            "result": detail,
+                        },
+                    ),
+                    serialize_stream_event(
+                        "team_activity",
+                        activity={
+                            "id": f"activity-{tool_call_id}",
+                            "label": "子任务完成",
+                            "status": "completed",
+                            "detail": detail or "子任务已成功完成",
+                        },
+                    ),
+                ]
+            else:
+                lines = [
+                    serialize_stream_event(
+                        "task_failed",
+                        task={
+                            "id": tool_call_id,
+                            "status": "failed",
+                            "error": detail,
+                        },
+                    ),
+                    serialize_stream_event(
+                        "team_activity",
+                        activity={
+                            "id": f"activity-{tool_call_id}",
+                            "label": "子任务失败",
+                            "status": "completed",
+                            "detail": detail or "子任务执行失败",
+                        },
+                    ),
+                ]
+            lines.append(
+                serialize_stream_event(
+                    "status.running",
+                    step=1,
+                    text=detail or "子任务更新",
+                ),
+            )
+            return lines
+
+        if tool_name in ("present_files", "write_file", "edit_file"):
             return [
                 serialize_stream_event(
-                    "team_task",
-                    task={
-                        "id": tool_call_id,
-                        "status": status,
-                        "detail": detail,
-                    },
+                    "status.artifact",
+                    name=tool_activity_label(tool_name),
+                    artifact_type=tool_name,
                 ),
             ]
 
-        return [
-            serialize_stream_event(
-                "team_activity",
-                activity={
-                    "id": tool_call_id or str(uuid.uuid4()),
-                    "tool_name": tool_name,
-                    "label": tool_activity_label(tool_name),
-                    "status": "completed",
-                    "detail": content[:240] if content else None,
-                },
-            ),
-        ]
+        return []
 
+    # 2. status.running (from custom events)
     if event_type == "custom_event":
         if not runtime_options.subagent_enabled:
             return []
 
         custom_event_type = event.get("event_type")
-        task_id = event.get("task_id")
+        if custom_event_type in ("task_started", "task_running", "task_completed", "task_failed"):
+            task_id = event.get("task_id") or str(uuid.uuid4())
+            text = (
+                event.get("description")
+                or event.get("message")
+                or event.get("result")
+                or event.get("error")
+                or "子任务更新"
+            )
+            lines: list[str] = []
 
-        if custom_event_type == "task_started":
-            return [
-                serialize_stream_event(
-                    "task_started",
-                    task={
-                        "id": task_id,
-                        "description": event.get("description"),
-                        "status": "in_progress",
-                    },
-                ),
-            ]
+            if custom_event_type == "task_started":
+                lines.append(
+                    serialize_stream_event(
+                        "task_started",
+                        task={
+                            "id": task_id,
+                            "description": text,
+                            "status": "in_progress",
+                        },
+                    ),
+                )
+                lines.append(
+                    serialize_stream_event(
+                        "team_activity",
+                        activity={
+                            "id": f"activity-{task_id}",
+                            "label": text,
+                            "status": "running",
+                            "detail": "子任务已开始",
+                        },
+                    ),
+                )
+            elif custom_event_type == "task_running":
+                lines.append(
+                    serialize_stream_event(
+                        "task_running",
+                        task={
+                            "id": task_id,
+                            "message": event.get("message") or text,
+                        },
+                    ),
+                )
+                lines.append(
+                    serialize_stream_event(
+                        "team_activity",
+                        activity={
+                            "id": f"activity-{task_id}",
+                            "label": text,
+                            "status": "running",
+                            "detail": "子任务执行中",
+                        },
+                    ),
+                )
+            elif custom_event_type == "task_completed":
+                lines.append(
+                    serialize_stream_event(
+                        "task_completed",
+                        task={
+                            "id": task_id,
+                            "status": "completed",
+                            "result": event.get("result") or text,
+                        },
+                    ),
+                )
+                lines.append(
+                    serialize_stream_event(
+                        "team_activity",
+                        activity={
+                            "id": f"activity-{task_id}",
+                            "label": "子任务完成",
+                            "status": "completed",
+                            "detail": text,
+                        },
+                    ),
+                )
+            elif custom_event_type == "task_failed":
+                lines.append(
+                    serialize_stream_event(
+                        "task_failed",
+                        task={
+                            "id": task_id,
+                            "status": "failed",
+                            "error": event.get("error") or text,
+                        },
+                    ),
+                )
+                lines.append(
+                    serialize_stream_event(
+                        "team_activity",
+                        activity={
+                            "id": f"activity-{task_id}",
+                            "label": "子任务失败",
+                            "status": "completed",
+                            "detail": text,
+                        },
+                    ),
+                )
 
-        if custom_event_type == "task_running":
-            return [
-                serialize_stream_event(
-                    "task_running",
-                    task={
-                        "id": task_id,
-                        "message": event.get("message"),
-                    },
-                ),
-            ]
-
-        if custom_event_type == "task_completed":
-            return [
-                serialize_stream_event(
-                    "task_completed",
-                    task={
-                        "id": task_id,
-                        "result": event.get("result"),
-                        "status": "completed",
-                    },
-                ),
-            ]
-
-        if custom_event_type == "task_failed":
-            return [
-                serialize_stream_event(
-                    "task_failed",
-                    task={
-                        "id": task_id,
-                        "error": event.get("error"),
-                        "status": "failed",
-                    },
-                ),
-            ]
+            lines.append(serialize_stream_event("status.running", step=1, text=text))
+            return lines
 
     return []
 

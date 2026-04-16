@@ -18,6 +18,23 @@ from swarmmind.models import (
 )
 
 
+def _is_client_disconnect_error(exc: BaseException) -> bool:
+    """Detect exceptions caused by the client closing the HTTP connection mid-stream."""
+    if isinstance(exc, (ConnectionResetError, BrokenPipeError)):
+        return True
+    msg = str(exc).lower()
+    indicators = (
+        "bodystreambuffer",
+        "stream buffer",
+        "client disconnected",
+        "connection reset",
+        "broken pipe",
+        "was aborted",
+        "cancel",
+    )
+    return any(indicator in msg for indicator in indicators)
+
+
 class ConversationExecutionService:
     """Execute sync/streaming conversation turns behind the API layer."""
 
@@ -32,7 +49,7 @@ class ConversationExecutionService:
         derive_situation_tag_fn: Callable[[str], str],
         record_supervisor_decision_fn: Callable[[str, Any], None],
         approved_decision: Any,
-        persist_user_message_fn: Callable[[str, str], Message],
+        persist_user_message_fn: Callable[[str, str, str | None], Message],
         persist_assistant_message_fn: Callable[[str, str], Message],
         maybe_generate_conversation_title_fn: Callable[[str], None],
         bind_conversation_runtime_fn: Callable[[str], tuple[object, str]],
@@ -66,7 +83,8 @@ class ConversationExecutionService:
 
     def send_message(self, conversation_id: str, body: SendMessageRequest) -> SendMessageResponse:
         """Run a non-streaming conversation turn."""
-        user_msg = self._persist_user_message(conversation_id, body.content)
+        run_id = str(uuid.uuid4())
+        user_msg = self._persist_user_message(conversation_id, body.content, run_id)
         memory_ctx = MemoryContext(user_id="supervisor", session_id=conversation_id)
         runtime_options = self._resolve_runtime_options(body)
         proposal_id = self._dispatch_and_approve(conversation_id, body.content)
@@ -91,7 +109,8 @@ class ConversationExecutionService:
 
     def stream_message(self, conversation_id: str, body: SendMessageRequest) -> Generator[str, None, None]:
         """Stream a conversation turn with runtime-status events."""
-        user_message = self._persist_user_message(conversation_id, body.content)
+        run_id = str(uuid.uuid4())
+        user_message = self._persist_user_message(conversation_id, body.content, run_id)
         yield self._serialize_stream_event("status", phase="accepted", label="消息已加入当前会话")
         yield self._serialize_stream_event(
             "user_message",
@@ -149,14 +168,13 @@ class ConversationExecutionService:
         except HTTPException:
             raise
         except Exception as exc:
+            if _is_client_disconnect_error(exc):
+                self._logger.info("Client disconnected from stream: %s", exc)
+                return
             self._logger.error("Conversation stream error: %s", exc, exc_info=True)
             ai_response = self._format_runtime_error(exc)
-            yield self._serialize_stream_event("status", phase="error", label="DeerFlow Runtime 执行失败")
-            yield self._serialize_stream_event(
-                "assistant_message",
-                message_id=f"assistant-error-{uuid.uuid4()}",
-                content=ai_response,
-            )
+            error_code = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
+            yield self._serialize_stream_event("error", code=error_code, message=ai_response)
 
         assistant_message = self._persist_assistant_message(conversation_id, ai_response)
         self._maybe_generate_conversation_title(conversation_id)

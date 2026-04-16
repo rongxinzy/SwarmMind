@@ -5,7 +5,9 @@ from __future__ import annotations
 import uuid
 
 from fastapi import HTTPException
-from sqlmodel import select
+from sqlmodel import delete, select
+
+from datetime import timedelta
 
 from swarmmind.db import session_scope
 from swarmmind.db_models import ConversationDB
@@ -86,9 +88,43 @@ class ConversationRepository:
             if conv is not None:
                 conv.updated_at = utc_now()
 
-    def delete(self, conversation_id: str) -> None:
-        """Delete a conversation and its messages (cascade via FK)."""
+    def get_recent_active(self, since_days: int = 7) -> ConversationDB | None:
+        """Get the most recent conversation that has messages within the given days."""
+        from swarmmind.db_models import MessageDB
+
         with session_scope() as session:
+            since = utc_now() - timedelta(days=since_days)
+            result = session.exec(
+                select(ConversationDB)
+                .join(MessageDB, ConversationDB.id == MessageDB.conversation_id)
+                .where(MessageDB.created_at >= since)
+                .order_by(ConversationDB.updated_at.desc())
+            ).first()
+            if result is None:
+                return None
+            session.expunge(result)
+            return result
+
+    def get_next_after(self, deleted_id: str) -> ConversationDB | None:
+        """Get the next most recently updated conversation after deleting the given one."""
+        with session_scope() as session:
+            result = session.exec(
+                select(ConversationDB)
+                .where(ConversationDB.id != deleted_id)
+                .order_by(ConversationDB.updated_at.desc())
+            ).first()
+            if result is None:
+                return None
+            session.expunge(result)
+            return result
+
+    def delete(self, conversation_id: str) -> None:
+        """Delete a conversation and its messages."""
+        from swarmmind.db_models import MessageDB
+
+        with session_scope() as session:
+            # Explicitly delete messages first to avoid FK issues on SQLite
+            session.exec(delete(MessageDB).where(MessageDB.conversation_id == conversation_id))
             conv = session.get(ConversationDB, conversation_id)
             if conv is not None:
                 session.delete(conv)

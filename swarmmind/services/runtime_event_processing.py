@@ -56,6 +56,8 @@ def process_messages_mode_chunk(
 
     content_delta = extract_content_delta(msg_chunk)
     if content_delta:
+        # 注意：accumulated_content 是累计完整内容，非增量片段。
+        # 上层事件序列化时使用 content.accumulated 以准确表达语义。
         capture_state.accumulated_content += content_delta
         events.append(
             {
