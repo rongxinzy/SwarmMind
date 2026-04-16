@@ -5,16 +5,18 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Query
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 from swarmmind.models import (
     Conversation,
     ConversationListResponse,
+    DeleteConversationResponse,
     GoalRequest,
     Message,
     MessageListResponse,
+    RecentConversationResponse,
     SendMessageRequest,
 )
 
@@ -32,10 +34,11 @@ class ConversationRouteHandlers:
 
     list_conversations: Callable[[], ConversationListResponse]
     create_conversation: Callable[[GoalRequest], Conversation]
-    get_conversation: Callable[[str], Conversation]
+    get_conversation: Callable[..., Conversation]
+    get_recent_conversation: Callable[[], RecentConversationResponse | None]
     get_conversation_messages: Callable[[str], MessageListResponse]
     send_message: Callable[[str, SendMessageRequest], object]
-    delete_conversation: Callable[[str], dict]
+    delete_conversation: Callable[[str], DeleteConversationResponse]
     get_conversation_trace: Callable[[str], dict]
     stream_conversation_message: Callable[[str, SendMessageRequest], object]
     send_message_stream: Callable[[str, SendMessageRequest], StreamingResponse]
@@ -48,10 +51,11 @@ class ConversationRouteDeps:
 
     list_conversations: Callable[[], ConversationListResponse]
     create_conversation: Callable[[GoalRequest], Conversation]
-    get_conversation: Callable[[str], Conversation]
+    get_conversation: Callable[..., Conversation]
+    get_recent_conversation: Callable[[], RecentConversationResponse | None]
     get_conversation_messages: Callable[[str], MessageListResponse]
     send_message: Callable[[str, SendMessageRequest], object]
-    delete_conversation: Callable[[str], dict]
+    delete_conversation: Callable[[str], DeleteConversationResponse]
     get_conversation_trace: Callable[[str], dict]
     stream_conversation_message: Callable[[str, SendMessageRequest], object]
     respond_to_clarification: Callable[[str, str, str], Message]
@@ -71,10 +75,21 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         """Create a new conversation with the first user message."""
         return deps.create_conversation(body)
 
+    @router.get("/conversations/recent")
+    def get_recent_conversation() -> RecentConversationResponse:
+        """Get the most recent active conversation (within 7 days) with its messages."""
+        result = deps.get_recent_conversation()
+        if result is None:
+            return Response(status_code=204)
+        return result
+
     @router.get("/conversations/{conversation_id}")
-    def get_conversation(conversation_id: str) -> Conversation:
+    def get_conversation(
+        conversation_id: str,
+        include_messages: bool = Query(False),
+    ) -> Conversation:
         """Get a single conversation by ID."""
-        return deps.get_conversation(conversation_id)
+        return deps.get_conversation(conversation_id, include_messages=include_messages)
 
     @router.get("/conversations/{conversation_id}/messages")
     def get_conversation_messages(conversation_id: str) -> MessageListResponse:
@@ -87,7 +102,7 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         return deps.send_message(conversation_id, body)
 
     @router.delete("/conversations/{conversation_id}")
-    def delete_conversation(conversation_id: str) -> dict:
+    def delete_conversation(conversation_id: str) -> DeleteConversationResponse:
         """Delete a conversation and all its messages."""
         return deps.delete_conversation(conversation_id)
 
@@ -122,6 +137,7 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         list_conversations=list_conversations,
         create_conversation=create_conversation,
         get_conversation=get_conversation,
+        get_recent_conversation=get_recent_conversation,
         get_conversation_messages=get_conversation_messages,
         send_message=send_message,
         delete_conversation=delete_conversation,

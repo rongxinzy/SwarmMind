@@ -27,10 +27,12 @@ from swarmmind.models import (
     Conversation,
     ConversationListResponse,
     ConversationRuntimeOptions,
+    DeleteConversationResponse,
     GoalRequest,
     Message,
     MessageListResponse,
     PendingResponse,
+    RecentConversationResponse,
     RejectRequest,
     RuntimeModelCatalogResponse,
     RuntimeModelOption,
@@ -265,6 +267,7 @@ def ready() -> dict[str, str]:
 
 
 @app.get("/models")
+@app.get("/runtime/models")
 def list_runtime_models() -> RuntimeModelCatalogResponse:
     """List runtime models available to the current anonymous visitor subject."""
     models = list_models_for_subject(
@@ -294,8 +297,11 @@ def list_runtime_models() -> RuntimeModelCatalogResponse:
 # ---- Conversation endpoints ----
 
 
-def _db_to_conversation(conv) -> Conversation:
-    return conversation_support.db_to_conversation(conv)
+def _db_to_conversation(conv, messages: list[Message] | None = None) -> Conversation:
+    conv_model = conversation_support.db_to_conversation(conv)
+    if messages is not None:
+        conv_model.messages = messages
+    return conv_model
 
 
 def _db_to_message(msg) -> Message:
@@ -318,8 +324,8 @@ def _task_status_from_result(content: str) -> tuple[str, str | None]:
     return service_task_status_from_result(content)
 
 
-def _persist_user_message(conversation_id: str, content: str) -> Message:
-    return conversation_support.persist_user_message(conversation_id, content)
+def _persist_user_message(conversation_id: str, content: str, run_id: str | None = None) -> Message:
+    return conversation_support.persist_user_message(conversation_id, content, run_id=run_id)
 
 
 def _persist_assistant_message(conversation_id: str, content: str) -> Message:
@@ -400,9 +406,25 @@ def _create_conversation(body: GoalRequest) -> Conversation:
     return _db_to_conversation(conv)
 
 
-def _get_conversation(conversation_id: str) -> Conversation:
+def _get_conversation(conversation_id: str, include_messages: bool = False) -> Conversation:
     conv = conversation_repo.get_by_id(conversation_id)
-    return _db_to_conversation(conv)
+    messages = None
+    if include_messages:
+        rows = message_repo.list_by_conversation(conversation_id)
+        messages = [_db_to_message(row) for row in rows]
+    return _db_to_conversation(conv, messages=messages)
+
+
+def _get_recent_conversation() -> RecentConversationResponse | None:
+    conv = conversation_repo.get_recent_active(since_days=7)
+    if conv is None:
+        return None
+    rows = message_repo.list_by_conversation(conv.id)
+    messages = [_db_to_message(row) for row in rows]
+    return RecentConversationResponse(
+        conversation=_db_to_conversation(conv),
+        messages=messages,
+    )
 
 
 def _get_conversation_messages(conversation_id: str) -> MessageListResponse:
@@ -416,10 +438,15 @@ def _send_message(conversation_id: str, body: SendMessageRequest):
     return _conversation_execution_service().send_message(conversation_id, body)
 
 
-def _delete_conversation(conversation_id: str) -> dict:
+def _delete_conversation(conversation_id: str) -> DeleteConversationResponse:
     conversation_repo.get_by_id(conversation_id)
+    next_conv = conversation_repo.get_next_after(conversation_id)
     conversation_repo.delete(conversation_id)
-    return {"status": "deleted", "id": conversation_id}
+    return DeleteConversationResponse(
+        status="deleted",
+        id=conversation_id,
+        next_conversation_id=next_conv.id if next_conv is not None else None,
+    )
 
 
 # ---- Collaboration Trace Endpoints ----
@@ -447,6 +474,7 @@ conversation_router, conversation_handlers = build_conversation_router(
         list_conversations=_list_conversations,
         create_conversation=_create_conversation,
         get_conversation=_get_conversation,
+        get_recent_conversation=_get_recent_conversation,
         get_conversation_messages=_get_conversation_messages,
         send_message=_send_message,
         delete_conversation=_delete_conversation,
@@ -460,6 +488,7 @@ ClarificationResponseRequest = ConversationClarificationResponseRequest
 list_conversations = conversation_handlers.list_conversations
 create_conversation = conversation_handlers.create_conversation
 get_conversation = conversation_handlers.get_conversation
+get_recent_conversation = conversation_handlers.get_recent_conversation
 get_conversation_messages = conversation_handlers.get_conversation_messages
 send_message = conversation_handlers.send_message
 delete_conversation = conversation_handlers.delete_conversation
