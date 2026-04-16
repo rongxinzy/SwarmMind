@@ -1,0 +1,20 @@
+{
+  "scenario": "餐厅 agent team 模拟",
+  "mode": "ultra",
+  "runtime_options": {
+    "plan_mode": true,
+    "subagent_enabled": true,
+    "thinking_enabled": true
+  },
+  "event_count": 22,
+  "event_stats": {
+    "assistant_reasoning": 2,
+    "assistant_tool_calls": 2,
+    "custom_event": 11,
+    "assistant_message": 3,
+    "tool_result": 4
+  },
+  "final_response_preview": "本次餐厅 agent team 模拟已完成，流程如下：\n\n1. **顾客 agent**：走进餐厅，浏览菜单后点了一份宫保鸡丁、一碗米饭和一杯豆浆。\n2. **...",
+  "is_mock": true,
+  "note": "基于真实 DeerFlow 事件结构手工构造的模拟快照，待真实 API key 可用后替换为真实录制"
+}

@@ -44,8 +44,8 @@ class FakeMessageRepo:
         self.messages = messages or []
         self.create_calls: list[tuple[str, str, str]] = []
 
-    def create(self, conversation_id: str, role: str, content: str):
-        self.create_calls.append((conversation_id, role, content))
+    def create(self, conversation_id: str, role: str, content: str, run_id: str | None = None):
+        self.create_calls.append((conversation_id, role, content, run_id))
         return SimpleNamespace(
             id="msg-created",
             conversation_id=conversation_id,
@@ -53,6 +53,7 @@ class FakeMessageRepo:
             content=content,
             tool_call_id=None,
             name=None,
+            run_id=run_id,
             created_at=datetime(2026, 1, 1, 0, 0, 0),
         )
 
@@ -72,6 +73,7 @@ def test_db_to_message_maps_tool_fields() -> None:
         content="clarification response",
         tool_call_id="tool-123",
         name="ask_clarification_response",
+        run_id=None,
         created_at=datetime(2026, 1, 1, 0, 0, 0),
     )
 
@@ -94,7 +96,7 @@ def test_persist_user_message_creates_and_touches_conversation() -> None:
     saved = service.persist_user_message("conv-1", "hello")
 
     assert saved.role == "user"
-    assert message_repo.create_calls == [("conv-1", "user", "hello")]
+    assert message_repo.create_calls == [("conv-1", "user", "hello", None)]
     assert conversation_repo.touched_ids == ["conv-1"]
 
 

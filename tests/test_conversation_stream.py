@@ -128,28 +128,18 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     events = [json.loads(line) for line in raw_lines]
 
     assert events[0]["type"] == "status"
-    assert any(event["type"] == "thinking" for event in events)
-    assert any(event["type"] == "assistant_message" for event in events)
+    assert any(event["type"] == "status.thinking" for event in events)
+    assert any(event["type"] == "content.accumulated" for event in events)
     assert any(
-        event["type"] == "team_task" and event["task"]["id"] == "task-1" and event["task"]["status"] == "running"
+        event["type"] == "status.running" and event.get("text") == "收集竞品资料"
         for event in events
     )
     assert any(
-        event["type"] == "team_task" and event["task"]["id"] == "task-1" and event["task"]["status"] == "completed"
+        event["type"] == "status.running" and event.get("text") == "已完成竞品资料汇总"
         for event in events
     )
-    assert any(
-        event["type"] == "team_activity"
-        and event["activity"]["id"] == "search-1"
-        and event["activity"]["status"] == "running"
-        for event in events
-    )
-    assert any(
-        event["type"] == "team_activity"
-        and event["activity"]["id"] == "search-1"
-        and event["activity"]["status"] == "completed"
-        for event in events
-    )
+    # Task-related tool calls now emit team_activity events.
+    assert any(event["type"] == "team_activity" for event in events)
     assert events[-1]["type"] == "done"
 
     assistant_final = next(event for event in events if event["type"] == "assistant_final")
@@ -244,9 +234,8 @@ def test_flash_mode_suppresses_reasoning_and_team_events(monkeypatch):
     )
     events = [json.loads(line) for line in raw_lines]
 
-    assert not any(event["type"] == "thinking" for event in events)
-    assert not any(event["type"] == "team_task" for event in events)
-    assert not any(event["type"] == "team_activity" for event in events)
+    assert not any(event["type"] == "status.thinking" for event in events)
+    assert not any(event["type"] == "status.running" for event in events)
     assert any(event["type"] == "assistant_final" for event in events)
     assert FakeDeerFlowRuntimeAdapter.stream_runtime_options[-1].mode == ConversationMode.FLASH
 
@@ -267,9 +256,8 @@ def test_reasoning_compatibility_uses_thinking_mode_without_team_events(monkeypa
     )
     events = [json.loads(line) for line in raw_lines]
 
-    assert any(event["type"] == "thinking" for event in events)
-    assert not any(event["type"] == "team_task" for event in events)
-    assert not any(event["type"] == "team_activity" for event in events)
+    assert any(event["type"] == "status.thinking" for event in events)
+    assert not any(event["type"] == "status.running" for event in events)
     assert FakeDeerFlowRuntimeAdapter.stream_runtime_options[-1].mode == ConversationMode.THINKING
 
 
@@ -305,3 +293,48 @@ def test_streaming_messages_api_remains_compatible_when_message_schema_extends(m
             assert dumped["tool_call_id"] in (None, "")
         if "name" in dumped:
             assert dumped["name"] in (None, "")
+
+
+def test_streaming_user_message_gets_run_id(monkeypatch):
+    monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
+    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
+
+    conversation = supervisor.create_conversation(GoalRequest(goal="run_id 测试"))
+    list(
+        supervisor._stream_conversation_message(
+            conversation.id,
+            SendMessageRequest(content="第一条", mode=ConversationMode.FLASH),
+        ),
+    )
+
+    response = supervisor.get_conversation_messages(conversation.id)
+    user_msg = next(m for m in response.items if m.role == "user")
+    assert user_msg.run_id is not None
+
+
+def test_retry_generates_different_run_id(monkeypatch):
+    monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
+    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
+
+    conversation = supervisor.create_conversation(GoalRequest(goal="重试 run_id 测试"))
+
+    # First send
+    list(
+        supervisor._stream_conversation_message(
+            conversation.id,
+            SendMessageRequest(content="same content", mode=ConversationMode.FLASH),
+        ),
+    )
+
+    # Retry with same content
+    list(
+        supervisor._stream_conversation_message(
+            conversation.id,
+            SendMessageRequest(content="same content", mode=ConversationMode.FLASH),
+        ),
+    )
+
+    response = supervisor.get_conversation_messages(conversation.id)
+    user_msgs = [m for m in response.items if m.role == "user"]
+    assert len(user_msgs) == 2
+    assert user_msgs[0].run_id != user_msgs[1].run_id

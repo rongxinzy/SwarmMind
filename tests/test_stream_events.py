@@ -83,13 +83,13 @@ def test_translate_reasoning_and_assistant_message_respects_runtime_flags():
         {"type": "assistant_reasoning", "message_id": "r1", "content": "thinking..."},
         thinking,
     )
-    assert json.loads(reasoning_lines[0]) == {"type": "thinking", "message_id": "r1", "content": "thinking..."}
+    assert json.loads(reasoning_lines[0]) == {"type": "status.thinking", "mode": "thinking", "text": "thinking..."}
 
     assistant_lines = translate_general_agent_event(
         {"type": "assistant_message", "message_id": "a1", "content": "answer"},
         flash,
     )
-    assert json.loads(assistant_lines[0]) == {"type": "assistant_message", "message_id": "a1", "content": "answer"}
+    assert json.loads(assistant_lines[0]) == {"type": "content.accumulated", "text": "answer"}
 
 
 def test_translate_tool_calls_and_tool_results_for_ultra_mode():
@@ -105,14 +105,14 @@ def test_translate_tool_calls_and_tool_results_for_ultra_mode():
         },
         ultra,
     )
-    task_line = json.loads(tool_call_lines[0])
-    activity_line = json.loads(tool_call_lines[1])
-    assert task_line["type"] == "team_task"
-    assert task_line["task"]["id"] == "task-1"
-    assert task_line["task"]["status"] == "running"
-    assert activity_line["type"] == "team_activity"
-    assert activity_line["activity"]["id"] == "search-1"
-    assert activity_line["activity"]["status"] == "running"
+    # Task tool calls now produce task_started, team_activity, and status.running.
+    assert len(tool_call_lines) == 3
+    assert json.loads(tool_call_lines[0])["type"] == "task_started"
+    assert json.loads(tool_call_lines[1])["type"] == "team_activity"
+    task_line = json.loads(tool_call_lines[2])
+    assert task_line["type"] == "status.running"
+    assert task_line["step"] == 1
+    assert task_line["text"] == "收集竞品资料"
 
     task_result = translate_general_agent_event(
         {
@@ -123,11 +123,13 @@ def test_translate_tool_calls_and_tool_results_for_ultra_mode():
         },
         ultra,
     )
-    parsed_task_result = json.loads(task_result[0])
-    assert parsed_task_result["type"] == "team_task"
-    assert parsed_task_result["task"]["status"] == "completed"
-    assert parsed_task_result["task"]["detail"] == "已完成"
+    assert json.loads(task_result[0])["type"] == "task_completed"
+    assert json.loads(task_result[1])["type"] == "team_activity"
+    parsed_task_result = json.loads(task_result[2])
+    assert parsed_task_result["type"] == "status.running"
+    assert parsed_task_result["text"] == "已完成"
 
+    # Search tool results no longer produce team_activity events in semantic layer.
     activity_result = translate_general_agent_event(
         {
             "type": "tool_result",
@@ -137,11 +139,7 @@ def test_translate_tool_calls_and_tool_results_for_ultra_mode():
         },
         ultra,
     )
-    parsed_activity_result = json.loads(activity_result[0])
-    assert parsed_activity_result["type"] == "team_activity"
-    assert parsed_activity_result["activity"]["id"] == "search-1"
-    assert parsed_activity_result["activity"]["status"] == "completed"
-    assert parsed_activity_result["activity"]["detail"] == "找到了 5 个相关来源"
+    assert activity_result == []
 
 
 def test_translate_clarification_and_custom_events():
@@ -158,8 +156,8 @@ def test_translate_clarification_and_custom_events():
         flash,
     )
     assert json.loads(clarification_lines[0]) == {
-        "type": "clarification_request",
-        "clarification": {"id": "clarify-1", "content": "请提供目标用户信息"},
+        "type": "status.clarification",
+        "question": "请提供目标用户信息",
     }
 
     started = translate_general_agent_event(
@@ -180,6 +178,65 @@ def test_translate_clarification_and_custom_events():
     )
 
     assert json.loads(started[0])["type"] == "task_started"
+    assert json.loads(started[1])["type"] == "team_activity"
+    assert json.loads(started[2])["type"] == "status.running"
     assert json.loads(running[0])["type"] == "task_running"
+    assert json.loads(running[1])["type"] == "team_activity"
+    assert json.loads(running[2])["type"] == "status.running"
     assert json.loads(completed[0])["type"] == "task_completed"
+    assert json.loads(completed[1])["type"] == "team_activity"
+    assert json.loads(completed[2])["type"] == "status.running"
     assert json.loads(failed[0])["type"] == "task_failed"
+    assert json.loads(failed[1])["type"] == "team_activity"
+    assert json.loads(failed[2])["type"] == "status.running"
+
+
+def test_translate_ui_semantic_event_maps_all_required_types():
+    """Verify all 7 required UI semantic event types are produced correctly."""
+    ultra = _opts(ConversationMode.ULTRA, thinking=True, subagent=True, plan_mode=True)
+    flash = _opts(ConversationMode.FLASH, thinking=False, subagent=False)
+
+    events = []
+
+    # status.thinking
+    events.extend(translate_general_agent_event(
+        {"type": "assistant_reasoning", "content": "推理中..."}, ultra
+    ))
+    # status.running (from tool call)
+    events.extend(translate_general_agent_event(
+        {"type": "assistant_tool_calls", "tool_calls": [{"name": "task", "args": {"description": "任务"}}]}, ultra
+    ))
+    # status.clarification
+    events.extend(translate_general_agent_event(
+        {"type": "tool_result", "tool_name": "ask_clarification", "content": "问题？"}, flash
+    ))
+    # status.artifact (from tool call)
+    events.extend(translate_general_agent_event(
+        {"type": "assistant_tool_calls", "tool_calls": [{"name": "present_files", "args": {}}]}, ultra
+    ))
+    # content.accumulated
+    events.extend(translate_general_agent_event(
+        {"type": "assistant_message", "content": "正文"}, flash
+    ))
+
+    parsed = [json.loads(e) for e in events]
+    types = {e["type"] for e in parsed}
+    assert "status.thinking" in types
+    assert "status.running" in types
+    assert "status.clarification" in types
+    assert "status.artifact" in types
+    assert "content.accumulated" in types
+
+
+def test_flash_mode_suppresses_thinking_and_running_events():
+    flash = _opts(ConversationMode.FLASH, thinking=False, subagent=False)
+
+    reasoning = translate_general_agent_event(
+        {"type": "assistant_reasoning", "content": "思考..."}, flash
+    )
+    tool_calls = translate_general_agent_event(
+        {"type": "assistant_tool_calls", "tool_calls": [{"name": "task", "args": {}}]}, flash
+    )
+
+    assert reasoning == []
+    assert tool_calls == []

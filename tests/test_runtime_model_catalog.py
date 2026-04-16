@@ -65,6 +65,13 @@ def test_list_runtime_models_endpoint_returns_visitor_default():
     assert response.models[0].is_default is True
 
 
+def test_runtime_models_alias_endpoint_returns_same_result():
+    # GET /runtime/models is an alias for GET /models
+    response = supervisor.list_runtime_models()
+    assert response.default_model == "qwen3.5-plus"
+    assert [model.name for model in response.models] == ["qwen3.5-plus"]
+
+
 def test_resolve_runtime_options_defaults_to_anonymous_model():
     runtime_options = supervisor._resolve_runtime_options(
         SendMessageRequest(content="给我一个默认模型"),

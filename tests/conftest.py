@@ -76,3 +76,20 @@ def cleanup_db_engines():
     dispose_engines()
     yield
     dispose_engines()
+import asyncio
+
+@pytest.fixture(autouse=True)
+def cleanup_asyncio_loop():
+    yield
+    policy = asyncio.get_event_loop_policy()
+    loop = getattr(policy._local, "_loop", None)
+    if loop is None:
+        return
+    if loop.is_running():
+        return
+    if not loop.is_closed():
+        loop.close()
+    try:
+        policy.set_event_loop(None)
+    except NotImplementedError:
+        pass
