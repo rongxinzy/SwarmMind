@@ -90,7 +90,10 @@ def test_startup_lifecycle_runs_bootstrap_and_starts_cleanup_thread() -> None:
 
 def test_run_cleanup_once_matches_supervisor_cleanup_behavior() -> None:
     action_repo = FakeActionProposalRepo(
-        stale=[FakeProposal(id="p-1", created_at=datetime(2026, 1, 1, 0, 0, 0)), FakeProposal(id="p-2", created_at=datetime(2026, 1, 1, 0, 1, 0))]
+        stale=[
+            FakeProposal(id="p-1", created_at=datetime(2026, 1, 1, 0, 0, 0)),
+            FakeProposal(id="p-2", created_at=datetime(2026, 1, 1, 0, 1, 0)),
+        ]
     )
     memory_repo = FakeMemoryRepo(deleted=3)
     decisions: list[tuple[str, str]] = []

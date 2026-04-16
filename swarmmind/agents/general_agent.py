@@ -487,6 +487,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
 
         return None
 
+
 # Backward-compatible alias retained while call sites migrate away from the
 # misleading "GeneralAgent" name.
 GeneralAgent = DeerFlowRuntimeAdapter

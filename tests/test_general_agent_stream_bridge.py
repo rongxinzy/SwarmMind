@@ -22,7 +22,9 @@ def test_stream_events_yields_async_events_and_returns_final_result() -> None:
 
     agent._astream_events = fake_astream_events
 
-    stream = agent.stream_events("investigate", ctx=SimpleNamespace(session_id="conv-1"), runtime_options=SimpleNamespace())
+    stream = agent.stream_events(
+        "investigate", ctx=SimpleNamespace(session_id="conv-1"), runtime_options=SimpleNamespace()
+    )
     events: list[dict] = []
     while True:
         try:
@@ -45,7 +47,9 @@ def test_stream_events_reraises_async_failure() -> None:
 
     agent._astream_events = fake_astream_events
 
-    stream = agent.stream_events("investigate", ctx=SimpleNamespace(session_id="conv-1"), runtime_options=SimpleNamespace())
+    stream = agent.stream_events(
+        "investigate", ctx=SimpleNamespace(session_id="conv-1"), runtime_options=SimpleNamespace()
+    )
 
     try:
         next(stream)
