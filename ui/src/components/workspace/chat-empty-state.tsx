@@ -15,9 +15,10 @@ const QUICK_PROMPT_ITEMS: {
 
 interface ChatEmptyStateProps {
   onPromptSelect: (prompt: string) => void;
+  isDraft?: boolean;
 }
 
-export function ChatEmptyState({ onPromptSelect }: ChatEmptyStateProps) {
+export function ChatEmptyState({ onPromptSelect, isDraft = false }: ChatEmptyStateProps) {
   return (
     <div className="flex flex-1 flex-col px-6 pt-14">
       <div className="mx-auto w-full max-w-[560px]">
@@ -34,13 +35,15 @@ export function ChatEmptyState({ onPromptSelect }: ChatEmptyStateProps) {
             <Sparkles className="size-4" />
           </div>
           <p className="mt-5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-            Exploratory Session
+            {isDraft ? "Exploratory Session" : "New Conversation"}
           </p>
           <h2 className="mt-2 text-[28px] leading-[36px] font-semibold tracking-[-0.02em] text-foreground">
-            临时会话
+            {isDraft ? "临时会话" : "新会话"}
           </h2>
           <p className="mt-2 max-w-[440px] text-[14px] leading-[22px] text-muted-foreground">
-            用一个明确任务开始探索。首次发送成功后，系统才会创建正式会话记录。
+            {isDraft
+              ? "用一个明确任务开始探索。首次发送成功后，系统才会创建正式会话记录。"
+              : "选择一个快速开始提示，或直接输入你的问题。"}
           </p>
         </motion.div>
 

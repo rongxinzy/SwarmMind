@@ -15,6 +15,7 @@ import { ChatMessageArea } from "@/components/workspace/chat-message-area";
 import { SubtasksProvider, useUpdateSubtask, useSubtaskContext } from "@/core/tasks/context";
 import { isNearBottom, scrollContainerToLatest } from "@/core/chat/scroll";
 import { consumeNdjsonStream } from "@/core/chat/stream";
+import { classifyError } from "@/core/chat/mode-config";
 import type {
   ChatMessage,
   ConversationMode,
@@ -25,6 +26,9 @@ import type {
   RuntimeState,
   StoredMessage,
   StreamEvent,
+  StreamStatus,
+  StreamStep,
+  ChatError,
 } from "@/core/chat/types";
 
 export type { ConversationRecord } from "@/core/chat/types";
@@ -34,6 +38,7 @@ interface V0ChatProps {
   draftResetToken?: number;
   onConversationCreated?: (id: string) => void;
   onConversationsChange?: (items: ConversationRecord[]) => void;
+  initialLoading?: boolean;
 }
 
 const MODEL_FETCH_RETRY_COUNT = 3;
@@ -113,6 +118,7 @@ function V0ChatInner({
   draftResetToken,
   onConversationCreated,
   onConversationsChange,
+  initialLoading = false,
 }: V0ChatProps) {
   const updateSubtask = useUpdateSubtask();
   const { tasks } = useSubtaskContext();
@@ -138,9 +144,13 @@ function V0ChatInner({
   const [defaultModel, setDefaultModel] = useState(DEFAULT_MODEL);
   const [modelOptions, setModelOptions] = useState<RuntimeModelOption[]>([]);
   const [isModelsLoading, setIsModelsLoading] = useState(true);
-  const [isConversationLoading, setIsConversationLoading] = useState(false);
+  const [isConversationLoading, setIsConversationLoading] = useState(initialLoading);
   const [modelLoadError, setModelLoadError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<ChatError | null>(null);
+  const [streamStatus, setStreamStatus] = useState<StreamStatus>(null);
+  const [streamStep, setStreamStep] = useState<StreamStep | null>(null);
+  const [streamLabel, setStreamLabel] = useState<string | null>(null);
+  const [lastUserMessage, setLastUserMessage] = useState<string>("");
   const [currentConversationId, setCurrentConversationId] = useState<
     string | undefined
   >(undefined);
@@ -154,19 +164,30 @@ function V0ChatInner({
     { id: string; content: string } | null
   >(null);
 
+  // Artifacts state (simplified from DeerFlow)
+  const [artifacts, setArtifacts] = useState<string[]>([]);
+  const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
+  const [artifactsOpen, setArtifactsOpen] = useState(false);
+
   const resetDraftState = useCallback(() => {
     setCurrentConversationId(undefined);
     setMessages([]);
     setAttachedFiles([]);
     setRuntime(createEmptyRuntime());
     setIsConversationLoading(false);
-    setError(null);
+    setChatError(null);
+    setStreamStatus(null);
+    setStreamStep(null);
+    setStreamLabel(null);
     setInput("");
     setSelectedMode(DEFAULT_MODE);
     setPendingClarification(null);
     setSelectedModel(defaultModel);
     shouldStickToBottomRef.current = true;
     setShowScrollToLatest(false);
+    setArtifacts([]);
+    setArtifactsOpen(false);
+    setSelectedArtifact(null);
   }, [defaultModel]);
 
   const syncScrollState = useCallback(() => {
@@ -258,7 +279,11 @@ function V0ChatInner({
     setIsConversationLoading(true);
     setMessages([]);
     setRuntime(createEmptyRuntime());
-    setError(null);
+    setChatError(null);
+    setStreamStatus(null);
+    setStreamStep(null);
+    setStreamLabel(null);
+    setInput("");
     shouldStickToBottomRef.current = true;
     setShowScrollToLatest(false);
     setPendingClarification(null);
@@ -281,9 +306,12 @@ function V0ChatInner({
       );
     } catch (requestError) {
       console.error("Failed to load messages:", requestError);
-      setError(
-        requestError instanceof Error ? requestError.message : "加载会话失败",
-      );
+      const errorType = classifyError(requestError);
+      setChatError({
+        type: errorType,
+        message: requestError instanceof Error ? requestError.message : "加载会话失败",
+        retryCount: 0,
+      });
     } finally {
       setIsConversationLoading(false);
     }
@@ -386,10 +414,18 @@ function V0ChatInner({
       );
       setCurrentConversationId(record.id);
       onConversationCreated?.(record.id);
+      // Sync URL without remounting
+      window.history.replaceState(null, "", `/?conversation=${record.id}`);
       return record.id;
     },
     [onConversationCreated],
   );
+
+  const clearStreamIndicators = useCallback(() => {
+    setStreamStatus(null);
+    setStreamStep(null);
+    setStreamLabel(null);
+  }, []);
 
   const handleStreamEvent = useCallback((event: StreamEvent) => {
     console.log("[DEBUG] Stream event received:", event.type, event);
@@ -400,8 +436,14 @@ function V0ChatInner({
           phase: event.phase,
           label: event.label,
         }));
-        if (event.phase === "completed" || event.phase === "error") {
+        if (event.phase === "routing") {
+          setStreamStatus("thinking");
+        } else if (event.phase === "running") {
+          setStreamStatus("running");
+        } else if (event.phase === "completed" || event.phase === "error") {
           setIsLoading(false);
+          setStreamStatus(null);
+          setStreamStep(null);
           setMessages((previous) =>
             previous.map((message) =>
               message.role === "assistant"
@@ -418,6 +460,12 @@ function V0ChatInner({
           setTimeout(() => {
             setRuntime((prev) => ({ ...prev, activities: [] }));
           }, 2000);
+        }
+        if (typeof event.step === "number") {
+          setStreamStep({
+            step: event.step,
+            totalSteps: typeof event.total_steps === "number" ? event.total_steps : undefined,
+          });
         }
         return;
 
@@ -453,6 +501,7 @@ function V0ChatInner({
         return;
 
       case "thinking":
+        setStreamStatus("thinking");
         setMessages((previous) => {
           const exactIndex = previous.findIndex(
             (message) => message.id === event.message_id,
@@ -494,6 +543,7 @@ function V0ChatInner({
         return;
 
       case "assistant_message":
+        setStreamStatus("running");
         setMessages((previous) => {
           const index = previous.findIndex(
             (message) => message.id === event.message_id,
@@ -539,6 +589,7 @@ function V0ChatInner({
 
       case "assistant_final":
         setIsLoading(false);
+        clearStreamIndicators();
         setRuntime((previous) => ({
           ...previous,
           phase: "completed",
@@ -599,6 +650,7 @@ function V0ChatInner({
         return;
 
       case "team_activity":
+        setStreamStatus("running");
         setRuntime((previous) => ({
           ...previous,
           activities: upsertActivity(previous.activities, {
@@ -624,6 +676,7 @@ function V0ChatInner({
       // New task events for SubtaskCard
       case "task_started":
         console.log("[DEBUG] task_started event received:", event.task);
+        setStreamStatus("running");
         updateSubtask({
           id: event.task.id,
           description: event.task.description,
@@ -658,6 +711,7 @@ function V0ChatInner({
         return;
 
       case "clarification_request":
+        setStreamStatus("clarification");
         setPendingClarification({
           id: event.clarification.id,
           content: event.clarification.content,
@@ -665,6 +719,7 @@ function V0ChatInner({
         return;
 
       case "artifact":
+        setStreamStatus("artifact");
         setArtifacts((prev) => {
           if (prev.includes(event.path)) return prev;
           return [...prev, event.path];
@@ -672,8 +727,124 @@ function V0ChatInner({
         setArtifactsOpen(true);
         return;
 
+      // New SSE semantic layer events
+      case "status.thinking":
+        setStreamStatus("thinking");
+        if (event.text) {
+          setStreamLabel(event.text);
+          // Also update the active assistant message's thinking field so
+          // MessageBubble can render the reasoning panel in real time.
+          setMessages((previous) => {
+            const activeAssistantIndex = findActiveAssistantIndex(previous);
+            if (activeAssistantIndex !== -1) {
+              const next = [...previous];
+              next[activeAssistantIndex] = {
+                ...next[activeAssistantIndex],
+                thinking: event.text,
+                isReasoningStreaming: true,
+              };
+              return next;
+            }
+            return [
+              ...previous,
+              {
+                id: `thinking-${generateId()}`,
+                role: "assistant",
+                content: "",
+                thinking: event.text,
+                isStreaming: false,
+                isReasoningStreaming: true,
+              },
+            ];
+          });
+        }
+        return;
+
+      case "status.running":
+        setStreamStatus("running");
+        if (typeof event.step === "number") {
+          setStreamStep({
+            step: event.step,
+            totalSteps: typeof event.total_steps === "number" ? event.total_steps : undefined,
+          });
+        }
+        return;
+
+      case "status.clarification":
+        setStreamStatus("clarification");
+        setPendingClarification({
+          id: `clarification-${generateId()}`,
+          content: event.question,
+        });
+        return;
+
+      case "status.artifact":
+        setStreamStatus("artifact");
+        if (event.name) {
+          setArtifacts((prev) => {
+            if (prev.includes(event.name!)) return prev;
+            return [...prev, event.name!];
+          });
+          setArtifactsOpen(true);
+        }
+        return;
+
+      case "content.accumulated":
+        setStreamStatus("running");
+        setMessages((previous) => {
+          const activeAssistantIndex = findActiveAssistantIndex(previous);
+          if (activeAssistantIndex !== -1) {
+            const next = [...previous];
+            next[activeAssistantIndex] = {
+              ...next[activeAssistantIndex],
+              content: event.text,
+              isStreaming: true,
+              isReasoningStreaming: false,
+            };
+            return next;
+          }
+          return [
+            ...previous,
+            {
+              id: `delta-${generateId()}`,
+              role: "assistant",
+              content: event.text,
+              isStreaming: true,
+              isReasoningStreaming: false,
+            },
+          ];
+        });
+        return;
+
+      case "error":
+        setIsLoading(false);
+        clearStreamIndicators();
+        setChatError({
+          type: "server",
+          message: event.message,
+          retryCount: 0,
+        });
+        setRuntime((previous) => ({
+          ...previous,
+          phase: "error",
+          label: `执行失败：${event.message}`,
+        }));
+        setMessages((previous) =>
+          previous.map((message) =>
+            message.role === "assistant"
+              ? {
+                  ...message,
+                  isStreaming: false,
+                  isReasoningStreaming: false,
+                }
+              : message,
+          ),
+        );
+        return;
+
       case "done":
         setIsLoading(false);
+        clearStreamIndicators();
         setMessages((previous) =>
           previous.map((message) =>
             message.role === "assistant"
@@ -686,7 +857,7 @@ function V0ChatInner({
           ),
         );
     }
-  }, [updateSubtask]);
+  }, [updateSubtask, clearStreamIndicators]);
 
   const streamConversation = useCallback(
     async (
@@ -725,21 +896,13 @@ function V0ChatInner({
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const timeoutId = setTimeout(() => {
-        abortController.abort();
-      }, 30_000);
-
-      try {
-        await consumeNdjsonStream<StreamEvent>(
-          response.body,
-          handleStreamEvent,
-          (rawLine, error) => {
-            console.warn("[stream] Failed to parse line:", rawLine, error);
-          },
-        );
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      await consumeNdjsonStream<StreamEvent>(
+        response.body,
+        handleStreamEvent,
+        (rawLine, error) => {
+          console.warn("[stream] Failed to parse line:", rawLine, error);
+        },
+      );
     },
     [handleStreamEvent],
   );
@@ -764,14 +927,19 @@ function V0ChatInner({
       const text = (prompt ?? input).trim();
       if (!text || isLoading) return;
       if (!selectedModel) {
-        setError(modelLoadError ?? "当前未分配可用模型，无法发起会话");
+        const errorType = classifyError(modelLoadError ?? new Error("当前未分配可用模型"));
+        setChatError({
+          type: errorType,
+          message: modelLoadError ?? "当前未分配可用模型，无法发起会话",
+          retryCount: 0,
+        });
         return;
       }
 
       if (!prompt) setInput("");
       setAttachedFiles([]);
 
-      setError(null);
+      setChatError(null);
       setIsLoading(true);
       setPendingClarification(null); // Clear any pending clarification when sending new message
       setArtifacts([]);
@@ -784,6 +952,10 @@ function V0ChatInner({
         phase: "accepted",
         label: "消息已提交，正在准备回复",
       });
+      setStreamStatus(null);
+      setStreamStep(null);
+      setStreamLabel(null);
+      setLastUserMessage(text);
 
       setMessages((previous) => [
         ...previous,
@@ -808,11 +980,34 @@ function V0ChatInner({
         await fetchConversations();
       } catch (requestError) {
         setIsLoading(false);
+        // 忽略主动取消（如切换会话、组件卸载导致的 abort）
+        if (
+          requestError instanceof DOMException &&
+          requestError.name === "AbortError"
+        ) {
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.role === "assistant"
+                ? {
+                    ...message,
+                    isStreaming: false,
+                    isReasoningStreaming: false,
+                  }
+                : message,
+            ),
+          );
+          return;
+        }
+        const errorType = classifyError(requestError);
         const message =
           requestError instanceof Error
             ? requestError.message
             : "发送消息时发生未知错误";
-        setError(message);
+        setChatError((prev) => ({
+          type: errorType,
+          message,
+          retryCount: prev?.retryCount ?? 0,
+        }));
         setRuntime((previous) => ({
           ...previous,
           phase: "error",
@@ -832,6 +1027,21 @@ function V0ChatInner({
       streamConversation,
     ],
   );
+
+  const handleRetry = useCallback(async () => {
+    if (!lastUserMessage || isLoading) return;
+    const nextRetryCount = (chatError?.retryCount ?? 0) + 1;
+    setChatError((prev) =>
+      prev ? { ...prev, retryCount: nextRetryCount } : null,
+    );
+    await handleSubmit(lastUserMessage);
+  }, [lastUserMessage, isLoading, chatError?.retryCount, handleSubmit]);
+
+  const handleCopyQuestion = useCallback(() => {
+    if (lastUserMessage) {
+      void navigator.clipboard.writeText(lastUserMessage);
+    }
+  }, [lastUserMessage]);
 
   const isEmpty = messages.length === 0 && !isLoading && !isConversationLoading;
   const isComposerDisabled = isLoading || isModelsLoading || !selectedModel;
@@ -862,11 +1072,13 @@ function V0ChatInner({
         // After sending clarification response, trigger a new message stream
         // to resume the conversation
         setIsLoading(true);
+        setChatError(null);
         setRuntime((prev) => ({
           ...prev,
           phase: "running",
           label: "正在继续处理...",
         }));
+        setStreamStatus("running");
 
         // Resume streaming - the backend will pick up from where it left off
         await streamConversation(
@@ -877,19 +1089,32 @@ function V0ChatInner({
         );
       } catch (err) {
         console.error("Failed to send clarification response:", err);
-        setError(
-          err instanceof Error ? err.message : "发送回复失败"
-        );
+        if (err instanceof DOMException && err.name === "AbortError") {
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.role === "assistant"
+                ? {
+                    ...message,
+                    isStreaming: false,
+                    isReasoningStreaming: false,
+                  }
+                : message,
+            ),
+          );
+          setIsLoading(false);
+          return;
+        }
+        const errorType = classifyError(err);
+        setChatError({
+          type: errorType,
+          message: err instanceof Error ? err.message : "发送回复失败",
+          retryCount: 0,
+        });
         setIsLoading(false);
       }
     },
     [currentConversationId, selectedMode, selectedModel, streamConversation]
   );
-
-  // Artifacts state (simplified from DeerFlow)
-  const [artifacts, setArtifacts] = useState<string[]>([]);
-  const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
-  const [artifactsOpen, setArtifactsOpen] = useState(false);
 
   return (
     <ArtifactsProvider>
@@ -913,6 +1138,7 @@ function V0ChatInner({
             <MessageListSkeleton />
           ) : isEmpty ? (
             <ChatEmptyState
+              isDraft={!currentConversationId}
               onPromptSelect={(prompt) => {
                 setInput(prompt);
                 void handleSubmit(prompt);
@@ -928,6 +1154,10 @@ function V0ChatInner({
               onPendingClarificationHandled={() => {
                 setPendingClarification(null);
               }}
+              error={chatError}
+              onRetry={handleRetry}
+              onCopy={handleCopyQuestion}
+              isRetrying={isLoading}
             />
           )}
         </div>
@@ -960,7 +1190,7 @@ function V0ChatInner({
 
       <ChatComposerPanel
         attachedFiles={attachedFiles}
-        error={error}
+        error={chatError}
         fetchModels={() => {
           void fetchModels();
         }}
@@ -989,6 +1219,9 @@ function V0ChatInner({
         selectedModel={selectedModel}
         setSelectedMode={setSelectedMode}
         setSelectedModel={setSelectedModel}
+        streamStatus={streamStatus}
+        streamStep={streamStep}
+        streamLabel={streamLabel}
       />
     </div>
     </ChatLayout>

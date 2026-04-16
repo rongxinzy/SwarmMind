@@ -7,12 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModePicker, ModelPicker } from "@/components/workspace/chat-controls";
-import type { ChatMessage, ConversationMode, RuntimeModelOption, RuntimeState } from "@/core/chat/types";
+import type { ChatMessage, ConversationMode, RuntimeModelOption, RuntimeState, StreamStatus, StreamStep } from "@/core/chat/types";
+import type { ChatError } from "@/core/chat/types";
+import { MODE_BADGE_TOKENS } from "@/core/chat/mode-config";
 import { cn } from "@/lib/utils";
 
 interface ChatComposerPanelProps {
   attachedFiles: File[];
-  error: string | null;
+  error: ChatError | null;
   fetchModels: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   handleFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -32,23 +34,48 @@ interface ChatComposerPanelProps {
   selectedModel: string;
   setSelectedMode: (mode: ConversationMode) => void;
   setSelectedModel: (model: string) => void;
+  streamStatus?: StreamStatus;
+  streamStep?: StreamStep | null;
+  streamLabel?: string | null;
 }
 
-function statusTone(phase: RuntimeState["phase"]) {
-  if (phase === "error") return "status-pill-blocked";
-  if (phase === "completed") return "status-pill-done";
-  if (phase === "routing" || phase === "running" || phase === "accepted") {
-    return "status-pill-running";
+function streamStatusText(mode: ConversationMode, status: StreamStatus, step: StreamStep | null, label: string | null): string {
+  const token = MODE_BADGE_TOKENS[mode];
+  if (status === "thinking") {
+    if (label) return label;
+    if (mode === "pro") return "多步规划中…";
+    if (mode === "ultra") return "深度推理与协作中…";
+    if (mode === "thinking") return "深入分析中…";
+    return token.streamLabel;
   }
-  return "status-pill-draft";
+  if (status === "running") {
+    if (mode === "pro" && step) {
+      return step.totalSteps
+        ? `步骤执行中…（第 ${step.step} / ${step.totalSteps} 步）`
+        : "步骤执行中…";
+    }
+    if (mode === "ultra") return "深度推理与协作中…";
+    if (mode === "thinking") return "深入分析中…";
+    return token.streamLabel;
+  }
+  if (status === "clarification") return "等待澄清…";
+  if (status === "artifact") return "生成产物中…";
+  return token.streamLabel;
 }
 
-function statusLabel(phase: RuntimeState["phase"]) {
-  if (phase === "accepted") return "已提交";
-  if (phase === "routing" || phase === "running") return "生成中";
-  if (phase === "completed") return "已完成";
-  if (phase === "error") return "失败";
-  return "待开始";
+function streamBadgeTone(status: StreamStatus) {
+  if (status === "thinking") return "border-[var(--status-chat-border)] bg-[var(--status-chat-bg)] text-[var(--status-chat)]";
+  if (status === "running" || status === "artifact") return "border-[var(--status-running-border)] bg-[var(--status-running-bg)] text-[var(--status-running)]";
+  if (status === "clarification") return "border-[var(--status-approval-border)] bg-[var(--status-approval-bg)] text-[var(--status-approval)]";
+  return "border-[var(--status-draft-border)] bg-[var(--status-draft-bg)] text-[var(--status-draft)]";
+}
+
+function streamBadgeLabel(status: StreamStatus) {
+  if (status === "thinking") return "思考中";
+  if (status === "running") return "执行中";
+  if (status === "clarification") return "等待澄清";
+  if (status === "artifact") return "生成产物";
+  return "待机";
 }
 
 export function ChatComposerPanel({
@@ -73,7 +100,14 @@ export function ChatComposerPanel({
   selectedModel,
   setSelectedMode,
   setSelectedModel,
+  streamStatus,
+  streamStep,
+  streamLabel,
 }: ChatComposerPanelProps) {
+  const modeToken = MODE_BADGE_TOKENS[selectedMode];
+  const ModeIcon = modeToken.icon;
+  const showStatusBar = isLoading || streamStatus || (runtime.phase !== "idle" && runtime.phase !== "completed") || error;
+
   return (
     <div
       className="sticky bottom-0 z-20"
@@ -88,19 +122,53 @@ export function ChatComposerPanel({
             className="rounded-2xl border border-[var(--warm-border)] bg-[var(--warm-ivory)] transition-all duration-200 focus-within:border-[var(--warm-ring)]"
             style={{ boxShadow: "var(--shadow-whisper)" }}
           >
-            {(runtime.phase !== "idle" || error) && (
-              <div
-                className="border-b border-[var(--warm-border)] bg-[var(--neutral-150)] px-5 py-2.5"
-                aria-live="polite"
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-[13px] text-muted-foreground">{error || runtime.label}</p>
-                  <Badge variant="outline" className={cn("text-[11px]", statusTone(runtime.phase))}>
-                    {statusLabel(runtime.phase)}
-                  </Badge>
-                </div>
-              </div>
-            )}
+            <AnimatePresence>
+              {showStatusBar ? (
+                <motion.div
+                  key="status-bar"
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                  className="min-h-[40px] border-b border-[var(--warm-border)] bg-[var(--neutral-150)] px-5 py-2.5"
+                  aria-live="polite"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        className={cn(
+                          "flex size-6 items-center justify-center rounded-md border",
+                          modeToken.accent,
+                        )}
+                      >
+                        <ModeIcon className="size-3" />
+                      </span>
+                      <p className="text-[13px] text-muted-foreground">
+                        {error && !isLoading
+                          ? error.message
+                          : streamStatusText(selectedMode, streamStatus ?? null, streamStep ?? null, streamLabel ?? null)}
+                      </p>
+                      {isLoading && (
+                        <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[11px]",
+                        error && !isLoading
+                          ? "status-pill-blocked"
+                          : streamBadgeTone(streamStatus ?? null),
+                      )}
+                    >
+                      {error && !isLoading
+                        ? "失败"
+                        : streamBadgeLabel(streamStatus ?? null)}
+                    </Badge>
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
 
             <AnimatePresence>
               {runtime.activities.length > 0 && (

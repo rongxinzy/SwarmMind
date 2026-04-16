@@ -161,6 +161,7 @@ export default function App() {
   >([]);
   const [draftResetToken, setDraftResetToken] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRecentLoading, setIsRecentLoading] = useState(true);
 
   const fetchRecentConversations = useCallback(async () => {
     try {
@@ -182,11 +183,106 @@ export default function App() {
     }
   }, []);
 
+  // Refresh recovery: fetch recent active conversation on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function recoverRecent() {
+      setIsRecentLoading(true);
+      try {
+        // Try the dedicated recent endpoint first
+        const response = await fetch("/conversations/recent");
+        if (!cancelled) {
+          if (response.status === 204) {
+            // No recent conversation, stay in default view
+            setActiveConversationId(undefined);
+          } else if (response.ok) {
+            const data = (await response.json()) as ConversationRecord;
+            setActiveConversationId(data.id);
+            setActiveView("chat");
+            window.history.replaceState(null, "", `/?conversation=${data.id}`);
+          } else {
+            // Fallback: load from list and pick the most recent one
+            await fetchRecentConversations();
+            setActiveConversationId(undefined);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to recover recent conversation:", error);
+        if (!cancelled) {
+          await fetchRecentConversations();
+          setActiveConversationId(undefined);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsRecentLoading(false);
+        }
+      }
+    }
+
+    // Check URL first
+    const params = new URLSearchParams(window.location.search);
+    const urlConversationId = params.get("conversation");
+    if (urlConversationId) {
+      setActiveConversationId(urlConversationId);
+      setActiveView("chat");
+      void fetchRecentConversations();
+      setIsRecentLoading(false);
+    } else {
+      void recoverRecent();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchRecentConversations]);
+
   useEffect(() => {
     void fetchRecentConversations();
   }, [fetchRecentConversations]);
 
+  // Sync URL when active conversation changes (without causing remounts)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const currentUrlId = params.get("conversation");
+    if (activeConversationId) {
+      if (currentUrlId !== activeConversationId) {
+        window.history.replaceState(
+          null,
+          "",
+          `/?conversation=${activeConversationId}`,
+        );
+      }
+    } else if (activeView === "chat" && currentUrlId) {
+      window.history.replaceState(null, "", "/");
+    }
+  }, [activeConversationId, activeView]);
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlConversationId = params.get("conversation");
+      if (urlConversationId) {
+        setActiveConversationId(urlConversationId);
+        setActiveView("chat");
+      } else {
+        setActiveConversationId(undefined);
+        setDraftResetToken((t) => t + 1);
+        setActiveView("chat");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
   const handleViewChange = (view: SidebarView) => {
+    if (view === "chat") {
+      handleStartChat();
+      return;
+    }
     setActiveView(view);
   };
 
@@ -194,11 +290,13 @@ export default function App() {
     setActiveConversationId(undefined);
     setDraftResetToken((current) => current + 1);
     setActiveView("chat");
+    window.history.replaceState(null, "", "/");
   };
 
   const handleSelectConversation = (conversationId: string) => {
     setActiveConversationId(conversationId);
     setActiveView("chat");
+    window.history.replaceState(null, "", `/?conversation=${conversationId}`);
   };
 
   const handleDeleteConversation = useCallback(
@@ -211,15 +309,28 @@ export default function App() {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      setRecentConversations((previous) =>
-        previous.filter((conversation) => conversation.id !== conversationId),
-      );
+      const data = (await response.json()) as {
+        status: string;
+        id: string;
+        next_conversation_id?: string | null;
+      };
 
-      if (activeConversationId === conversationId) {
-        setActiveConversationId(undefined);
-        setDraftResetToken((current) => current + 1);
-        setActiveView("chat");
-      }
+      setRecentConversations((previous) => {
+        const filtered = previous.filter((conversation) => conversation.id !== conversationId);
+        if (activeConversationId === conversationId) {
+          const nextId = data.next_conversation_id ?? filtered[0]?.id;
+          if (nextId) {
+            setActiveConversationId(nextId);
+            window.history.replaceState(null, "", `/?conversation=${nextId}`);
+          } else {
+            setActiveConversationId(undefined);
+            setDraftResetToken((t) => t + 1);
+            window.history.replaceState(null, "", "/");
+          }
+          setActiveView("chat");
+        }
+        return filtered;
+      });
     },
     [activeConversationId],
   );
@@ -246,6 +357,11 @@ export default function App() {
     }
   };
 
+  const handleConversationCreated = useCallback((id: string) => {
+    setActiveConversationId(id);
+    window.history.replaceState(null, "", `/?conversation=${id}`);
+  }, []);
+
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return recentConversations;
     const q = searchQuery.trim().toLowerCase();
@@ -269,10 +385,9 @@ export default function App() {
           <V0Chat
             conversationId={activeConversationId}
             draftResetToken={draftResetToken}
-            onConversationCreated={(id) => {
-              setActiveConversationId(id);
-            }}
+            onConversationCreated={handleConversationCreated}
             onConversationsChange={setRecentConversations}
+            initialLoading={isRecentLoading}
           />
         );
       case "teams":
@@ -358,6 +473,8 @@ export default function App() {
         onDeleteConversation={handleDeleteConversation}
         pageTitle={VIEW_LABELS[activeView]}
         searchQuery={searchQuery}
+        isRecentLoading={isRecentLoading}
+        activeConversationId={activeConversationId}
       />
 
       <main

@@ -175,6 +175,8 @@ interface SidebarProps {
   onDeleteConversation?: (id: string) => Promise<void>
   pageTitle?: string
   searchQuery?: string
+  isRecentLoading?: boolean
+  activeConversationId?: string
 }
 
 export function Sidebar({
@@ -185,6 +187,8 @@ export function Sidebar({
   onDeleteConversation,
   pageTitle,
   searchQuery = "",
+  isRecentLoading = false,
+  activeConversationId,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [deletingConversationId, setDeletingConversationId] = React.useState<string | null>(null)
@@ -290,13 +294,24 @@ export function Sidebar({
               <p className="px-3 text-[11px] leading-4 font-medium tracking-[0.08em] text-muted-foreground/88">
                 最近会话
               </p>
-              {recentConversations.length > 0 ? (
+              {isRecentLoading ? (
+                <div className="space-y-2 px-3 py-2">
+                  <div className="h-8 w-full animate-pulse rounded-md bg-sidebar-accent/60" />
+                  <div className="h-8 w-full animate-pulse rounded-md bg-sidebar-accent/60" />
+                  <div className="h-8 w-[80%] animate-pulse rounded-md bg-sidebar-accent/60" />
+                </div>
+              ) : recentConversations.length > 0 ? (
                 recentConversations.slice(0, 4).map((conversation) => (
                   <div key={conversation.id} className="group flex items-center gap-1">
                     <Button
                       variant="ghost"
                       onClick={() => { handleSelectConversation(conversation.id); }}
-                      className="h-auto min-h-10 min-w-0 flex-1 justify-start rounded-md border border-transparent px-3 py-2 hover:border-sidebar-border/60 hover:bg-sidebar-accent/60"
+                      className={cn(
+                        "h-auto min-h-10 min-w-0 flex-1 justify-start rounded-md border border-transparent px-3 py-2 hover:border-sidebar-border/60 hover:bg-sidebar-accent/60",
+                        activeView === "chat" && conversation.id === activeConversationId
+                          ? "bg-[var(--warm-ivory)] border-l-2 border-l-[var(--neutral-800)]"
+                          : ""
+                      )}
                     >
                       <div className="min-w-0 flex-1 text-left">
                         <p className="truncate text-[13px] leading-5 tracking-[-0.01em] text-foreground">{conversation.title}</p>

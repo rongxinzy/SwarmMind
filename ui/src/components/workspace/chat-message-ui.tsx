@@ -20,9 +20,9 @@ interface ChatMessageLike {
 
 const streamAnimateOptions = {
   animation: "fadeIn" as const,
-  duration: 300,
-  stagger: 20,
-  sep: "word" as const,
+  duration: 80,
+  stagger: 3,
+  sep: "char" as const,
 };
 
 const streamingRemarkPlugins = [remarkGfm];

@@ -47,8 +47,23 @@ export interface StreamEventAssistantMessage {
   created_at?: string;
 }
 
+export type StreamStatus = "thinking" | "running" | "clarification" | "artifact" | null;
+
+export interface StreamStep {
+  step: number;
+  totalSteps?: number;
+}
+
+export type ChatErrorType = "network" | "server" | "timeout" | "unknown";
+
+export interface ChatError {
+  type: ChatErrorType;
+  message: string;
+  retryCount: number;
+}
+
 export type StreamEvent =
-  | { type: "status"; phase: RuntimeState["phase"]; label: string }
+  | { type: "status"; phase: RuntimeState["phase"]; label: string; step?: number; total_steps?: number }
   | { type: "user_message"; message: StreamEventUserMessage }
   | { type: "thinking"; message_id: string; content: string }
   | { type: "assistant_message"; message_id: string; content: string }
@@ -68,10 +83,16 @@ export type StreamEvent =
   | { type: "task_failed"; task: { id: string; error?: string; status: "failed" } }
   | { type: "clarification_request"; clarification: { id: string; content: string } }
   | { type: "artifact"; path: string; filename?: string }
+  | { type: "status.thinking"; mode?: string; text?: string }
+  | { type: "status.running"; step?: number; total_steps?: number }
+  | { type: "status.clarification"; question: string }
+  | { type: "status.artifact"; name?: string; artifact_type?: string }
+  | { type: "content.accumulated"; text: string }
   | {
       type: "title";
       conversation: ConversationRecord;
     }
+  | { type: "error"; code?: string; message: string }
   | { type: "done" };
 
 export type ChatMessage = StoredMessage & {
