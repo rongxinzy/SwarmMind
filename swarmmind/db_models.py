@@ -159,7 +159,6 @@ class MemoryEntryDB(SQLModel, table=True):
         UniqueConstraint("layer", "scope_id", "key"),
         Index("idx_memory_scope", "layer", "scope_id"),
         Index("idx_memory_layer_key", "layer", "scope_id", "key"),
-
     )
 
 
