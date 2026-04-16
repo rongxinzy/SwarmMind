@@ -1,6 +1,6 @@
 [project]
 name = "swarmmind"
-version = "0.1.0"
+version = "0.1.1"
 description = "AI Agent Team Operating System"
 readme = "README.md"
 requires-python = ">=3.12"

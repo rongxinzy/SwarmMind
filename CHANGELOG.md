@@ -1,0 +1,24 @@
+# Changelog
+
+## [0.1.1.0] - 2026-04-16
+
+### Added
+- Added `/conversations/recent` endpoint to fetch the most recent active conversation (within 7 days) with its messages.
+- Added `include_messages` query parameter to `/conversations/{id}` to optionally load messages inline.
+- Added `run_id` tracking to messages for retry and trace correlation.
+- Added `promoted_project_id` to conversations to support project promotion workflow.
+- Added semantic stream event layer (`status.thinking`, `content.accumulated`, `status.running`, `status.artifact`, `status.clarification`, `task_started`, `task_completed`, `task_failed`) for richer UI feedback.
+- Added URL sync and browser history support to the chat workspace: conversations are reflected in the URL and back/forward navigation works.
+- Added recovery on app load: automatically restores the most recent conversation if no URL parameter is present.
+- Added `next_conversation_id` to delete conversation response so the UI can gracefully switch to the next available conversation.
+- Added new test coverage for conversation detail, recent conversation, restaurant agent team snapshots, and runtime model catalog options.
+
+### Changed
+- Refactored runtime bridge to use a shared global event loop when the caller already has an active loop, preventing "Event loop is closed" errors from cached async primitives.
+- Improved stream error handling: client disconnections are detected and logged cleanly without surfacing as runtime errors.
+- Updated chat UI components (`v0-ai-chat`, `chat-composer-panel`, `chat-message-area`, `chat-empty-state`, `chat-message-ui`) to consume the new semantic stream events and support mode-based rendering.
+- Updated sidebar to show recent-conversation loading state.
+
+### Fixed
+- Fixed SQLite foreign-key cascade behavior by explicitly deleting messages before deleting a conversation.
+- Fixed timeout error classification in conversation stream to emit a dedicated `TIMEOUT` error code.
