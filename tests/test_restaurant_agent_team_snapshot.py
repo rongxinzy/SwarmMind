@@ -19,6 +19,11 @@ SNAPSHOTS_DIR = Path(__file__).with_suffix("").parent / "snapshots"
 NDJSON_PATH = SNAPSHOTS_DIR / "ultra_restaurant_agent_team.ndjson"
 META_PATH = SNAPSHOTS_DIR / "ultra_restaurant_agent_team.meta.json"
 
+pytestmark = pytest.mark.skipif(
+    not NDJSON_PATH.exists() or not META_PATH.exists(),
+    reason="Snapshot files not present (internal harness artifacts)",
+)
+
 RUNTIME_OPTIONS = ConversationRuntimeOptions(
     mode=ConversationMode.ULTRA,
     model_name="test-model",
