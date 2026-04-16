@@ -51,3 +51,5 @@ Thumbs.db
 .claude/
 docs/sprint*
 docs/archive/
+tests/e2e_outputs/
+docs/e2e_test_task.md
