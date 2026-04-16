@@ -44,13 +44,13 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Replace PyPI mirror in uv.lock
+      - name: Verify uv.lock uses official PyPI
         run: |
-          # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
-          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
-          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
-          # Re-sync to update lockfile hashes after URL replacement
-          uv sync
+          if grep -q "mirrors.tuna.tsinghua.edu.cn" uv.lock; then
+            echo "❌ uv.lock contains Tsinghua mirror URLs. Run 'uv lock' locally to regenerate with official PyPI."
+            exit 1
+          fi
+          uv sync --locked
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -98,11 +98,7 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: |
-          # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
-          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
-          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
-          uv sync
+        run: uv sync --locked
 
       # Format Check
       - name: Check Python formatting

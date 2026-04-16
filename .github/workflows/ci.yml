@@ -40,11 +40,7 @@ jobs:
           enable-cache: true
 
       - name: Install backend dependencies
-        run: |
-          # Replace Tsinghua mirror URLs with official PyPI for CI compatibility
-          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/|https://pypi.org/simple/|g' uv.lock
-          sed -i 's|https://mirrors.tuna.tsinghua.edu.cn/pypi/web/packages/|https://files.pythonhosted.org/packages/|g' uv.lock
-          uv sync --locked
+        run: uv sync --locked
 
       - name: Run backend tests (skip LLM tests)
         run: uv run python -m pytest tests/ -v -m "not requires_llm"
