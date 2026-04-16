@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.1.1] - 2026-04-16
+
+### Added
+- Added `tests/e2e/` directory with standalone E2E test scripts for backend conversation stream across flash, thinking, pro, and ultra modes.
+- Added `run_e2e_qa.py` for full four-mode stream validation, event collection, and backend stability scanning.
+- Added `run_ultra_only.py` for focused ultra-mode stream testing.
+- Added `generate_reports.py` for report generation from collected E2E data.
+
+### Changed
+- Updated `.gitignore` to exclude `tests/e2e_outputs/` and local E2E task docs from version control.
+- Updated `uv.lock` to reflect the current package version.
+
 ## [0.1.1.0] - 2026-04-16
 
 ### Added
