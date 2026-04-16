@@ -14,6 +14,7 @@ def test_database_url_takes_precedence_over_legacy_db_path(monkeypatch):
 
 def test_database_url_falls_back_to_sqlite_path(monkeypatch, tmp_path):
     monkeypatch.delenv("SWARMMIND_DATABASE_URL", raising=False)
+    monkeypatch.setattr(db, "DATABASE_URL", None)
     monkeypatch.setenv("SWARMMIND_DB_PATH", str(tmp_path / "fallback.db"))
 
     resolved = db._get_database_url()

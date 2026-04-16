@@ -84,7 +84,6 @@ def upgrade() -> None:
     )
     op.create_index('idx_memory_layer_key', 'memory_entries', ['layer', 'scope_id', 'key'], unique=False)
     op.create_index('idx_memory_scope', 'memory_entries', ['layer', 'scope_id'], unique=False)
-    op.create_index('idx_memory_tags', 'memory_entries', ['tags'], unique=False)
     op.create_table('runtime_models',
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('provider', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -194,7 +193,6 @@ def downgrade() -> None:
     op.drop_index('idx_runtime_models_source', table_name='runtime_models')
     op.drop_index('idx_runtime_models_enabled', table_name='runtime_models')
     op.drop_table('runtime_models')
-    op.drop_index('idx_memory_tags', table_name='memory_entries')
     op.drop_index('idx_memory_scope', table_name='memory_entries')
     op.drop_index('idx_memory_layer_key', table_name='memory_entries')
     op.drop_table('memory_entries')
