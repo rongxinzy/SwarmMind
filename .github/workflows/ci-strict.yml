@@ -17,6 +17,9 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "20"
   PNPM_VERSION: "9"
+  # Required for tests that need LLM configuration
+  LLM_MODEL: gpt-4o-mini
+  LLM_PROVIDER: openai
   # Use official PyPI in CI (override any mirror settings)
   UV_INDEX_URL: "https://pypi.org/simple/"
 
