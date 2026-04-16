@@ -114,6 +114,7 @@ class ConversationDB(SQLModel, table=True):
     runtime_profile_id: str | None = None
     runtime_instance_id: str | None = None
     thread_id: str | None = None
+    promoted_project_id: str | None = None
     created_at: datetime | None = Field(default_factory=utc_now)
     updated_at: datetime | None = Field(default_factory=utc_now)
 
@@ -131,6 +132,7 @@ class MessageDB(SQLModel, table=True):
     content: str
     tool_call_id: str | None = None
     name: str | None = None
+    run_id: str | None = None
     created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_messages_conversation", "conversation_id"),)

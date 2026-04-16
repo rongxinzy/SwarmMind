@@ -233,8 +233,10 @@ class Conversation(BaseModel):
     runtime_profile_id: str | None = None
     runtime_instance_id: str | None = None
     thread_id: str | None = None
+    promoted_project_id: str | None = None
     created_at: str
     updated_at: str
+    messages: list["Message"] | None = None
 
 
 class Message(BaseModel):
@@ -246,6 +248,7 @@ class Message(BaseModel):
     content: str
     tool_call_id: str | None = None
     name: str | None = None
+    run_id: str | None = None
     created_at: str
 
 
@@ -317,3 +320,18 @@ class SendMessageResponse(BaseModel):
 
     user_message: Message
     assistant_message: Message
+
+
+class RecentConversationResponse(BaseModel):
+    """Response containing the most recent active conversation and its messages."""
+
+    conversation: Conversation
+    messages: list[Message]
+
+
+class DeleteConversationResponse(BaseModel):
+    """Response after deleting a conversation."""
+
+    status: str = "deleted"
+    id: str
+    next_conversation_id: str | None = None
