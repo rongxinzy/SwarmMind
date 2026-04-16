@@ -84,5 +84,5 @@ tests/e2e/
 tests/snapshots/
 docs/e2e_test_task.md
 
-# CI / CD workflows (infrastructure)
-.github/workflows/
+# CI / CD workflows are tracked so GitHub Actions can run.
+# .github/workflows/
