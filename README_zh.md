@@ -40,19 +40,20 @@ SwarmMind **不是**又一个多 Agent 框架。
 - [产品定位](docs/product-positioning.md)
 - [技术架构](docs/architecture.md)
 - [路线图](docs/roadmap.md)
+- [ChatSession 主路径计划](docs/chat-mainline-execution-plan.md)
 - [历史版本叙事归档](docs/archive/README_v1_vision.md)
 
 ## 当前研发重点
 
-- P0：上下文来源追踪 + 权限边界 + 执行轨迹
-- P1：审批策略 + 冲突处理 + 评估框架
-- P2：企业连接器 + 结构化视图模型
+- P0：保持 ChatSession 可靠，并闭环 `Promote to Project`
+- P1：让 Project 承接 run、artifact、审批和审计，形成可治理执行边界
+- P2：在主路径成立后，再扩展企业连接器和策略智能
 
 ## 快速开始
 
 ```bash
-make setup
-make run
+make install
+make dev
 ```
 
 ## 许可证

@@ -40,19 +40,20 @@ It is a control plane that provides:
 - [Product Positioning](docs/product-positioning.md)
 - [Technical Architecture](docs/architecture.md)
 - [Roadmap](docs/roadmap.md)
+- [ChatSession Mainline Plan](docs/chat-mainline-execution-plan.md)
 - [Archived v1 Narrative](docs/archive/README_v1_vision.md)
 
 ## Current Development Focus
 
-- P0: context provenance + permission boundary + execution trace
-- P1: approval policy + conflict handling + evaluation framework
-- P2: enterprise connectors + typed view schemas
+- P0: keep ChatSession reliable and close `Promote to Project`
+- P1: make Project execution governed with runs, artifacts, approvals, and audit
+- P2: add enterprise connectors and policy intelligence after the main path works
 
 ## Quick Start
 
 ```bash
-make setup
-make run
+make install
+make dev
 ```
 
 ## License
