@@ -32,7 +32,27 @@ class RuntimeModel:
     description: str | None = None
     base_url: str | None = None
     supports_vision: bool = False
+    supports_thinking: bool = False
     source: str = "manual"
+
+    @property
+    def capability_tags(self) -> list[str]:
+        """Return product-facing capability tags.
+
+        Mapping from DeerFlow boolean flags to semantic labels:
+        - fast: no thinking, no vision
+        - deep: supports thinking
+        - planning: supports thinking (planning requires reasoning depth)
+        - vision: supports vision
+        """
+        tags: list[str] = []
+        if self.supports_thinking:
+            tags.extend(["deep", "planning"])
+        if self.supports_vision:
+            tags.append("vision")
+        if not tags:
+            tags.append("fast")
+        return tags
 
 
 @dataclass(frozen=True)

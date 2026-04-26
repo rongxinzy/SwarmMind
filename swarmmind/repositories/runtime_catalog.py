@@ -20,6 +20,7 @@ def _db_to_runtime_model(db_model: RuntimeModelDB) -> RuntimeModel:
         api_key_env_var=db_model.api_key_env_var,
         base_url=db_model.base_url,
         supports_vision=bool(db_model.supports_vision),
+        supports_thinking=bool(getattr(db_model, "supports_thinking", 0)),
         source=db_model.source,
     )
 
@@ -38,6 +39,7 @@ def _db_to_selectable_runtime_model(
         api_key_env_var=db_model.api_key_env_var,
         base_url=db_model.base_url,
         supports_vision=bool(db_model.supports_vision),
+        supports_thinking=bool(getattr(db_model, "supports_thinking", 0)),
         source=db_model.source,
         is_default=bool(is_default),
     )
@@ -84,6 +86,7 @@ class RuntimeCatalogRepository:
                     api_key_env_var=runtime_model.api_key_env_var,
                     base_url=runtime_model.base_url,
                     supports_vision=int(runtime_model.supports_vision),
+                    supports_thinking=int(runtime_model.supports_thinking),
                     enabled=1,
                     source=runtime_model.source,
                 )
@@ -97,6 +100,7 @@ class RuntimeCatalogRepository:
                 db_model.api_key_env_var = runtime_model.api_key_env_var
                 db_model.base_url = runtime_model.base_url
                 db_model.supports_vision = int(runtime_model.supports_vision)
+                db_model.supports_thinking = int(runtime_model.supports_thinking)
                 db_model.enabled = 1
                 db_model.source = runtime_model.source
 

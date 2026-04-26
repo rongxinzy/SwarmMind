@@ -28,6 +28,7 @@ from swarmmind.services.runtime_event_processing import (
     process_custom_mode_chunk,
     process_messages_mode_chunk,
     process_values_mode_message,
+    process_values_mode_state,
 )
 
 logger = logging.getLogger(__name__)
@@ -390,6 +391,8 @@ class DeerFlowRuntimeAdapter(BaseAgent):
                     yield event
 
             elif mode_tag == "values":
+                for event in process_values_mode_state(chunk, capture_state):
+                    yield event
                 messages = chunk.get("messages", [])
                 for msg in iter_new_turn_messages(messages, current_user_message_id, capture_state.seen_ids):
                     for event in process_values_mode_message(msg, capture_state, self._client._extract_text):

@@ -176,6 +176,69 @@ class SessionPromotionDB(SQLModel, table=True):
     snapshot_count: int = Field(default=0)
 
 
+class ProjectDB(SQLModel, table=True):
+    """Formal project execution boundary."""
+
+    __tablename__ = "projects"
+
+    project_id: str = Field(primary_key=True)
+    title: str
+    goal: str | None = None
+    scope: str | None = None
+    constraints: str | None = None
+    source_conversation_id: str | None = Field(
+        default=None, foreign_key="conversations.id"
+    )
+    next_step: str | None = None
+    status: str = Field(default="active")  # 'active' | 'archived'
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_projects_status", "status"),
+        Index("idx_projects_source_conversation", "source_conversation_id"),
+    )
+
+
+class ArtifactDB(SQLModel, table=True):
+    """Artifact/evidence metadata for runs and conversations."""
+
+    __tablename__ = "artifacts"
+
+    artifact_id: str = Field(primary_key=True)
+    conversation_id: str = Field(foreign_key="conversations.id")
+    message_id: str | None = Field(default=None, foreign_key="messages.id")
+    name: str | None = None
+    artifact_type: str | None = None  # 'write_file' | 'edit_file' | 'present_files' | 'other'
+    created_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_artifacts_conversation", "conversation_id"),
+        Index("idx_artifacts_message", "message_id"),
+    )
+
+
+class RunDB(SQLModel, table=True):
+    """Execution run anchored on project_id and conversation_id."""
+
+    __tablename__ = "runs"
+
+    run_id: str = Field(primary_key=True)
+    project_id: str | None = Field(default=None, foreign_key="projects.project_id")
+    conversation_id: str = Field(foreign_key="conversations.id")
+    status: str = Field(default="running")  # 'running' | 'completed' | 'failed' | 'blocked'
+    goal: str | None = None
+    summary: str | None = None
+    started_at: datetime | None = Field(default_factory=utc_now)
+    completed_at: datetime | None = None
+
+    __table_args__ = (
+        Index("idx_runs_project", "project_id"),
+        Index("idx_runs_conversation", "conversation_id"),
+        Index("idx_runs_status", "status"),
+    )
+
+
 class CompactionHintDB(SQLModel, table=True):
     """Compaction hints: Phase 2 compression policy registry."""
 
@@ -206,6 +269,7 @@ class RuntimeModelDB(SQLModel, table=True):
     api_key_env_var: str
     base_url: str | None = None
     supports_vision: int = Field(default=0)
+    supports_thinking: int = Field(default=0)
     enabled: int = Field(default=1)
     source: str = Field(default="manual")
     created_at: datetime | None = Field(default_factory=utc_now)
@@ -229,3 +293,45 @@ class RuntimeModelAssignmentDB(SQLModel, table=True):
     created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_runtime_model_assignments_subject", "subject_type", "subject_id"),)
+
+
+class LlmProviderDB(SQLModel, table=True):
+    """LLM provider account configuration."""
+
+    __tablename__ = "llm_providers"
+
+    provider_id: str = Field(primary_key=True)
+    name: str
+    provider_type: str  # openai, anthropic, azure_openai, gemini, dashscope, ...
+    api_key_encrypted: str
+    base_url: str | None = None
+    is_enabled: int = Field(default=1)
+    is_default: int = Field(default=0)
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_llm_providers_enabled", "is_enabled"),
+        Index("idx_llm_providers_default", "is_default"),
+    )
+
+
+class LlmProviderModelDB(SQLModel, table=True):
+    """Models available through a specific provider account."""
+
+    __tablename__ = "llm_provider_models"
+
+    provider_id: str = Field(foreign_key="llm_providers.provider_id", primary_key=True)
+    model_name: str = Field(primary_key=True)
+    litellm_model: str  # e.g. "openai/gpt-4o", "anthropic/claude-3-5-sonnet-20241022"
+    display_name: str | None = None
+    supports_vision: int = Field(default=0)
+    supports_thinking: int = Field(default=0)
+    fallback_model_names: str | None = None  # JSON list of model names, e.g. '["claude-3-5-sonnet"]'
+    is_enabled: int = Field(default=1)
+    created_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_llm_provider_models_provider", "provider_id"),
+        Index("idx_llm_provider_models_enabled", "is_enabled"),
+    )

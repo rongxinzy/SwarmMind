@@ -127,8 +127,20 @@ class TraceService:
             # 提取 todos 变化 (plan_mode)
             todos = state.get("todos", [])
             prev_todos = prev_state.get("todos", [])
-            if len(todos) != len(prev_todos):
-                # 简化处理：只记录 todo 列表变化
+            if len(todos) != len(prev_todos) or todos != prev_todos:
+                # Capture todo list content for plan-mode visibility
+                todo_items = []
+                if isinstance(todos, list):
+                    for todo in todos:
+                        if isinstance(todo, dict):
+                            todo_items.append(
+                                {
+                                    "description": todo.get("description", ""),
+                                    "status": todo.get("status", "pending"),
+                                }
+                            )
+                        elif isinstance(todo, str):
+                            todo_items.append({"description": todo, "status": "pending"})
                 events.append(
                     {
                         "id": event_id,
@@ -137,6 +149,7 @@ class TraceService:
                         "agent_status": "planning",
                         "content": f"更新任务计划: {len(todos)} 个待办",
                         "todos_count": len(todos),
+                        "todo_items": todo_items,
                         "timestamp": metadata.get("created_at") or datetime.now(UTC).isoformat(),
                     }
                 )

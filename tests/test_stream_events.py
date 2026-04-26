@@ -191,6 +191,38 @@ def test_translate_clarification_and_custom_events():
     assert json.loads(failed[2])["type"] == "status.running"
 
 
+def test_translate_plan_steps_event_from_values_mode():
+    ultra = _opts(ConversationMode.ULTRA, thinking=True, subagent=True, plan_mode=True)
+    flash = _opts(ConversationMode.FLASH, thinking=False, subagent=False)
+
+    # plan_steps event is emitted regardless of subagent_enabled
+    lines = translate_general_agent_event(
+        {
+            "type": "plan_steps",
+            "steps": [
+                {"description": "Step 1", "status": "completed"},
+                {"description": "Step 2", "status": "pending"},
+            ],
+        },
+        flash,
+    )
+    assert len(lines) == 1
+    parsed = json.loads(lines[0])
+    assert parsed["type"] == "status.plan_steps"
+    assert parsed["steps"] == [
+        {"description": "Step 1", "status": "completed"},
+        {"description": "Step 2", "status": "pending"},
+    ]
+
+    # Empty steps returns empty list
+    empty = translate_general_agent_event({"type": "plan_steps", "steps": []}, ultra)
+    assert empty == []
+
+    # Missing steps returns empty list
+    missing = translate_general_agent_event({"type": "plan_steps"}, ultra)
+    assert missing == []
+
+
 def test_translate_ui_semantic_event_maps_all_required_types():
     """Verify all 7 required UI semantic event types are produced correctly."""
     ultra = _opts(ConversationMode.ULTRA, thinking=True, subagent=True, plan_mode=True)

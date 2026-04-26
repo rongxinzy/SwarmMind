@@ -23,6 +23,7 @@ class StreamCaptureState:
     final_text: str = ""
     tool_results: list[str] = field(default_factory=list)
     seen_ids: set[str] = field(default_factory=set)
+    last_todos: list[dict] | None = None
 
 
 def process_messages_mode_chunk(
@@ -78,6 +79,7 @@ def process_custom_mode_chunk(event: object) -> dict[str, Any] | None:
         "task_running",
         "task_completed",
         "task_failed",
+        "plan_steps",
     }:
         return None
 
@@ -195,6 +197,39 @@ def extract_reasoning_delta(chunk: AIMessageChunk) -> str | None:
                     return thinking
 
     return None
+
+
+def process_values_mode_state(
+    state: dict,
+    capture_state: StreamCaptureState,
+) -> list[dict[str, Any]]:
+    """Extract todo list changes from a values-mode state snapshot.
+
+    Returns normalized plan_steps events when the todo list has changed.
+    """
+    todos = state.get("todos")
+    if not isinstance(todos, list):
+        return []
+
+    # Normalize todo items to a comparable form
+    normalized: list[dict[str, str]] = []
+    for item in todos:
+        if isinstance(item, dict):
+            normalized.append(
+                {
+                    "description": str(item.get("description", "")),
+                    "status": str(item.get("status", "pending")),
+                }
+            )
+
+    if capture_state.last_todos == normalized:
+        return []
+
+    capture_state.last_todos = normalized
+    if not normalized:
+        return []
+
+    return [{"type": "plan_steps", "steps": normalized}]
 
 
 def extract_content_delta(chunk: AIMessageChunk) -> str | None:

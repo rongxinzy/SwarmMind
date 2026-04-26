@@ -108,6 +108,25 @@ def translate_general_agent_event(
     """Translate DeerFlow/GeneralAgent events into UI semantic layer stream events."""
     event_type = event.get("type")
 
+    # 0. status.plan_steps
+    if event_type == "plan_steps":
+        steps = event.get("steps", [])
+        if isinstance(steps, list) and steps:
+            return [
+                serialize_stream_event(
+                    "status.plan_steps",
+                    steps=[
+                        {
+                            "description": s.get("description", ""),
+                            "status": s.get("status", "pending"),
+                        }
+                        for s in steps
+                        if isinstance(s, dict)
+                    ],
+                ),
+            ]
+        return []
+
     # 1. status.thinking
     if event_type == "assistant_reasoning":
         if not runtime_options.thinking_enabled:
@@ -267,6 +286,26 @@ def translate_general_agent_event(
             return []
 
         custom_event_type = event.get("event_type")
+
+        # Plan-mode step list visibility
+        if custom_event_type == "plan_steps":
+            steps = event.get("steps", [])
+            if isinstance(steps, list) and steps:
+                return [
+                    serialize_stream_event(
+                        "status.plan_steps",
+                        steps=[
+                            {
+                                "description": s.get("description", ""),
+                                "status": s.get("status", "pending"),
+                            }
+                            for s in steps
+                            if isinstance(s, dict)
+                        ],
+                    ),
+                ]
+            return []
+
         if custom_event_type in ("task_started", "task_running", "task_completed", "task_failed"):
             task_id = event.get("task_id") or str(uuid.uuid4())
             text = (

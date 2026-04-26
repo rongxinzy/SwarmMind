@@ -294,6 +294,8 @@ class RuntimeModelOption(BaseModel):
     display_name: str | None = None
     description: str | None = None
     supports_vision: bool = False
+    supports_thinking: bool = False
+    capability_tags: list[str] = []
     is_default: bool = False
 
 
@@ -335,3 +337,222 @@ class DeleteConversationResponse(BaseModel):
     status: str = "deleted"
     id: str
     next_conversation_id: str | None = None
+
+
+# ---- Project models ----
+
+
+class ProjectStatus(str, Enum):
+    """Project lifecycle status."""
+
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class Project(BaseModel):
+    """Formal project execution boundary."""
+
+    project_id: str
+    title: str
+    goal: str | None = None
+    scope: str | None = None
+    constraints: str | None = None
+    source_conversation_id: str | None = None
+    next_step: str | None = None
+    status: ProjectStatus = ProjectStatus.ACTIVE
+    created_at: str
+    updated_at: str
+
+
+class ProjectCreateRequest(BaseModel):
+    """Request to create a project manually."""
+
+    title: str = Field(..., max_length=200)
+    goal: str | None = Field(None, max_length=2000)
+    scope: str | None = Field(None, max_length=2000)
+    constraints: str | None = Field(None, max_length=2000)
+    source_conversation_id: str | None = None
+    next_step: str | None = Field(None, max_length=1000)
+
+
+class ProjectListResponse(BaseModel):
+    """Response containing list of projects."""
+
+    items: list[Project]
+    total: int
+
+
+class PromoteConversationRequest(BaseModel):
+    """Request to promote a conversation to a project."""
+
+    title: str | None = Field(None, max_length=200)
+    goal: str | None = Field(None, max_length=2000)
+    scope: str | None = Field(None, max_length=2000)
+    constraints: str | None = Field(None, max_length=2000)
+    next_step: str | None = Field(None, max_length=1000)
+
+
+class TraceSummaryResponse(BaseModel):
+    """Readable execution trace summary attached to an assistant message."""
+
+    steps_count: int = 0
+    subagent_calls_count: int = 0
+    artifacts_count: int = 0
+    blocked_points: list[str] = []
+    summary: str = ""
+
+
+# ---- Artifact models ----
+
+
+class Artifact(BaseModel):
+    """Artifact/evidence metadata from a run."""
+
+    artifact_id: str
+    conversation_id: str
+    message_id: str | None = None
+    name: str | None = None
+    artifact_type: str | None = None
+    created_at: str
+
+
+class ArtifactListResponse(BaseModel):
+    """Response containing list of artifacts."""
+
+    items: list[Artifact]
+    total: int
+
+
+class ProjectUpdateRequest(BaseModel):
+    """Request to update a project."""
+
+    title: str | None = Field(None, max_length=200)
+    goal: str | None = Field(None, max_length=2000)
+    scope: str | None = Field(None, max_length=2000)
+    constraints: str | None = Field(None, max_length=2000)
+    next_step: str | None = Field(None, max_length=1000)
+    status: ProjectStatus | None = None
+
+
+# ---- Run models ----
+
+
+class RunStatus(str, Enum):
+    """Run lifecycle status."""
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    BLOCKED = "blocked"
+
+
+class Run(BaseModel):
+    """Execution run anchored on project or conversation."""
+
+    run_id: str
+    project_id: str | None = None
+    conversation_id: str
+    status: RunStatus = RunStatus.RUNNING
+    goal: str | None = None
+    summary: str | None = None
+    started_at: str
+    completed_at: str | None = None
+
+
+class RunListResponse(BaseModel):
+    """Response containing list of runs."""
+
+    items: list[Run]
+    total: int
+
+
+class CreateRunRequest(BaseModel):
+    """Request to create a run."""
+
+    conversation_id: str
+    goal: str | None = Field(None, max_length=2000)
+    status: RunStatus = RunStatus.RUNNING
+
+# ---- LLM Provider models ----
+
+
+class LlmProviderType(str, Enum):
+    """Supported LLM provider types."""
+
+    OPENAI = "openai"
+    ANTHROPIC = "anthropic"
+    AZURE_OPENAI = "azure_openai"
+    GEMINI = "gemini"
+    DASHSCOPE = "dashscope"
+    MOONSHOT = "moonshot"
+    MINIMAX = "minimax"
+    DEEPSEEK = "deepseek"
+    VLLM = "vllm"
+    CUSTOM = "custom"
+
+
+class LlmProviderModelEntry(BaseModel):
+    """A model available through a provider."""
+
+    model_name: str = Field(..., max_length=100)
+    litellm_model: str = Field(..., max_length=200)
+    display_name: str | None = Field(None, max_length=200)
+    supports_vision: bool = False
+    supports_thinking: bool = False
+    fallback_model_names: list[str] = []
+    is_enabled: bool = True
+
+
+class LlmProvider(BaseModel):
+    """LLM provider account."""
+
+    provider_id: str
+    name: str
+    provider_type: LlmProviderType
+    base_url: str | None = None
+    is_enabled: bool = True
+    is_default: bool = False
+    created_at: str
+    updated_at: str
+
+
+class LlmProviderDetail(LlmProvider):
+    """LLM provider with model list."""
+
+    models: list[LlmProviderModelEntry] = []
+
+
+class LlmProviderCreateRequest(BaseModel):
+    """Request to create an LLM provider."""
+
+    name: str = Field(..., max_length=200)
+    provider_type: LlmProviderType
+    api_key: str = Field(..., min_length=1)
+    base_url: str | None = Field(None, max_length=500)
+    is_default: bool = False
+    models: list[LlmProviderModelEntry] = []
+
+
+class LlmProviderUpdateRequest(BaseModel):
+    """Request to update an LLM provider."""
+
+    name: str | None = Field(None, max_length=200)
+    api_key: str | None = Field(None, min_length=1)
+    base_url: str | None = Field(None, max_length=500)
+    is_enabled: bool | None = None
+    is_default: bool | None = None
+    models: list[LlmProviderModelEntry] | None = None
+
+
+class LlmProviderListResponse(BaseModel):
+    """Response containing list of providers."""
+
+    items: list[LlmProvider]
+    total: int
+
+
+class GatewayKeyResponse(BaseModel):
+    """Response containing the gateway API key."""
+
+    gateway_key: str
+    gateway_base_url: str

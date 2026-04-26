@@ -13,6 +13,7 @@ from swarmmind.services.runtime_event_processing import (
     process_custom_mode_chunk,
     process_messages_mode_chunk,
     process_values_mode_message,
+    process_values_mode_state,
 )
 
 
@@ -256,3 +257,110 @@ def test_process_values_mode_message_emits_tool_result_and_summarizes_tool_outpu
         }
     ]
     assert capture_state.tool_results == ["[search_docs]: tool output"]
+
+
+def test_process_values_mode_state_emits_plan_steps_when_todos_change() -> None:
+    capture_state = StreamCaptureState()
+
+    # First snapshot with todos
+    events = process_values_mode_state(
+        {
+            "todos": [
+                {"description": "Analyze requirements", "status": "completed"},
+                {"description": "Draft proposal", "status": "in_progress"},
+            ],
+        },
+        capture_state,
+    )
+
+    assert events == [
+        {
+            "type": "plan_steps",
+            "steps": [
+                {"description": "Analyze requirements", "status": "completed"},
+                {"description": "Draft proposal", "status": "in_progress"},
+            ],
+        }
+    ]
+    assert capture_state.last_todos == [
+        {"description": "Analyze requirements", "status": "completed"},
+        {"description": "Draft proposal", "status": "in_progress"},
+    ]
+
+    # Same todos again — deduplicated
+    events = process_values_mode_state(
+        {
+            "todos": [
+                {"description": "Analyze requirements", "status": "completed"},
+                {"description": "Draft proposal", "status": "in_progress"},
+            ],
+        },
+        capture_state,
+    )
+    assert events == []
+
+    # Todos changed — emit updated list
+    events = process_values_mode_state(
+        {
+            "todos": [
+                {"description": "Analyze requirements", "status": "completed"},
+                {"description": "Draft proposal", "status": "completed"},
+                {"description": "Review", "status": "pending"},
+            ],
+        },
+        capture_state,
+    )
+    assert events == [
+        {
+            "type": "plan_steps",
+            "steps": [
+                {"description": "Analyze requirements", "status": "completed"},
+                {"description": "Draft proposal", "status": "completed"},
+                {"description": "Review", "status": "pending"},
+            ],
+        }
+    ]
+
+
+def test_process_values_mode_state_handles_missing_or_empty_todos() -> None:
+    capture_state = StreamCaptureState()
+
+    # No todos key
+    assert process_values_mode_state({"messages": []}, capture_state) == []
+
+    # None todos
+    assert process_values_mode_state({"todos": None}, capture_state) == []
+
+    # Empty list
+    assert process_values_mode_state({"todos": []}, capture_state) == []
+
+    # Todos present but empty — last_todos should still be updated
+    capture_state.last_todos = [{"description": "old", "status": "pending"}]
+    assert process_values_mode_state({"todos": []}, capture_state) == []
+    assert capture_state.last_todos == []
+
+
+def test_process_values_mode_state_normalizes_todo_items() -> None:
+    capture_state = StreamCaptureState()
+
+    events = process_values_mode_state(
+        {
+            "todos": [
+                {"description": "Step 1"},
+                {"status": "completed"},
+                {"description": 123, "status": None},
+            ],
+        },
+        capture_state,
+    )
+
+    assert events == [
+        {
+            "type": "plan_steps",
+            "steps": [
+                {"description": "Step 1", "status": "pending"},
+                {"description": "", "status": "completed"},
+                {"description": "123", "status": "None"},
+            ],
+        }
+    ]
