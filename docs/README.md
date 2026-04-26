@@ -14,6 +14,7 @@ SwarmMind uses two document classes:
 - `product-positioning.md` [A]: ICP, problem framing, product boundaries, differentiation, and current wedge.
 - `architecture.md` [A]: architecture baseline, terminology, control-plane/runtime boundary, store boundaries, and phase architecture.
 - `roadmap.md` [A]: pragmatic phase roadmap and immediate milestones.
+- `agent-action-roadmap.md` [B]: agent-facing execution guide that translates target docs into implementation order.
 - `ui/` [A]: page maps, flows, and interaction rules.
 - `enterprise-crm-user-story.md` [A]: scenario validation for the target architecture.
 - `chat-mainline-execution-plan.md` [B]: current ChatSession-first execution plan.
@@ -38,8 +39,9 @@ For implementation work:
 1. `AGENTS.md`
 2. `architecture.md`
 3. `roadmap.md`
-4. `chat-mainline-execution-plan.md`
-5. the relevant `docs/sprint-*` or `docs/ui/*` file
+4. `agent-action-roadmap.md`
+5. `chat-mainline-execution-plan.md`
+6. the relevant `docs/sprint-*` or `docs/ui/*` file
 
 ## Governance Rules
 
