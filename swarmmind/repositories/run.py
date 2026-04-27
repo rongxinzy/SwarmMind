@@ -88,6 +88,35 @@ class RunRepository:
             if status in ("completed", "failed", "blocked"):
                 run.completed_at = utc_now()
 
+    def update(
+        self,
+        run_id: str,
+        *,
+        project_id: str | None = None,
+        status: str | None = None,
+        goal: str | None = None,
+        summary: str | None = None,
+    ) -> RunDB:
+        """Update run fields. Only provided fields are changed."""
+        with session_scope() as session:
+            run = session.get(RunDB, run_id)
+            if run is None:
+                raise HTTPException(status_code=404, detail="Run not found")
+            if project_id is not None:
+                run.project_id = project_id
+            if status is not None:
+                run.status = status
+                if status in ("completed", "failed", "blocked"):
+                    run.completed_at = utc_now()
+            if goal is not None:
+                run.goal = goal
+            if summary is not None:
+                run.summary = summary
+            session.commit()
+            session.refresh(run)
+            session.expunge(run)
+            return run
+
     def link_project(self, run_id: str, project_id: str) -> None:
         """Associate a run with a project."""
         with session_scope() as session:

@@ -16,16 +16,18 @@ class ArtifactRepository:
 
     def create(
         self,
-        conversation_id: str,
-        message_id: str | None,
-        name: str | None,
-        artifact_type: str | None,
+        conversation_id: str | None = None,
+        message_id: str | None = None,
+        name: str | None = None,
+        artifact_type: str | None = None,
+        project_id: str | None = None,
     ) -> ArtifactDB:
         """Create a new artifact record."""
         with session_scope() as session:
             artifact = ArtifactDB(
                 artifact_id=str(uuid.uuid4()),
                 conversation_id=conversation_id,
+                project_id=project_id,
                 message_id=message_id,
                 name=name,
                 artifact_type=artifact_type,
@@ -58,13 +60,11 @@ class ArtifactRepository:
             return list(results)
 
     def list_by_project(self, project_id: str) -> list[ArtifactDB]:
-        """List artifacts for a project via conversation promotion link."""
-        from swarmmind.db_models import ConversationDB
+        """List artifacts for a project ordered by created_at descending."""
         with session_scope() as session:
             results = session.exec(
                 select(ArtifactDB)
-                .join(ConversationDB, ArtifactDB.conversation_id == ConversationDB.id)
-                .where(ConversationDB.promoted_project_id == project_id)
+                .where(ArtifactDB.project_id == project_id)
                 .order_by(ArtifactDB.created_at.desc()),
             ).all()
             for r in results:

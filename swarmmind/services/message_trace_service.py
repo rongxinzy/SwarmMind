@@ -141,7 +141,7 @@ class MessageTraceService:
 
         return "执行完成"
 
-    def extract_artifacts(self, conversation_id: str) -> list[dict[str, Any]]:
+    def extract_artifacts(self, conversation_id: str, project_id: str | None = None) -> list[dict[str, Any]]:
         """Extract artifact metadata from conversation trace and persist.
 
         Returns list of created artifact records. Idempotent: skips if artifact
@@ -169,6 +169,7 @@ class MessageTraceService:
                 continue
             artifact = self._artifact_repo.create(
                 conversation_id=conversation_id,
+                project_id=project_id,
                 message_id=None,
                 name=name,
                 artifact_type=event.get("artifact_type", "other"),

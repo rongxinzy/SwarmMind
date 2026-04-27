@@ -499,6 +499,7 @@ class Project(BaseModel):
     scope: str | None = None
     constraints: str | None = None
     source_conversation_id: str | None = None
+    conversation_id: str | None = None
     next_step: str | None = None
     status: ProjectStatus = ProjectStatus.ACTIVE
     agent_team: ProjectAgentTeamInstance | None = None
@@ -553,7 +554,8 @@ class Artifact(BaseModel):
     """Artifact/evidence metadata from a run."""
 
     artifact_id: str
-    conversation_id: str
+    conversation_id: str | None = None
+    project_id: str | None = None
     message_id: str | None = None
     name: str | None = None
     artifact_type: str | None = None
@@ -614,8 +616,18 @@ class CreateRunRequest(BaseModel):
     """Request to create a run."""
 
     conversation_id: str
+    project_id: str | None = None
     goal: str | None = Field(None, max_length=2000)
     status: RunStatus = RunStatus.RUNNING
+
+
+class UpdateRunRequest(BaseModel):
+    """Request to update a run."""
+
+    project_id: str | None = None
+    status: RunStatus | None = None
+    goal: str | None = Field(None, max_length=2000)
+    summary: str | None = Field(None, max_length=2000)
 
 # ---- LLM Provider models ----
 

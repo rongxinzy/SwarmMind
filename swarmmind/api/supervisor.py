@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -39,6 +40,7 @@ from swarmmind.models import (
     CreateConversationRequest,
     CreateRunRequest,
     DeleteConversationResponse,
+    UpdateRunRequest,
     DeleteProjectResponse,
     DispatchResponse,
     ExtractArtifactsResponse,
@@ -558,12 +560,34 @@ def _db_to_project(proj) -> Project:
         scope=proj.scope,
         constraints=proj.constraints,
         source_conversation_id=proj.source_conversation_id,
+        conversation_id=proj.conversation_id,
         next_step=proj.next_step,
         status=proj.status,
         created_at=proj.created_at.isoformat() if proj.created_at else "",
         updated_at=proj.updated_at.isoformat() if proj.updated_at else "",
         agent_team=agent_team,
     )
+
+
+def _ensure_project_conversation(project_id: str) -> str:
+    """Ensure a project has a dedicated conversation for execution.
+
+    Creates one if absent and updates the project record.
+    Returns the conversation_id.
+    """
+    from swarmmind.db import session_scope
+    from swarmmind.db_models import ProjectDB
+
+    proj = project_repo.get_by_id(project_id)
+    if proj.conversation_id:
+        return proj.conversation_id
+    conv = conversation_repo.create(title=proj.title, title_status="pending")
+    with session_scope() as session:
+        proj_db = session.get(ProjectDB, project_id)
+        if proj_db is not None:
+            proj_db.conversation_id = conv.id
+            session.commit()
+    return conv.id
 
 
 def _db_to_team_instance(instance) -> ProjectAgentTeamInstance:
@@ -639,6 +663,7 @@ def create_project(body: ProjectCreateRequest) -> Project:
         source_conversation_id=body.source_conversation_id,
         next_step=body.next_step,
     )
+    _ensure_project_conversation(proj.project_id)
     _attach_team_to_project(proj.project_id, body.team_template_id)
     return _db_to_project(proj)
 
@@ -741,6 +766,9 @@ def promote_conversation(
     # Link conversation -> project
     project_repo.link_conversation(proj.project_id, conversation_id)
 
+    # Create project execution conversation
+    _ensure_project_conversation(proj.project_id)
+
     # Attach team if specified
     team_template_id = body.team_template_id if body else None
     _attach_team_to_project(proj.project_id, team_template_id)
@@ -794,6 +822,7 @@ def _db_to_artifact(art) -> Artifact:
     return Artifact(
         artifact_id=art.artifact_id,
         conversation_id=art.conversation_id,
+        project_id=art.project_id,
         message_id=art.message_id,
         name=art.name,
         artifact_type=art.artifact_type,
@@ -815,8 +844,9 @@ def extract_conversation_artifacts(conversation_id: str) -> ExtractArtifactsResp
 
     Idempotent: skips artifacts that already exist by name.
     """
-    conversation_repo.get_by_id(conversation_id)
-    created = message_trace_service.extract_artifacts(conversation_id)
+    conv = conversation_repo.get_by_id(conversation_id)
+    project_id = conv.promoted_project_id if conv else None
+    created = message_trace_service.extract_artifacts(conversation_id, project_id=project_id)
     return ExtractArtifactsResponse(conversation_id=conversation_id, extracted=len(created), artifacts=created)
 
 
@@ -896,14 +926,29 @@ def get_run(run_id: str) -> Run:
 def create_run(body: CreateRunRequest) -> Run:
     """Create a run record.
 
-    Links to a conversation. If the conversation is promoted to a project,
-    the run can be later linked via PATCH /runs/{run_id}.
+    Links to a conversation and optionally a project.
     """
     conversation_repo.get_by_id(body.conversation_id)
+    if body.project_id:
+        project_repo.get_by_id(body.project_id)
     run = run_repo.create(
         conversation_id=body.conversation_id,
+        project_id=body.project_id,
         goal=body.goal,
         status=body.status.value,
+    )
+    return _db_to_run(run)
+
+
+@app.patch("/runs/{run_id}", tags=["runs"], responses={404: {"description": "Run not found"}})
+def update_run(run_id: str, body: UpdateRunRequest) -> Run:
+    """Update a run. Only provided fields are changed."""
+    run = run_repo.update(
+        run_id,
+        project_id=body.project_id,
+        status=body.status.value if body.status else None,
+        goal=body.goal,
+        summary=body.summary,
     )
     return _db_to_run(run)
 
@@ -1006,6 +1051,20 @@ def detach_team_from_project(project_id: str) -> None:
     """Detach the agent team from a project."""
     project_repo.get_by_id(project_id)
     project_team_repo.delete(project_id)
+
+
+@app.post("/projects/{project_id}/messages/stream", tags=["projects"], responses={404: {"description": "Project not found"}})
+def send_project_message_stream(project_id: str, body: SendMessageRequest) -> StreamingResponse:
+    """Stream a project execution turn with SwarmMind runtime semantics.
+
+    Uses the project's dedicated conversation as the execution surface.
+    """
+    project_repo.get_by_id(project_id)
+    conversation_id = _ensure_project_conversation(project_id)
+    return StreamingResponse(
+        _stream_conversation_message(conversation_id, body),
+        media_type="application/x-ndjson",
+    )
 
 
 app.include_router(conversation_router)

@@ -189,6 +189,9 @@ class ProjectDB(SQLModel, table=True):
     source_conversation_id: str | None = Field(
         default=None, foreign_key="conversations.id"
     )
+    conversation_id: str | None = Field(
+        default=None, foreign_key="conversations.id"
+    )
     next_step: str | None = None
     status: str = Field(default="active")  # 'active' | 'archived'
     created_at: datetime | None = Field(default_factory=utc_now)
@@ -197,6 +200,7 @@ class ProjectDB(SQLModel, table=True):
     __table_args__ = (
         Index("idx_projects_status", "status"),
         Index("idx_projects_source_conversation", "source_conversation_id"),
+        Index("idx_projects_conversation", "conversation_id"),
     )
 
 
@@ -206,7 +210,8 @@ class ArtifactDB(SQLModel, table=True):
     __tablename__ = "artifacts"
 
     artifact_id: str = Field(primary_key=True)
-    conversation_id: str = Field(foreign_key="conversations.id")
+    conversation_id: str | None = Field(default=None, foreign_key="conversations.id")
+    project_id: str | None = Field(default=None, foreign_key="projects.project_id")
     message_id: str | None = Field(default=None, foreign_key="messages.id")
     name: str | None = None
     artifact_type: str | None = None  # 'write_file' | 'edit_file' | 'present_files' | 'other'
@@ -214,6 +219,7 @@ class ArtifactDB(SQLModel, table=True):
 
     __table_args__ = (
         Index("idx_artifacts_conversation", "conversation_id"),
+        Index("idx_artifacts_project", "project_id"),
         Index("idx_artifacts_message", "message_id"),
     )
 

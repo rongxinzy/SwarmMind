@@ -71,7 +71,7 @@ class TestArtifactEndpoints:
         data = response.json()
         assert data["extracted"] == 1
         assert data["artifacts"][0]["name"] == "output.md"
-        mock_svc.extract_artifacts.assert_called_once_with(conv.id)
+        mock_svc.extract_artifacts.assert_called_once_with(conv.id, project_id=None)
 
     def test_extract_artifacts_conversation_not_found(self):
         response = client.post("/conversations/nonexistent/extract-artifacts")
