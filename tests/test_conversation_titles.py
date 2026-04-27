@@ -7,7 +7,7 @@ pytestmark = pytest.mark.requires_llm
 from swarmmind import context_broker
 from swarmmind.api import supervisor
 from swarmmind.db import init_db, seed_default_agents
-from swarmmind.models import GoalRequest, SendMessageRequest
+from swarmmind.models import CreateConversationRequest, SendMessageRequest
 
 
 @pytest.fixture(autouse=True)
@@ -50,7 +50,7 @@ def _conversation_row(conversation_id: str):
 class TestConversationTitles:
     def test_create_conversation_starts_with_pending_title(self):
         conversation = supervisor.create_conversation(
-            GoalRequest(goal="帮我分析 CRM MVP 的模块边界"),
+            CreateConversationRequest(),
         )
 
         assert conversation.title == "New Conversation"
@@ -69,7 +69,7 @@ class TestConversationTitles:
         )
 
         conversation = supervisor.create_conversation(
-            GoalRequest(goal="请分析 CRM MVP 的模块边界"),
+            CreateConversationRequest(title="请分析 CRM MVP 的模块边界"),
         )
         response = supervisor.send_message(
             conversation.id,
@@ -101,7 +101,7 @@ class TestConversationTitles:
         )
 
         conversation = supervisor.create_conversation(
-            GoalRequest(goal="请分析 CRM MVP 的模块边界"),
+            CreateConversationRequest(title="请分析 CRM MVP 的模块边界"),
         )
 
         supervisor.send_message(
@@ -133,7 +133,7 @@ class TestConversationTitles:
         )
 
         conversation = supervisor.create_conversation(
-            GoalRequest(goal="请分析 CRM MVP 的模块边界"),
+            CreateConversationRequest(title="请分析 CRM MVP 的模块边界"),
         )
         supervisor.send_message(
             conversation.id,

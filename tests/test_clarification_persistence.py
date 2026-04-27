@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 from swarmmind.api import supervisor
 from swarmmind.db import init_db, seed_default_agents, session_scope
-from swarmmind.models import GoalRequest
+from swarmmind.models import CreateConversationRequest
 
 
 def _message_columns() -> set[str]:
@@ -25,7 +25,7 @@ def test_clarification_response_persists_as_tool_message_and_is_readable(tmp_pat
     assert "tool_call_id" in columns
     assert "name" in columns
 
-    conversation = supervisor.create_conversation(GoalRequest(goal="clarification 持久化回归"))
+    conversation = supervisor.create_conversation(CreateConversationRequest(title="clarification 持久化回归"))
     result = supervisor.respond_to_clarification(
         conversation.id,
         supervisor.ClarificationResponseRequest(

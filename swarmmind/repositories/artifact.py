@@ -57,6 +57,20 @@ class ArtifactRepository:
                 session.expunge(r)
             return list(results)
 
+    def list_by_project(self, project_id: str) -> list[ArtifactDB]:
+        """List artifacts for a project via conversation promotion link."""
+        from swarmmind.db_models import ConversationDB
+        with session_scope() as session:
+            results = session.exec(
+                select(ArtifactDB)
+                .join(ConversationDB, ArtifactDB.conversation_id == ConversationDB.id)
+                .where(ConversationDB.promoted_project_id == project_id)
+                .order_by(ArtifactDB.created_at.desc()),
+            ).all()
+            for r in results:
+                session.expunge(r)
+            return list(results)
+
     def delete(self, artifact_id: str) -> None:
         """Delete an artifact by ID."""
         with session_scope() as session:

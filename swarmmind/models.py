@@ -186,7 +186,6 @@ class ApproveRequest(BaseModel):
 class RejectRequest(BaseModel):
     """Request to reject a proposal."""
 
-    id: str
     reason: str | None = None
 
 
@@ -308,6 +307,12 @@ class RuntimeModelCatalogResponse(BaseModel):
     subject_id: str
 
 
+class CreateConversationRequest(BaseModel):
+    """Request to create a new conversation."""
+
+    title: str | None = Field(None, max_length=200)
+
+
 class SendMessageRequest(BaseModel):
     """Request to send a message in a conversation."""
 
@@ -337,6 +342,58 @@ class DeleteConversationResponse(BaseModel):
     status: str = "deleted"
     id: str
     next_conversation_id: str | None = None
+
+
+class ApproveResponse(BaseModel):
+    """Response after approving a proposal."""
+
+    status: str = "approved"
+    id: str
+
+
+class RejectResponse(BaseModel):
+    """Response after rejecting a proposal."""
+
+    status: str = "rejected"
+    id: str
+    reason: str | None = None
+
+
+class HealthResponse(BaseModel):
+    """Health check response."""
+
+    status: str = "ok"
+    timestamp: str
+
+
+class ReadyResponse(BaseModel):
+    """Readiness check response."""
+
+    status: str = "ok"
+    runtime_profile_id: str
+    runtime_instance_id: str
+
+
+class ExtractArtifactsResponse(BaseModel):
+    """Response after extracting artifacts from a conversation."""
+
+    conversation_id: str
+    extracted: int
+    artifacts: list[dict]
+
+
+class ConversationTraceResponse(BaseModel):
+    """Response containing conversation execution trace."""
+
+    conversation_id: str
+    trace: dict | None = None
+
+
+class DeleteProjectResponse(BaseModel):
+    """Response after deleting a project."""
+
+    status: str = "deleted"
+    project_id: str
 
 
 # ---- Project models ----
@@ -556,3 +613,12 @@ class GatewayKeyResponse(BaseModel):
 
     gateway_key: str
     gateway_base_url: str
+
+
+class GatewayStatusResponse(BaseModel):
+    """Response containing gateway status and provider health."""
+
+    gateway_ready: bool
+    model_count: int
+    providers: list[dict]
+    config: dict

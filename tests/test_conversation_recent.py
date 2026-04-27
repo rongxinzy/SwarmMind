@@ -6,7 +6,7 @@ import pytest
 
 from swarmmind.api import supervisor
 from swarmmind.db import init_db, seed_default_agents
-from swarmmind.models import GoalRequest, SendMessageRequest
+from swarmmind.models import CreateConversationRequest, SendMessageRequest
 
 
 class FakeDeerFlowRuntimeAdapter:
@@ -40,7 +40,7 @@ def test_recent_returns_204_when_no_conversations():
 
 
 def test_recent_returns_204_for_empty_conversation_without_messages():
-    _ = supervisor.create_conversation(GoalRequest(goal="空会话"))
+    _ = supervisor.create_conversation(CreateConversationRequest(title="空会话"))
     response = supervisor.get_recent_conversation()
     from fastapi.responses import Response
 
@@ -49,7 +49,7 @@ def test_recent_returns_204_for_empty_conversation_without_messages():
 
 
 def test_recent_returns_conversation_with_messages():
-    conv = supervisor.create_conversation(GoalRequest(goal="活跃会话"))
+    conv = supervisor.create_conversation(CreateConversationRequest(title="活跃会话"))
     supervisor.send_message(conv.id, SendMessageRequest(content="hello"))
 
     result = supervisor.get_recent_conversation()
@@ -61,10 +61,10 @@ def test_recent_returns_conversation_with_messages():
 
 
 def test_recent_returns_most_recently_updated_conversation():
-    conv1 = supervisor.create_conversation(GoalRequest(goal="第一条"))
+    conv1 = supervisor.create_conversation(CreateConversationRequest(title="第一条"))
     supervisor.send_message(conv1.id, SendMessageRequest(content="msg1"))
 
-    conv2 = supervisor.create_conversation(GoalRequest(goal="第二条"))
+    conv2 = supervisor.create_conversation(CreateConversationRequest(title="第二条"))
     supervisor.send_message(conv2.id, SendMessageRequest(content="msg2"))
 
     result = supervisor.get_recent_conversation()
@@ -80,7 +80,7 @@ def test_recent_ignores_conversations_older_than_7_days():
     from swarmmind.db_models import ConversationDB, MessageDB
     from swarmmind.time_utils import utc_now
 
-    conv = supervisor.create_conversation(GoalRequest(goal="旧会话"))
+    conv = supervisor.create_conversation(CreateConversationRequest(title="旧会话"))
 
     # Backdate the conversation and its messages to 8 days ago
     from sqlmodel import select

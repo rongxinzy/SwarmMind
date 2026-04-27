@@ -24,14 +24,21 @@ from swarmmind.context_broker import (
 )
 from swarmmind.db import init_db, seed_default_agents
 from swarmmind.models import (
+    ApproveResponse,
     Artifact,
     ArtifactListResponse,
     Conversation,
     ConversationListResponse,
     ConversationRuntimeOptions,
+    ConversationTraceResponse,
+    CreateConversationRequest,
     CreateRunRequest,
     DeleteConversationResponse,
+    DeleteProjectResponse,
+    DispatchResponse,
+    ExtractArtifactsResponse,
     GoalRequest,
+    HealthResponse,
     Message,
     MessageListResponse,
     PendingResponse,
@@ -40,13 +47,16 @@ from swarmmind.models import (
     ProjectListResponse,
     ProjectUpdateRequest,
     PromoteConversationRequest,
+    ReadyResponse,
     RecentConversationResponse,
     RejectRequest,
+    RejectResponse,
     Run,
     RunListResponse,
     RuntimeModelCatalogResponse,
     RuntimeModelOption,
     SendMessageRequest,
+    StatusResponse,
     StrategyEntry,
     StrategyResponse,
     SupervisorDecision,
@@ -168,7 +178,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="SwarmMind Supervisor API",
-    version="0.1.0",
+    version="0.9.0",
     description="Human oversight interface for AI agent teams.",
     lifespan=lifespan,
 )
@@ -199,7 +209,7 @@ def _cleanup_scanner():
 # ---- Supervisor endpoints ----
 
 
-@app.get("/pending")
+@app.get("/pending", tags=["supervisor"])
 def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=0)) -> PendingResponse:
     """List pending action proposals (paginated)."""
     rows, total = action_proposal_repo.list_pending(limit=limit, offset=offset)
@@ -207,27 +217,27 @@ def get_pending(limit: int = Query(50, ge=1, le=200), offset: int = Query(0, ge=
     return PendingResponse(items=items, total=total)
 
 
-@app.post("/approve/{proposal_id}")
-def approve(proposal_id: str) -> dict:
+@app.post("/approve/{proposal_id}", tags=["supervisor"], responses={404: {"description": "Proposal not found"}})
+def approve(proposal_id: str) -> ApproveResponse:
     """Approve an action proposal."""
     action_proposal_repo.approve(proposal_id)
     record_supervisor_decision(proposal_id, SupervisorDecision.APPROVED)
     logger.info("Proposal %s approved by supervisor", proposal_id)
-    return {"status": "approved", "id": proposal_id}
+    return ApproveResponse(id=proposal_id)
 
 
-@app.post("/reject/{proposal_id}")
-def reject(proposal_id: str, body: RejectRequest | None = None):
+@app.post("/reject/{proposal_id}", tags=["supervisor"], responses={404: {"description": "Proposal not found"}})
+def reject(proposal_id: str, body: RejectRequest | None = None) -> RejectResponse:
     """Reject an action proposal."""
     action_proposal_repo.reject_proposal(proposal_id)
     record_supervisor_decision(proposal_id, SupervisorDecision.REJECTED)
     logger.info("Proposal %s rejected by supervisor", proposal_id)
     reason = body.reason if body else None
-    return {"status": "rejected", "id": proposal_id, "reason": reason}
+    return RejectResponse(id=proposal_id, reason=reason)
 
 
-@app.get("/status")
-def get_status(goal: str = Query(..., max_length=2000)):
+@app.get("/status", tags=["supervisor"])
+def get_status(goal: str = Query(..., max_length=2000)) -> StatusResponse:
     """LLM Status Renderer: given a goal, read shared context and
     generate a human-readable status summary (Phase 1: prose only).
     """
@@ -239,7 +249,7 @@ def get_status(goal: str = Query(..., max_length=2000)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/strategy")
+@app.get("/strategy", tags=["supervisor"])
 def get_strategy() -> StrategyResponse:
     """View the strategy routing table."""
     rows = strategy_repo.list_all()
@@ -255,8 +265,8 @@ def get_strategy() -> StrategyResponse:
     return StrategyResponse(entries=entries)
 
 
-@app.post("/dispatch")
-def post_dispatch(body: GoalRequest):
+@app.post("/dispatch", tags=["supervisor"])
+def post_dispatch(body: GoalRequest) -> DispatchResponse:
     """Submit a new goal for dispatch to an agent."""
     try:
         session_id = str(uuid.uuid4())
@@ -271,25 +281,24 @@ def post_dispatch(body: GoalRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
+@app.get("/health", tags=["system"])
+def health() -> HealthResponse:
     """Health check endpoint."""
-    return {"status": "ok", "timestamp": datetime.now(UTC).isoformat()}
+    return HealthResponse(timestamp=datetime.now(UTC).isoformat())
 
 
-@app.get("/ready")
-def ready() -> dict[str, str]:
+@app.get("/ready", tags=["system"])
+def ready() -> ReadyResponse:
     """Readiness check: database plus DeerFlow runtime bundle."""
     runtime_instance = ensure_default_runtime_instance()
-    return {
-        "status": "ok",
-        "runtime_profile_id": runtime_instance.runtime_profile_id,
-        "runtime_instance_id": runtime_instance.runtime_instance_id,
-    }
+    return ReadyResponse(
+        runtime_profile_id=runtime_instance.runtime_profile_id,
+        runtime_instance_id=runtime_instance.runtime_instance_id,
+    )
 
 
-@app.get("/models")
-@app.get("/runtime/models")
+@app.get("/models", tags=["runtime"])
+@app.get("/runtime/models", tags=["runtime"])
 def list_runtime_models() -> RuntimeModelCatalogResponse:
     """List runtime models available to the current anonymous visitor subject."""
     models = list_models_for_subject(
@@ -425,8 +434,9 @@ def _list_conversations() -> ConversationListResponse:
     return ConversationListResponse(items=items, total=len(items))
 
 
-def _create_conversation(body: GoalRequest) -> Conversation:
-    conv = conversation_repo.create(NEW_CONVERSATION_TITLE, "pending")
+def _create_conversation(body: CreateConversationRequest) -> Conversation:
+    title = body.title or NEW_CONVERSATION_TITLE
+    conv = conversation_repo.create(title, "pending")
     return _db_to_conversation(conv)
 
 
@@ -476,8 +486,9 @@ def _delete_conversation(conversation_id: str) -> DeleteConversationResponse:
 # ---- Collaboration Trace Endpoints ----
 
 
-def _get_conversation_trace(conversation_id: str) -> dict:
-    return conversation_trace_service.get_trace(conversation_id)
+def _get_conversation_trace(conversation_id: str) -> ConversationTraceResponse:
+    trace = conversation_trace_service.get_trace(conversation_id)
+    return ConversationTraceResponse(conversation_id=conversation_id, trace=trace)
 
 
 def _stream_conversation_message(conversation_id: str, body: SendMessageRequest):
@@ -539,7 +550,7 @@ def _db_to_project(proj) -> Project:
     )
 
 
-@app.get("/projects")
+@app.get("/projects", tags=["projects"])
 def list_projects() -> ProjectListResponse:
     """List all projects ordered by updated_at descending."""
     rows = project_repo.list_all()
@@ -547,14 +558,14 @@ def list_projects() -> ProjectListResponse:
     return ProjectListResponse(items=items, total=len(items))
 
 
-@app.get("/projects/{project_id}")
+@app.get("/projects/{project_id}", tags=["projects"], responses={404: {"description": "Project not found"}})
 def get_project(project_id: str) -> Project:
     """Get a single project by ID."""
     proj = project_repo.get_by_id(project_id)
     return _db_to_project(proj)
 
 
-@app.post("/projects")
+@app.post("/projects", tags=["projects"])
 def create_project(body: ProjectCreateRequest) -> Project:
     """Create a new project manually."""
     proj = project_repo.create(
@@ -566,6 +577,14 @@ def create_project(body: ProjectCreateRequest) -> Project:
         next_step=body.next_step,
     )
     return _db_to_project(proj)
+
+
+@app.delete("/projects/{project_id}", tags=["projects"], responses={404: {"description": "Project not found"}})
+def delete_project(project_id: str) -> DeleteProjectResponse:
+    """Delete a project."""
+    project_repo.get_by_id(project_id)
+    project_repo.delete(project_id)
+    return DeleteProjectResponse(project_id=project_id)
 
 
 def _generate_project_seed_from_conversation(conversation_id: str, override: PromoteConversationRequest | None = None) -> dict:
@@ -623,7 +642,7 @@ def _generate_project_seed_from_conversation(conversation_id: str, override: Pro
     }
 
 
-@app.post("/conversations/{conversation_id}/promote")
+@app.post("/conversations/{conversation_id}/promote", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
 def promote_conversation(
     conversation_id: str,
     body: PromoteConversationRequest | None = None,
@@ -670,7 +689,7 @@ def promote_conversation(
 # ---- Trace summary endpoint (F1) ----
 
 
-@app.get("/conversations/{conversation_id}/messages/{message_id}/trace")
+@app.get("/conversations/{conversation_id}/messages/{message_id}/trace", tags=["conversations"], responses={404: {"description": "Conversation or message not found"}})
 def get_message_trace(conversation_id: str, message_id: str) -> TraceSummaryResponse:
     """Return a readable trace summary for an assistant message.
 
@@ -714,7 +733,7 @@ def _db_to_artifact(art) -> Artifact:
     )
 
 
-@app.get("/conversations/{conversation_id}/artifacts")
+@app.get("/conversations/{conversation_id}/artifacts", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
 def list_conversation_artifacts(conversation_id: str) -> ArtifactListResponse:
     """List artifacts for a conversation."""
     conversation_repo.get_by_id(conversation_id)
@@ -722,18 +741,26 @@ def list_conversation_artifacts(conversation_id: str) -> ArtifactListResponse:
     return ArtifactListResponse(items=[_db_to_artifact(r) for r in rows], total=len(rows))
 
 
-@app.post("/conversations/{conversation_id}/extract-artifacts")
-def extract_conversation_artifacts(conversation_id: str) -> dict:
+@app.post("/conversations/{conversation_id}/extract-artifacts", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+def extract_conversation_artifacts(conversation_id: str) -> ExtractArtifactsResponse:
     """Extract artifacts from conversation trace and persist them.
 
     Idempotent: skips artifacts that already exist by name.
     """
     conversation_repo.get_by_id(conversation_id)
     created = message_trace_service.extract_artifacts(conversation_id)
-    return {"conversation_id": conversation_id, "extracted": len(created), "artifacts": created}
+    return ExtractArtifactsResponse(conversation_id=conversation_id, extracted=len(created), artifacts=created)
 
 
-@app.patch("/projects/{project_id}")
+@app.get("/projects/{project_id}/artifacts", tags=["projects"], responses={404: {"description": "Project not found"}})
+def list_project_artifacts(project_id: str) -> ArtifactListResponse:
+    """List artifacts for a project."""
+    project_repo.get_by_id(project_id)
+    rows = artifact_repo.list_by_project(project_id)
+    return ArtifactListResponse(items=[_db_to_artifact(r) for r in rows], total=len(rows))
+
+
+@app.patch("/projects/{project_id}", tags=["projects"], responses={404: {"description": "Project not found"}})
 def update_project(project_id: str, body: ProjectUpdateRequest) -> Project:
     """Update a project. Only provided fields are changed."""
     fields: dict[str, object] = {}
@@ -774,7 +801,7 @@ def _db_to_run(run) -> Run:
     )
 
 
-@app.get("/projects/{project_id}/runs")
+@app.get("/projects/{project_id}/runs", tags=["runs"], responses={404: {"description": "Project not found"}})
 def list_project_runs(project_id: str) -> RunListResponse:
     """List runs for a project."""
     project_repo.get_by_id(project_id)
@@ -782,14 +809,22 @@ def list_project_runs(project_id: str) -> RunListResponse:
     return RunListResponse(items=[_db_to_run(r) for r in rows], total=len(rows))
 
 
-@app.get("/runs/{run_id}")
+@app.get("/conversations/{conversation_id}/runs", tags=["runs"], responses={404: {"description": "Conversation not found"}})
+def list_conversation_runs(conversation_id: str) -> RunListResponse:
+    """List runs for a conversation."""
+    conversation_repo.get_by_id(conversation_id)
+    rows = run_repo.list_by_conversation(conversation_id)
+    return RunListResponse(items=[_db_to_run(r) for r in rows], total=len(rows))
+
+
+@app.get("/runs/{run_id}", tags=["runs"], responses={404: {"description": "Run not found"}})
 def get_run(run_id: str) -> Run:
     """Get a single run by ID."""
     run = run_repo.get_by_id(run_id)
     return _db_to_run(run)
 
 
-@app.post("/runs")
+@app.post("/runs", tags=["runs"])
 def create_run(body: CreateRunRequest) -> Run:
     """Create a run record.
 

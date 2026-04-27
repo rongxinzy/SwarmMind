@@ -7,7 +7,7 @@ from fastapi import HTTPException
 
 from swarmmind.api import supervisor
 from swarmmind.db import init_db, seed_default_agents
-from swarmmind.models import GoalRequest, SendMessageRequest
+from swarmmind.models import CreateConversationRequest, SendMessageRequest
 
 
 class FakeDeerFlowRuntimeAdapter:
@@ -33,7 +33,7 @@ def setup_db(tmp_path, monkeypatch):
 
 class TestGetConversationDetail:
     def test_default_behavior_does_not_include_messages(self):
-        conv = supervisor.create_conversation(GoalRequest(goal="测试"))
+        conv = supervisor.create_conversation(CreateConversationRequest(title="测试"))
         supervisor.send_message(conv.id, SendMessageRequest(content="hello"))
 
         result = supervisor.get_conversation(conv.id, include_messages=False)
@@ -41,7 +41,7 @@ class TestGetConversationDetail:
         assert result.messages is None
 
     def test_include_messages_returns_message_list(self):
-        conv = supervisor.create_conversation(GoalRequest(goal="测试"))
+        conv = supervisor.create_conversation(CreateConversationRequest(title="测试"))
         supervisor.send_message(conv.id, SendMessageRequest(content="hello"))
 
         result = supervisor.get_conversation(conv.id, include_messages=True)
@@ -59,10 +59,10 @@ class TestGetConversationDetail:
 
 class TestDeleteConversation:
     def test_delete_returns_next_conversation_id(self):
-        conv1 = supervisor.create_conversation(GoalRequest(goal="第一条"))
+        conv1 = supervisor.create_conversation(CreateConversationRequest(title="第一条"))
         supervisor.send_message(conv1.id, SendMessageRequest(content="msg1"))
 
-        conv2 = supervisor.create_conversation(GoalRequest(goal="第二条"))
+        conv2 = supervisor.create_conversation(CreateConversationRequest(title="第二条"))
         supervisor.send_message(conv2.id, SendMessageRequest(content="msg2"))
 
         # Delete the most recent one (conv2); next should be conv1
@@ -77,7 +77,7 @@ class TestDeleteConversation:
         assert exc_info.value.status_code == 404
 
     def test_delete_last_conversation_returns_null_next_id(self):
-        conv = supervisor.create_conversation(GoalRequest(goal="唯一"))
+        conv = supervisor.create_conversation(CreateConversationRequest(title="唯一"))
         supervisor.send_message(conv.id, SendMessageRequest(content="msg"))
 
         result = supervisor.delete_conversation(conv.id)

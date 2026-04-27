@@ -10,6 +10,7 @@ from swarmmind.llm_gateway.models import (
     ChatCompletionResponse,
     GatewayModelListResponse,
 )
+from swarmmind.models import GatewayStatusResponse
 from swarmmind.llm_gateway.router import get_gateway
 
 router = APIRouter(tags=["gateway"])
@@ -54,10 +55,10 @@ async def chat_completions(
         raise HTTPException(status_code=502, detail=f"Gateway error: {exc}") from exc
 
 
-@router.get("/gateway/status")
+@router.get("/gateway/status", response_model=GatewayStatusResponse)
 def gateway_status(
     authorization: str | None = Header(None, alias="Authorization"),
-) -> dict:
+) -> GatewayStatusResponse:
     """Return gateway health status and provider information."""
     _verify_gateway_key(authorization)
-    return get_gateway().get_status()
+    return GatewayStatusResponse(**get_gateway().get_status())

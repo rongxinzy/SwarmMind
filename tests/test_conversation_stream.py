@@ -10,7 +10,7 @@ pytestmark = pytest.mark.requires_llm
 
 from swarmmind.api import supervisor
 from swarmmind.db import init_db, seed_default_agents
-from swarmmind.models import ConversationMode, GoalRequest, SendMessageRequest
+from swarmmind.models import ConversationMode, CreateConversationRequest, SendMessageRequest
 
 
 @pytest.fixture(autouse=True)
@@ -119,7 +119,7 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     )
 
     conversation = supervisor.create_conversation(
-        GoalRequest(goal="帮我分析 CRM MVP 应该怎么做"),
+        CreateConversationRequest(title="帮我分析 CRM MVP 应该怎么做"),
     )
 
     raw_lines = list(
@@ -220,7 +220,7 @@ def test_flash_mode_suppresses_reasoning_and_team_events(monkeypatch):
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
     conversation = supervisor.create_conversation(
-        GoalRequest(goal="快速给我一版摘要"),
+        CreateConversationRequest(title="快速给我一版摘要"),
     )
 
     raw_lines = list(
@@ -242,7 +242,7 @@ def test_reasoning_compatibility_uses_thinking_mode_without_team_events(monkeypa
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
     conversation = supervisor.create_conversation(
-        GoalRequest(goal="帮我展开分析"),
+        CreateConversationRequest(title="帮我展开分析"),
     )
 
     raw_lines = list(
@@ -263,7 +263,7 @@ def test_streaming_messages_api_remains_compatible_when_message_schema_extends(m
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
     conversation = supervisor.create_conversation(
-        GoalRequest(goal="验证消息 schema 扩展后的兼容性"),
+        CreateConversationRequest(title="验证消息 schema 扩展后的兼容性"),
     )
 
     list(
@@ -296,7 +296,7 @@ def test_streaming_user_message_gets_run_id(monkeypatch):
     monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
-    conversation = supervisor.create_conversation(GoalRequest(goal="run_id 测试"))
+    conversation = supervisor.create_conversation(CreateConversationRequest(title="run_id 测试"))
     list(
         supervisor._stream_conversation_message(
             conversation.id,
@@ -313,7 +313,7 @@ def test_retry_generates_different_run_id(monkeypatch):
     monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
-    conversation = supervisor.create_conversation(GoalRequest(goal="重试 run_id 测试"))
+    conversation = supervisor.create_conversation(CreateConversationRequest(title="重试 run_id 测试"))
 
     # First send
     list(
