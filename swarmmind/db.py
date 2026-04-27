@@ -124,6 +124,75 @@ def seed_default_agents() -> None:
     logger.info("Default agents seeded.")
 
 
+def seed_builtin_agent_teams() -> None:
+    """Insert built-in agent team templates."""
+    import json
+
+    from sqlmodel import Session
+
+    from swarmmind.db_models import AgentTeamTemplateDB
+
+    builtin_teams = [
+        {
+            "team_id": "software-dev",
+            "name": "软件开发 Team",
+            "description": "覆盖需求分析、架构设计、交付规划、测试验证的完整软件交付团队",
+            "icon": "💻",
+            "roles": [
+                {"role_id": "product_expert", "name": "产品专家", "description": "梳理范围与优先级", "default_skills": ["prd", "scope", "priority"]},
+                {"role_id": "architect", "name": "架构专家", "description": "识别系统边界与关键风险", "default_skills": ["system_design", "risk_analysis", "tech_selection"]},
+                {"role_id": "delivery_planner", "name": "交付规划专家", "description": "拆里程碑和任务", "default_skills": ["milestone", "task_breakdown", "estimation"]},
+                {"role_id": "test_validator", "name": "测试验证专家", "description": "补齐验收与风险检查", "default_skills": ["test_plan", "acceptance_criteria", "risk_check"]},
+            ],
+            "default_skills": ["coding", "code_review", "documentation"],
+            "runtime_profile_prefs": {"mode": "pro", "subagent_enabled": True},
+        },
+        {
+            "team_id": "data-analysis",
+            "name": "数据分析 Team",
+            "description": "数据清洗、分析、报表和洞察生成的专业团队",
+            "icon": "📊",
+            "roles": [
+                {"role_id": "data_engineer", "name": "数据工程师", "description": "数据清洗与预处理", "default_skills": ["etl", "data_cleaning"]},
+                {"role_id": "analyst", "name": "分析师", "description": "数据分析与可视化", "default_skills": ["statistics", "visualization", "insight"]},
+            ],
+            "default_skills": ["sql", "python", "charting"],
+            "runtime_profile_prefs": {"mode": "thinking", "subagent_enabled": False},
+        },
+        {
+            "team_id": "ops-automation",
+            "name": "运维自动化 Team",
+            "description": "基础设施、部署流水线、监控告警和自动化脚本",
+            "icon": "⚙️",
+            "roles": [
+                {"role_id": "sre", "name": "SRE", "description": "可靠性工程与监控", "default_skills": ["monitoring", "alerting", "incident_response"]},
+                {"role_id": "platform_engineer", "name": "平台工程师", "description": "基础设施与部署", "default_skills": ["iac", "cicd", "containerization"]},
+            ],
+            "default_skills": ["scripting", "automation", "troubleshooting"],
+            "runtime_profile_prefs": {"mode": "flash", "subagent_enabled": False},
+        },
+    ]
+
+    engine = get_engine()
+    with Session(engine) as session:
+        for team_data in builtin_teams:
+            team = AgentTeamTemplateDB(
+                team_id=team_data["team_id"],
+                name=team_data["name"],
+                description=team_data["description"],
+                icon=team_data["icon"],
+                roles=json.dumps(team_data["roles"]),
+                default_skills=json.dumps(team_data["default_skills"]),
+                runtime_profile_prefs=json.dumps(team_data["runtime_profile_prefs"]),
+                is_builtin=1,
+                is_enabled=1,
+            )
+            session.merge(team)
+        session.commit()
+
+    logger.info("Built-in agent team templates seeded.")
+
+
 _engine_lock = threading.Lock()
 _engine_cache: dict[str, Engine] = {}
 

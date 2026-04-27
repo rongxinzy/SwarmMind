@@ -335,3 +335,46 @@ class LlmProviderModelDB(SQLModel, table=True):
         Index("idx_llm_provider_models_provider", "provider_id"),
         Index("idx_llm_provider_models_enabled", "is_enabled"),
     )
+
+
+class AgentTeamTemplateDB(SQLModel, table=True):
+    """Reusable agent team template: roles, skills, runtime preferences."""
+
+    __tablename__ = "agent_team_templates"
+
+    team_id: str = Field(primary_key=True)
+    name: str
+    description: str | None = None
+    icon: str | None = None
+    roles: str = "[]"  # JSON list[dict]
+    default_workflow_id: str | None = None
+    default_skills: str = "[]"  # JSON list[str]
+    runtime_profile_prefs: str = "{}"  # JSON dict
+    is_builtin: int = Field(default=1)
+    is_enabled: int = Field(default=1)
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_agent_team_templates_builtin", "is_builtin"),
+        Index("idx_agent_team_templates_enabled", "is_enabled"),
+    )
+
+
+class ProjectAgentTeamInstanceDB(SQLModel, table=True):
+    """Team template instantiated inside a project."""
+
+    __tablename__ = "project_agent_team_instances"
+
+    instance_id: str = Field(primary_key=True)
+    project_id: str = Field(foreign_key="projects.project_id", unique=True)
+    team_template_id: str = Field(foreign_key="agent_team_templates.team_id")
+    instance_config: str = "{}"  # JSON dict
+    status: str = Field(default="active")  # 'active' | 'paused' | 'detached'
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_project_team_instances_project", "project_id"),
+        Index("idx_project_team_instances_template", "team_template_id"),
+    )

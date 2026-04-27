@@ -15,6 +15,7 @@ def startup_lifecycle(  # noqa: PLR0913
     *,
     init_db: Callable[[], None],
     seed_default_agents: Callable[[], None],
+    seed_builtin_agent_teams: Callable[[], None],
     sync_env_runtime_model: Callable[[], None],
     ensure_default_runtime_instance: Callable[[], None],
     cleanup_scanner: Callable[[], None],
@@ -26,6 +27,7 @@ def startup_lifecycle(  # noqa: PLR0913
     """Run startup initialization and launch cleanup scanner in background."""
     init_db()
     seed_default_agents()
+    seed_builtin_agent_teams()
     sync_env_runtime_model()
     ensure_default_runtime_instance()
     lifecycle_logger.info("SwarmMind API started on %s:%s", api_host, api_port)

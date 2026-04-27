@@ -68,6 +68,7 @@ def test_startup_lifecycle_runs_bootstrap_and_starts_cleanup_thread() -> None:
     startup_lifecycle(
         init_db=lambda: calls.append("init_db"),
         seed_default_agents=lambda: calls.append("seed_default_agents"),
+        seed_builtin_agent_teams=lambda: calls.append("seed_builtin_agent_teams"),
         sync_env_runtime_model=lambda: calls.append("sync_env_runtime_model"),
         ensure_default_runtime_instance=lambda: calls.append("ensure_default_runtime_instance"),
         cleanup_scanner=fake_cleanup,
@@ -79,6 +80,7 @@ def test_startup_lifecycle_runs_bootstrap_and_starts_cleanup_thread() -> None:
     assert calls == [
         "init_db",
         "seed_default_agents",
+        "seed_builtin_agent_teams",
         "sync_env_runtime_model",
         "ensure_default_runtime_instance",
     ]

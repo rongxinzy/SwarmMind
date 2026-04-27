@@ -22,11 +22,16 @@ from swarmmind.context_broker import (
     dispatch,
     record_supervisor_decision,
 )
-from swarmmind.db import init_db, seed_default_agents
+from swarmmind.db import init_db, seed_builtin_agent_teams, seed_default_agents
 from swarmmind.models import (
+    AgentTeamTemplate,
+    AgentTeamTemplateCreateRequest,
+    AgentTeamTemplateListResponse,
+    AgentTeamTemplateUpdateRequest,
     ApproveResponse,
     Artifact,
     ArtifactListResponse,
+    AttachTeamRequest,
     Conversation,
     ConversationListResponse,
     ConversationRuntimeOptions,
@@ -43,6 +48,7 @@ from swarmmind.models import (
     MessageListResponse,
     PendingResponse,
     Project,
+    ProjectAgentTeamInstance,
     ProjectCreateRequest,
     ProjectListResponse,
     ProjectUpdateRequest,
@@ -60,7 +66,9 @@ from swarmmind.models import (
     StrategyEntry,
     StrategyResponse,
     SupervisorDecision,
+    TeamRole,
     TraceSummaryResponse,
+    UpdateTeamInstanceRequest,
 )
 from swarmmind.renderer import render_status
 from swarmmind.repositories.action_proposal import (
@@ -71,7 +79,9 @@ from swarmmind.repositories.artifact import ArtifactRepository
 from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
+from swarmmind.repositories.agent_team import AgentTeamRepository
 from swarmmind.repositories.project import ProjectRepository
+from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
 from swarmmind.repositories.run import RunRepository
 from swarmmind.repositories.strategy import StrategyRepository
 from swarmmind.services.conversation_execution import ConversationExecutionService
@@ -113,6 +123,8 @@ memory_repo = MemoryRepository()
 project_repo = ProjectRepository()
 artifact_repo = ArtifactRepository()
 run_repo = RunRepository()
+agent_team_repo = AgentTeamRepository()
+project_team_repo = ProjectTeamInstanceRepository()
 conversation_support = ConversationSupportService(
     conversation_repo=conversation_repo,
     message_repo=message_repo,
@@ -167,6 +179,7 @@ async def lifespan(_app: FastAPI):
     startup_lifecycle(
         init_db=init_db,
         seed_default_agents=seed_default_agents,
+        seed_builtin_agent_teams=seed_builtin_agent_teams,
         sync_env_runtime_model=sync_env_runtime_model,
         ensure_default_runtime_instance=ensure_default_runtime_instance,
         cleanup_scanner=_cleanup_scanner,
@@ -536,6 +549,8 @@ respond_to_clarification = conversation_handlers.respond_to_clarification
 
 
 def _db_to_project(proj) -> Project:
+    team_instance = project_team_repo.get_by_project(proj.project_id)
+    agent_team = _db_to_team_instance(team_instance) if team_instance else None
     return Project(
         project_id=proj.project_id,
         title=proj.title,
@@ -547,7 +562,55 @@ def _db_to_project(proj) -> Project:
         status=proj.status,
         created_at=proj.created_at.isoformat() if proj.created_at else "",
         updated_at=proj.updated_at.isoformat() if proj.updated_at else "",
+        agent_team=agent_team,
     )
+
+
+def _db_to_team_instance(instance) -> ProjectAgentTeamInstance:
+    import json
+    template = agent_team_repo.get_by_id(instance.team_template_id)
+    return ProjectAgentTeamInstance(
+        instance_id=instance.instance_id,
+        project_id=instance.project_id,
+        team_template_id=instance.team_template_id,
+        team_name=template.name,
+        team_description=template.description,
+        roles=[TeamRole(**r) for r in json.loads(template.roles)] if template.roles else [],
+        instance_config=json.loads(instance.instance_config) if instance.instance_config else {},
+        status=instance.status,
+        created_at=instance.created_at.isoformat() if instance.created_at else "",
+        updated_at=instance.updated_at.isoformat() if instance.updated_at else "",
+    )
+
+
+def _db_to_team_template(team) -> AgentTeamTemplate:
+    import json
+    return AgentTeamTemplate(
+        team_id=team.team_id,
+        name=team.name,
+        description=team.description,
+        icon=team.icon,
+        roles=[TeamRole(**r) for r in json.loads(team.roles)] if team.roles else [],
+        default_skills=json.loads(team.default_skills) if team.default_skills else [],
+        runtime_profile_prefs=json.loads(team.runtime_profile_prefs) if team.runtime_profile_prefs else {},
+        is_builtin=bool(team.is_builtin),
+        is_enabled=bool(team.is_enabled),
+        created_at=team.created_at.isoformat() if team.created_at else "",
+        updated_at=team.updated_at.isoformat() if team.updated_at else "",
+    )
+
+
+def _attach_team_to_project(project_id: str, team_template_id: str | None) -> None:
+    """Attach a team template to a project if provided."""
+    if team_template_id:
+        try:
+            agent_team_repo.get_by_id(team_template_id)
+            project_team_repo.create(
+                project_id=project_id,
+                team_template_id=team_template_id,
+            )
+        except Exception as e:
+            logger.warning("Failed to attach team %s to project %s: %s", team_template_id, project_id, e)
 
 
 @app.get("/projects", tags=["projects"])
@@ -576,6 +639,7 @@ def create_project(body: ProjectCreateRequest) -> Project:
         source_conversation_id=body.source_conversation_id,
         next_step=body.next_step,
     )
+    _attach_team_to_project(proj.project_id, body.team_template_id)
     return _db_to_project(proj)
 
 
@@ -676,6 +740,10 @@ def promote_conversation(
 
     # Link conversation -> project
     project_repo.link_conversation(proj.project_id, conversation_id)
+
+    # Attach team if specified
+    team_template_id = body.team_template_id if body else None
+    _attach_team_to_project(proj.project_id, team_template_id)
 
     logger.info(
         "Conversation %s promoted to project %s (%s)",
@@ -838,6 +906,106 @@ def create_run(body: CreateRunRequest) -> Run:
         status=body.status.value,
     )
     return _db_to_run(run)
+
+
+# ---- Agent Team endpoints ----
+
+@app.get("/agent-teams", tags=["agent-teams"])
+def list_agent_teams() -> AgentTeamTemplateListResponse:
+    """List all enabled agent team templates."""
+    rows = agent_team_repo.list_all(include_disabled=False)
+    items = [_db_to_team_template(row) for row in rows]
+    return AgentTeamTemplateListResponse(items=items, total=len(items))
+
+
+@app.get("/agent-teams/{team_id}", tags=["agent-teams"], responses={404: {"description": "Team template not found"}})
+def get_agent_team(team_id: str) -> AgentTeamTemplate:
+    """Get a single agent team template by ID."""
+    team = agent_team_repo.get_by_id(team_id)
+    return _db_to_team_template(team)
+
+
+@app.post("/agent-teams", tags=["agent-teams"], status_code=201)
+def create_agent_team(body: AgentTeamTemplateCreateRequest) -> AgentTeamTemplate:
+    """Create a new custom agent team template."""
+    team = agent_team_repo.create(
+        name=body.name,
+        description=body.description,
+        icon=body.icon,
+        roles=[r.model_dump() for r in body.roles],
+        default_skills=body.default_skills,
+        runtime_profile_prefs=body.runtime_profile_prefs,
+        is_builtin=False,
+    )
+    return _db_to_team_template(team)
+
+
+@app.patch("/agent-teams/{team_id}", tags=["agent-teams"], responses={404: {"description": "Team template not found"}})
+def update_agent_team(team_id: str, body: AgentTeamTemplateUpdateRequest) -> AgentTeamTemplate:
+    """Update an agent team template."""
+    roles = [r.model_dump() for r in body.roles] if body.roles is not None else None
+    team = agent_team_repo.update(
+        team_id=team_id,
+        name=body.name,
+        description=body.description,
+        icon=body.icon,
+        roles=roles,
+        default_skills=body.default_skills,
+        runtime_profile_prefs=body.runtime_profile_prefs,
+        is_enabled=body.is_enabled,
+    )
+    return _db_to_team_template(team)
+
+
+@app.delete("/agent-teams/{team_id}", tags=["agent-teams"], status_code=204)
+def delete_agent_team(team_id: str) -> None:
+    """Disable an agent team template."""
+    agent_team_repo.delete(team_id)
+
+
+# ---- Project Agent Team Instance endpoints ----
+
+@app.post("/projects/{project_id}/agent-team", tags=["projects"], status_code=201, responses={
+    404: {"description": "Project or team template not found"},
+    409: {"description": "Project already has a team attached"},
+})
+def attach_team_to_project(project_id: str, body: AttachTeamRequest) -> ProjectAgentTeamInstance:
+    """Attach an agent team template to a project."""
+    project_repo.get_by_id(project_id)
+    instance = project_team_repo.create(
+        project_id=project_id,
+        team_template_id=body.team_template_id,
+        instance_config=body.instance_config,
+    )
+    return _db_to_team_instance(instance)
+
+
+@app.get("/projects/{project_id}/agent-team", tags=["projects"], responses={404: {"description": "Project not found"}})
+def get_project_team(project_id: str) -> ProjectAgentTeamInstance:
+    """Get the agent team instance attached to a project."""
+    project_repo.get_by_id(project_id)
+    instance = project_team_repo.get_by_project(project_id)
+    if instance is None:
+        raise HTTPException(status_code=404, detail="Project does not have an agent team attached")
+    return _db_to_team_instance(instance)
+
+
+@app.patch("/projects/{project_id}/agent-team", tags=["projects"], responses={404: {"description": "Project or team instance not found"}})
+def update_project_team(project_id: str, body: UpdateTeamInstanceRequest) -> ProjectAgentTeamInstance:
+    """Update the agent team instance for a project."""
+    instance = project_team_repo.update(
+        project_id=project_id,
+        instance_config=body.instance_config,
+        status=body.status,
+    )
+    return _db_to_team_instance(instance)
+
+
+@app.delete("/projects/{project_id}/agent-team", tags=["projects"], status_code=204)
+def detach_team_from_project(project_id: str) -> None:
+    """Detach the agent team from a project."""
+    project_repo.get_by_id(project_id)
+    project_team_repo.delete(project_id)
 
 
 app.include_router(conversation_router)

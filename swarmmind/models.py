@@ -399,6 +399,90 @@ class DeleteProjectResponse(BaseModel):
 # ---- Project models ----
 
 
+class TeamRole(BaseModel):
+    """A role within an agent team."""
+
+    role_id: str
+    name: str
+    description: str | None = None
+    default_skills: list[str] = []
+
+
+class AgentTeamTemplate(BaseModel):
+    """Reusable agent team template."""
+
+    team_id: str
+    name: str
+    description: str | None = None
+    icon: str | None = None
+    roles: list[TeamRole] = []
+    default_skills: list[str] = []
+    runtime_profile_prefs: dict = {}
+    is_builtin: bool = True
+    is_enabled: bool = True
+    created_at: str
+    updated_at: str
+
+
+class AgentTeamTemplateListResponse(BaseModel):
+    """Response containing list of agent team templates."""
+
+    items: list[AgentTeamTemplate]
+    total: int
+
+
+class AgentTeamTemplateCreateRequest(BaseModel):
+    """Request to create an agent team template."""
+
+    name: str = Field(..., max_length=100)
+    description: str | None = Field(None, max_length=500)
+    icon: str | None = Field(None, max_length=50)
+    roles: list[TeamRole] = []
+    default_skills: list[str] = []
+    runtime_profile_prefs: dict = {}
+
+
+class AgentTeamTemplateUpdateRequest(BaseModel):
+    """Request to update an agent team template."""
+
+    name: str | None = Field(None, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    icon: str | None = Field(None, max_length=50)
+    roles: list[TeamRole] | None = None
+    default_skills: list[str] | None = None
+    runtime_profile_prefs: dict | None = None
+    is_enabled: bool | None = None
+
+
+class ProjectAgentTeamInstance(BaseModel):
+    """Team template instantiated inside a project."""
+
+    instance_id: str
+    project_id: str
+    team_template_id: str
+    team_name: str
+    team_description: str | None = None
+    roles: list[TeamRole] = []
+    instance_config: dict = {}
+    status: str = "active"
+    created_at: str
+    updated_at: str
+
+
+class AttachTeamRequest(BaseModel):
+    """Request to attach a team template to a project."""
+
+    team_template_id: str
+    instance_config: dict = {}
+
+
+class UpdateTeamInstanceRequest(BaseModel):
+    """Request to update a project team instance."""
+
+    instance_config: dict | None = None
+    status: str | None = Field(None, pattern=r"^(active|paused|detached)$")
+
+
 class ProjectStatus(str, Enum):
     """Project lifecycle status."""
 
@@ -417,6 +501,7 @@ class Project(BaseModel):
     source_conversation_id: str | None = None
     next_step: str | None = None
     status: ProjectStatus = ProjectStatus.ACTIVE
+    agent_team: ProjectAgentTeamInstance | None = None
     created_at: str
     updated_at: str
 
@@ -430,6 +515,7 @@ class ProjectCreateRequest(BaseModel):
     constraints: str | None = Field(None, max_length=2000)
     source_conversation_id: str | None = None
     next_step: str | None = Field(None, max_length=1000)
+    team_template_id: str | None = None
 
 
 class ProjectListResponse(BaseModel):
@@ -447,6 +533,7 @@ class PromoteConversationRequest(BaseModel):
     scope: str | None = Field(None, max_length=2000)
     constraints: str | None = Field(None, max_length=2000)
     next_step: str | None = Field(None, max_length=1000)
+    team_template_id: str | None = None
 
 
 class TraceSummaryResponse(BaseModel):
