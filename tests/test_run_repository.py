@@ -97,6 +97,15 @@ class TestRunRepository:
         fetched = run_repo.get_by_id(run.run_id)
         assert fetched.project_id == proj.project_id
 
+    def test_create_with_project_only(self, run_repo):
+        proj_repo = ProjectRepository()
+        proj = proj_repo.create(title="CRM Project")
+
+        run = run_repo.create(project_id=proj.project_id, goal="Plan it")
+        assert run.project_id == proj.project_id
+        assert run.conversation_id is None
+        assert run.goal == "Plan it"
+
     def test_get_not_found(self, run_repo):
         with pytest.raises(Exception):
             run_repo.get_by_id("nonexistent")

@@ -62,6 +62,62 @@ class TestProjectEndpoints:
         assert "A" in titles
         assert "B" in titles
 
+    def test_create_project_with_phase_and_risk_level(self):
+        response = client.post(
+            "/projects",
+            json={
+                "title": "Phased Project",
+                "phase": "需求澄清",
+                "risk_level": "high",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["title"] == "Phased Project"
+        assert data["phase"] == "需求澄清"
+        assert data["risk_level"] == "high"
+
+    def test_get_project_overview(self):
+        from swarmmind.repositories.approval_request import ApprovalRequestRepository
+        from swarmmind.repositories.artifact import ArtifactRepository
+        from swarmmind.repositories.run import RunRepository
+        from swarmmind.repositories.task import TaskRepository
+
+        # Create project
+        proj_resp = client.post("/projects", json={"title": "Overview Project"})
+        proj_id = proj_resp.json()["project_id"]
+
+        task_repo = TaskRepository()
+        run_repo = RunRepository()
+        artifact_repo = ArtifactRepository()
+        approval_repo = ApprovalRequestRepository()
+
+        task_repo.create(project_id=proj_id, title="Task 1", status="todo")
+        task_repo.create(project_id=proj_id, title="Task 2", status="blocked")
+        run_repo.create(project_id=proj_id, goal="Run 1")
+        artifact_repo.create(project_id=proj_id, name="Artifact 1")
+        approval_repo.create(project_id=proj_id, title="Approval 1", status="pending")
+        approval_repo.create(project_id=proj_id, title="Approval 2", status="approved")
+
+        response = client.get(f"/projects/{proj_id}/overview")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["project"]["title"] == "Overview Project"
+        assert data["stats"]["task_count"] == 2
+        assert data["stats"]["blocked_count"] == 1
+        assert data["stats"]["run_count"] == 1
+        assert data["stats"]["artifact_count"] == 1
+        assert data["stats"]["pending_approval_count"] == 1
+        assert len(data["recent_tasks"]) == 2
+        assert len(data["recent_runs"]) == 1
+        assert len(data["recent_artifacts"]) == 1
+        assert len(data["recent_approvals"]) == 2
+
+    def test_get_project_overview_not_found(self):
+        response = client.get("/projects/nonexistent/overview")
+        assert response.status_code == 404
+
 
 class TestPromoteConversation:
     """Promote to Project endpoint tests."""

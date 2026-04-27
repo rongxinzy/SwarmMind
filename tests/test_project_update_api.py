@@ -67,6 +67,19 @@ class TestUpdateProject:
         assert data["title"] == "Project"
         assert data["goal"] == "Work"
 
+    def test_update_phase_and_risk_level(self):
+        repo = ProjectRepository()
+        proj = repo.create(title="Project")
+
+        response = client.patch(
+            f"/projects/{proj.project_id}",
+            json={"phase": "设计", "risk_level": "medium"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["phase"] == "设计"
+        assert data["risk_level"] == "medium"
+
     def test_update_not_found(self):
         response = client.patch("/projects/nonexistent", json={"title": "X"})
         assert response.status_code == 404

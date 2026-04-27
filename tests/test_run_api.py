@@ -85,6 +85,27 @@ class TestRunEndpoints:
         assert data["status"] == "running"
         assert "run_id" in data
 
+    def test_create_run_project_only(self):
+        proj_repo = ProjectRepository()
+        proj = proj_repo.create(title="Project")
+
+        response = client.post("/runs", json={"project_id": proj.project_id, "goal": "Project run"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["goal"] == "Project run"
+        assert data["conversation_id"] is None
+        assert data["project_id"] == proj.project_id
+        assert data["status"] == "running"
+        assert "run_id" in data
+
+    def test_create_run_project_not_found(self):
+        response = client.post("/runs", json={"project_id": "nonexistent", "goal": "X"})
+        assert response.status_code == 404
+
+    def test_create_run_neither_id(self):
+        response = client.post("/runs", json={"goal": "X"})
+        assert response.status_code == 422
+
     def test_create_run_conversation_not_found(self):
         response = client.post("/runs", json={"conversation_id": "nonexistent", "goal": "X"})
         assert response.status_code == 404

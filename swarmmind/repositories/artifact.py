@@ -21,6 +21,9 @@ class ArtifactRepository:
         name: str | None = None,
         artifact_type: str | None = None,
         project_id: str | None = None,
+        run_id: str | None = None,
+        task_id: str | None = None,
+        author_role: str | None = None,
     ) -> ArtifactDB:
         """Create a new artifact record."""
         with session_scope() as session:
@@ -29,6 +32,9 @@ class ArtifactRepository:
                 conversation_id=conversation_id,
                 project_id=project_id,
                 message_id=message_id,
+                run_id=run_id,
+                task_id=task_id,
+                author_role=author_role,
                 name=name,
                 artifact_type=artifact_type,
             )

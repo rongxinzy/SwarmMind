@@ -29,19 +29,29 @@ from swarmmind.models import (
     AgentTeamTemplateCreateRequest,
     AgentTeamTemplateListResponse,
     AgentTeamTemplateUpdateRequest,
+    ApprovalRequest,
+    ApprovalRequestListResponse,
+    ApprovalStatus,
     ApproveResponse,
     Artifact,
     ArtifactListResponse,
     AttachTeamRequest,
+    AuditLogEntry,
+    AuditLogListResponse,
     Conversation,
     ConversationListResponse,
     ConversationRuntimeOptions,
     ConversationTraceResponse,
+    CreateApprovalRequest,
+    CreateAuditLogEntry,
     CreateConversationRequest,
     CreateRunRequest,
+    CreateTaskRequest,
+    DeleteApprovalResponse,
+    DeleteAuditLogResponse,
     DeleteConversationResponse,
-    UpdateRunRequest,
     DeleteProjectResponse,
+    DeleteTaskResponse,
     DispatchResponse,
     ExtractArtifactsResponse,
     GoalRequest,
@@ -53,12 +63,14 @@ from swarmmind.models import (
     ProjectAgentTeamInstance,
     ProjectCreateRequest,
     ProjectListResponse,
+    ProjectOverviewResponse,
     ProjectUpdateRequest,
     PromoteConversationRequest,
     ReadyResponse,
     RecentConversationResponse,
     RejectRequest,
     RejectResponse,
+    RiskTier,
     Run,
     RunListResponse,
     RuntimeModelCatalogResponse,
@@ -68,8 +80,13 @@ from swarmmind.models import (
     StrategyEntry,
     StrategyResponse,
     SupervisorDecision,
+    Task,
+    TaskListResponse,
     TeamRole,
     TraceSummaryResponse,
+    UpdateApprovalRequest,
+    UpdateRunRequest,
+    UpdateTaskRequest,
     UpdateTeamInstanceRequest,
 )
 from swarmmind.renderer import render_status
@@ -77,7 +94,9 @@ from swarmmind.repositories.action_proposal import (
     ActionProposalRepository,
     _db_to_action_proposal,
 )
+from swarmmind.repositories.approval_request import ApprovalRequestRepository
 from swarmmind.repositories.artifact import ArtifactRepository
+from swarmmind.repositories.audit_log import AuditLogRepository
 from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
@@ -86,6 +105,7 @@ from swarmmind.repositories.project import ProjectRepository
 from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
 from swarmmind.repositories.run import RunRepository
 from swarmmind.repositories.strategy import StrategyRepository
+from swarmmind.repositories.task import TaskRepository
 from swarmmind.services.conversation_execution import ConversationExecutionService
 from swarmmind.services.conversation_support import (
     ConversationSupportService,
@@ -120,6 +140,7 @@ from swarmmind.services.stream_events import (
 conversation_repo = ConversationRepository()
 message_repo = MessageRepository()
 action_proposal_repo = ActionProposalRepository()
+approval_request_repo = ApprovalRequestRepository()
 strategy_repo = StrategyRepository()
 memory_repo = MemoryRepository()
 project_repo = ProjectRepository()
@@ -127,6 +148,8 @@ artifact_repo = ArtifactRepository()
 run_repo = RunRepository()
 agent_team_repo = AgentTeamRepository()
 project_team_repo = ProjectTeamInstanceRepository()
+task_repo = TaskRepository()
+audit_log_repo = AuditLogRepository()
 conversation_support = ConversationSupportService(
     conversation_repo=conversation_repo,
     message_repo=message_repo,
@@ -562,6 +585,8 @@ def _db_to_project(proj) -> Project:
         source_conversation_id=proj.source_conversation_id,
         conversation_id=proj.conversation_id,
         next_step=proj.next_step,
+        phase=proj.phase,
+        risk_level=proj.risk_level,
         status=proj.status,
         created_at=proj.created_at.isoformat() if proj.created_at else "",
         updated_at=proj.updated_at.isoformat() if proj.updated_at else "",
@@ -662,6 +687,8 @@ def create_project(body: ProjectCreateRequest) -> Project:
         constraints=body.constraints,
         source_conversation_id=body.source_conversation_id,
         next_step=body.next_step,
+        phase=body.phase,
+        risk_level=body.risk_level,
     )
     _ensure_project_conversation(proj.project_id)
     _attach_team_to_project(proj.project_id, body.team_template_id)
@@ -824,6 +851,9 @@ def _db_to_artifact(art) -> Artifact:
         conversation_id=art.conversation_id,
         project_id=art.project_id,
         message_id=art.message_id,
+        run_id=art.run_id,
+        task_id=art.task_id,
+        author_role=art.author_role,
         name=art.name,
         artifact_type=art.artifact_type,
         created_at=art.created_at.isoformat() if art.created_at else "",
@@ -872,6 +902,10 @@ def update_project(project_id: str, body: ProjectUpdateRequest) -> Project:
         fields["constraints"] = body.constraints
     if body.next_step is not None:
         fields["next_step"] = body.next_step
+    if body.phase is not None:
+        fields["phase"] = body.phase
+    if body.risk_level is not None:
+        fields["risk_level"] = body.risk_level
     if body.status is not None:
         fields["status"] = body.status.value
 
@@ -881,6 +915,43 @@ def update_project(project_id: str, body: ProjectUpdateRequest) -> Project:
 
     project_repo.update(project_id, **fields)
     return _db_to_project(project_repo.get_by_id(project_id))
+
+
+@app.get("/projects/{project_id}/overview", tags=["projects"], responses={404: {"description": "Project not found"}})
+def get_project_overview(project_id: str) -> ProjectOverviewResponse:
+    """Get aggregated project overview with stats and recent items."""
+    proj = project_repo.get_by_id(project_id)
+
+    tasks = task_repo.list_by_project(project_id)
+    artifacts = artifact_repo.list_by_project(project_id)
+    runs = run_repo.list_by_project(project_id)
+    approvals = approval_request_repo.list_by_project(project_id)
+
+    blocked_count = sum(1 for t in tasks if t.status == "blocked")
+    pending_approval_count = sum(1 for a in approvals if a.status == "pending")
+
+    stats = {
+        "blocked_count": blocked_count,
+        "pending_approval_count": pending_approval_count,
+        "task_count": len(tasks),
+        "artifact_count": len(artifacts),
+        "run_count": len(runs),
+    }
+
+    recent_limit = 5
+    recent_tasks = [_db_to_task(t) for t in tasks[:recent_limit]]
+    recent_artifacts = [_db_to_artifact(a) for a in artifacts[:recent_limit]]
+    recent_runs = [_db_to_run(r) for r in runs[:recent_limit]]
+    recent_approvals = [_db_to_approval_request(a) for a in approvals[:recent_limit]]
+
+    return ProjectOverviewResponse(
+        project=_db_to_project(proj),
+        stats=stats,
+        recent_tasks=recent_tasks,
+        recent_artifacts=recent_artifacts,
+        recent_runs=recent_runs,
+        recent_approvals=recent_approvals,
+    )
 
 
 # ---- Run endpoints ----
@@ -926,9 +997,11 @@ def get_run(run_id: str) -> Run:
 def create_run(body: CreateRunRequest) -> Run:
     """Create a run record.
 
-    Links to a conversation and optionally a project.
+    Links to a conversation and/or a project.
+    At least one of conversation_id or project_id must be provided.
     """
-    conversation_repo.get_by_id(body.conversation_id)
+    if body.conversation_id:
+        conversation_repo.get_by_id(body.conversation_id)
     if body.project_id:
         project_repo.get_by_id(body.project_id)
     run = run_repo.create(
@@ -951,6 +1024,296 @@ def update_run(run_id: str, body: UpdateRunRequest) -> Run:
         summary=body.summary,
     )
     return _db_to_run(run)
+
+
+# ---- Task endpoints ----
+
+
+def _db_to_task(task) -> Task:
+    return Task(
+        task_id=task.task_id,
+        project_id=task.project_id,
+        run_id=task.run_id,
+        title=task.title,
+        description=task.description,
+        status=task.status,
+        assignee_role=task.assignee_role,
+        source_workstream=task.source_workstream,
+        artifact_ids=task.artifact_ids or [],
+        priority=task.priority,
+        created_at=task.created_at.isoformat() if task.created_at else "",
+        updated_at=task.updated_at.isoformat() if task.updated_at else "",
+    )
+
+
+@app.get("/projects/{project_id}/tasks", tags=["projects"], responses={404: {"description": "Project not found"}})
+def list_project_tasks(project_id: str) -> TaskListResponse:
+    """List tasks for a project."""
+    project_repo.get_by_id(project_id)
+    rows = task_repo.list_by_project(project_id)
+    return TaskListResponse(items=[_db_to_task(r) for r in rows], total=len(rows))
+
+
+@app.post("/projects/{project_id}/tasks", tags=["projects"], responses={404: {"description": "Project not found"}})
+def create_task(project_id: str, body: CreateTaskRequest) -> Task:
+    """Create a new task for a project."""
+    project_repo.get_by_id(project_id)
+    task = task_repo.create(
+        project_id=project_id,
+        title=body.title,
+        description=body.description,
+        status=body.status.value,
+        assignee_role=body.assignee_role,
+        source_workstream=body.source_workstream,
+        artifact_ids=body.artifact_ids,
+        priority=body.priority.value,
+    )
+    return _db_to_task(task)
+
+
+@app.get("/projects/{project_id}/tasks/{task_id}", tags=["projects"], responses={404: {"description": "Project or task not found"}})
+def get_task(project_id: str, task_id: str) -> Task:
+    """Get a single task by ID."""
+    project_repo.get_by_id(project_id)
+    task = task_repo.get_by_id(task_id)
+    if task.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+    return _db_to_task(task)
+
+
+@app.patch("/projects/{project_id}/tasks/{task_id}", tags=["projects"], responses={404: {"description": "Project or task not found"}})
+def update_task(project_id: str, task_id: str, body: UpdateTaskRequest) -> Task:
+    """Update a task. Only provided fields are changed."""
+    project_repo.get_by_id(project_id)
+    task = task_repo.get_by_id(task_id)
+    if task.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+
+    fields: dict[str, object] = {}
+    if body.title is not None:
+        fields["title"] = body.title
+    if body.description is not None:
+        fields["description"] = body.description
+    if body.status is not None:
+        fields["status"] = body.status.value
+    if body.assignee_role is not None:
+        fields["assignee_role"] = body.assignee_role
+    if body.source_workstream is not None:
+        fields["source_workstream"] = body.source_workstream
+    if body.artifact_ids is not None:
+        fields["artifact_ids"] = body.artifact_ids
+    if body.priority is not None:
+        fields["priority"] = body.priority.value
+
+    if not fields:
+        return _db_to_task(task)
+
+    updated = task_repo.update(task_id, **fields)
+    return _db_to_task(updated)
+
+
+@app.delete("/projects/{project_id}/tasks/{task_id}", tags=["projects"], responses={404: {"description": "Project or task not found"}})
+def delete_task(project_id: str, task_id: str) -> DeleteTaskResponse:
+    """Delete a task."""
+    project_repo.get_by_id(project_id)
+    task = task_repo.get_by_id(task_id)
+    if task.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Task not found in this project")
+    task_repo.delete(task_id)
+    return DeleteTaskResponse(task_id=task_id)
+
+
+# ---- Approval Request endpoints ----
+
+
+def _db_to_approval_request(ar) -> ApprovalRequest:
+    return ApprovalRequest(
+        approval_id=ar.approval_id,
+        project_id=ar.project_id,
+        run_id=ar.run_id,
+        action_proposal_id=ar.action_proposal_id,
+        title=ar.title,
+        description=ar.description,
+        risk_tier=RiskTier(ar.risk_tier),
+        requested_capability=ar.requested_capability,
+        evidence=ar.evidence,
+        impact=ar.impact,
+        approver_role=ar.approver_role,
+        recovery_behavior=ar.recovery_behavior,
+        status=ApprovalStatus(ar.status),
+        decision_reason=ar.decision_reason,
+        created_at=ar.created_at.isoformat() if ar.created_at else "",
+        updated_at=ar.updated_at.isoformat() if ar.updated_at else "",
+    )
+
+
+@app.get("/approvals", tags=["approvals"])
+def list_approvals(
+    project_id: str | None = Query(None),
+    status: str | None = Query(None),
+    risk_tier: str | None = Query(None),
+) -> ApprovalRequestListResponse:
+    """List approval requests with optional filters."""
+    rows = approval_request_repo.list_by_filters(
+        project_id=project_id,
+        status=status,
+        risk_tier=risk_tier,
+    )
+    return ApprovalRequestListResponse(
+        items=[_db_to_approval_request(r) for r in rows],
+        total=len(rows),
+    )
+
+
+@app.post("/approvals", tags=["approvals"], responses={404: {"description": "Project not found"}})
+def create_approval(body: CreateApprovalRequest) -> ApprovalRequest:
+    """Create a new approval request."""
+    project_repo.get_by_id(body.project_id)
+    if body.run_id:
+        run_repo.get_by_id(body.run_id)
+    ar = approval_request_repo.create(
+        project_id=body.project_id,
+        run_id=body.run_id,
+        title=body.title,
+        description=body.description,
+        risk_tier=body.risk_tier.value,
+        requested_capability=body.requested_capability,
+        evidence=body.evidence,
+        impact=body.impact,
+        approver_role=body.approver_role,
+        recovery_behavior=body.recovery_behavior,
+    )
+    return _db_to_approval_request(ar)
+
+
+@app.get("/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}})
+def get_approval(approval_id: str) -> ApprovalRequest:
+    """Get a single approval request by ID."""
+    ar = approval_request_repo.get(approval_id)
+    return _db_to_approval_request(ar)
+
+
+@app.patch("/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}, 409: {"description": "Invalid status transition"}})
+def update_approval(approval_id: str, body: UpdateApprovalRequest) -> ApprovalRequest:
+    """Update an approval request. Only provided fields are changed."""
+    ar = approval_request_repo.get(approval_id)
+
+    fields: dict[str, object] = {}
+    if body.status is not None:
+        if body.status in (ApprovalStatus.APPROVED, ApprovalStatus.REJECTED):
+            if ar.status != ApprovalStatus.PENDING.value:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Only pending requests can be approved or rejected. Current status: {ar.status}",
+                )
+        fields["status"] = body.status.value
+    if body.decision_reason is not None:
+        fields["decision_reason"] = body.decision_reason
+    if body.title is not None:
+        fields["title"] = body.title
+    if body.description is not None:
+        fields["description"] = body.description
+    if body.risk_tier is not None:
+        fields["risk_tier"] = body.risk_tier.value
+
+    if not fields:
+        return _db_to_approval_request(ar)
+
+    updated = approval_request_repo.update(approval_id, **fields)
+    return _db_to_approval_request(updated)
+
+
+@app.delete("/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}})
+def delete_approval(approval_id: str) -> DeleteApprovalResponse:
+    """Delete an approval request."""
+    approval_request_repo.get(approval_id)
+    approval_request_repo.delete(approval_id)
+    return DeleteApprovalResponse(approval_id=approval_id)
+
+
+# ---- Audit Log endpoints ----
+
+
+def _db_to_audit_log_entry(entry) -> AuditLogEntry:
+    return AuditLogEntry(
+        audit_id=entry.audit_id,
+        audit_type=entry.audit_type,
+        project_id=entry.project_id,
+        run_id=entry.run_id,
+        approval_id=entry.approval_id,
+        actor_id=entry.actor_id,
+        actor_type=entry.actor_type,
+        decision=entry.decision,
+        reason=entry.reason,
+        metadata=entry.extra_data or {},
+        timestamp=entry.timestamp.isoformat() if entry.timestamp else "",
+    )
+
+
+@app.get("/audit-logs", tags=["audit-logs"])
+def list_audit_logs(
+    project_id: str | None = Query(None),
+    run_id: str | None = Query(None),
+    approval_id: str | None = Query(None),
+) -> AuditLogListResponse:
+    """List audit log entries with optional filters."""
+    rows = audit_log_repo.list_by_filters(
+        project_id=project_id,
+        run_id=run_id,
+        approval_id=approval_id,
+    )
+    return AuditLogListResponse(
+        items=[_db_to_audit_log_entry(r) for r in rows],
+        total=len(rows),
+    )
+
+
+@app.post("/audit-logs", tags=["audit-logs"], responses={404: {"description": "Project not found"}})
+def create_audit_log(body: CreateAuditLogEntry) -> AuditLogEntry:
+    """Create a new audit log entry."""
+    project_repo.get_by_id(body.project_id)
+    if body.run_id:
+        run_repo.get_by_id(body.run_id)
+    if body.approval_id:
+        approval_request_repo.get(body.approval_id)
+    entry = audit_log_repo.create(
+        audit_type=body.audit_type,
+        project_id=body.project_id,
+        run_id=body.run_id,
+        approval_id=body.approval_id,
+        actor_id=body.actor_id,
+        actor_type=body.actor_type,
+        decision=body.decision,
+        reason=body.reason,
+        extra_data=body.metadata,
+    )
+    return _db_to_audit_log_entry(entry)
+
+
+@app.get("/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}})
+def get_audit_log(audit_id: str) -> AuditLogEntry:
+    """Get a single audit log entry by ID."""
+    entry = audit_log_repo.get(audit_id)
+    return _db_to_audit_log_entry(entry)
+
+
+@app.delete("/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}})
+def delete_audit_log(audit_id: str) -> DeleteAuditLogResponse:
+    """Delete an audit log entry."""
+    audit_log_repo.get(audit_id)
+    audit_log_repo.delete(audit_id)
+    return DeleteAuditLogResponse(audit_id=audit_id)
+
+
+@app.get("/projects/{project_id}/audit", tags=["projects"], responses={404: {"description": "Project not found"}})
+def list_project_audit_logs(project_id: str) -> AuditLogListResponse:
+    """List audit log entries for a specific project."""
+    project_repo.get_by_id(project_id)
+    rows = audit_log_repo.list_by_project(project_id)
+    return AuditLogListResponse(
+        items=[_db_to_audit_log_entry(r) for r in rows],
+        total=len(rows),
+    )
 
 
 # ---- Agent Team endpoints ----

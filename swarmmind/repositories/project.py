@@ -43,6 +43,8 @@ class ProjectRepository:
         constraints: str | None = None,
         source_conversation_id: str | None = None,
         next_step: str | None = None,
+        phase: str | None = None,
+        risk_level: str | None = None,
     ) -> ProjectDB:
         """Create a new project."""
         with session_scope() as session:
@@ -54,6 +56,8 @@ class ProjectRepository:
                 constraints=constraints,
                 source_conversation_id=source_conversation_id,
                 next_step=next_step,
+                phase=phase,
+                risk_level=risk_level,
             )
             session.add(proj)
             session.commit()
@@ -70,6 +74,8 @@ class ProjectRepository:
         scope: str | None = None,
         constraints: str | None = None,
         next_step: str | None = None,
+        phase: str | None = None,
+        risk_level: str | None = None,
         status: str | None = None,
     ) -> ProjectDB:
         """Update project fields."""
@@ -87,6 +93,10 @@ class ProjectRepository:
                 proj.constraints = constraints
             if next_step is not None:
                 proj.next_step = next_step
+            if phase is not None:
+                proj.phase = phase
+            if risk_level is not None:
+                proj.risk_level = risk_level
             if status is not None:
                 proj.status = status
             proj.updated_at = utc_now()

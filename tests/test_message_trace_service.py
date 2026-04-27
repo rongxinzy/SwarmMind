@@ -171,3 +171,111 @@ def test_multi_turn_summary() -> None:
     assert "子代理协作 1 次" in result.summary
     assert "工具调用 1 次" in result.summary
     assert "生成产物 1 个" in result.summary
+
+
+# ---- extract_artifacts tests ----
+
+
+class FakeArtifactRepository:
+    """Fake artifact repo that records create calls."""
+
+    def __init__(self) -> None:
+        self.artifacts: list[dict[str, Any]] = []
+
+    def create(self, **kwargs: Any) -> Any:
+        artifact = type("FakeArtifact", (), {"artifact_id": f"art-{len(self.artifacts)}", **kwargs})()
+        self.artifacts.append(artifact)
+        return artifact
+
+    def list_by_conversation(self, _conversation_id: str) -> list[Any]:
+        return []
+
+
+def test_extract_artifacts_from_trace_events() -> None:
+    fake_repo = FakeArtifactRepository()
+    svc = MessageTraceService(
+        conversation_trace_service=FakeConversationTraceService({
+            "events": [
+                {"type": "artifact_created", "artifact_path": "/tmp/report.md", "artifact_type": "write_file", "run_id": "run-1", "task_id": "task-1", "author_role": "架构专家"},
+                {"type": "artifact_created", "artifact_path": "/tmp/plan.md", "artifact_type": "present_files"},
+            ],
+        }),
+        artifact_repo=fake_repo,
+    )
+
+    created = svc.extract_artifacts("conv-1", project_id="proj-1")
+
+    assert len(created) == 2
+    assert created[0]["name"] == "/tmp/report.md"
+    assert created[0]["run_id"] == "run-1"
+    assert created[0]["task_id"] == "task-1"
+    assert created[0]["author_role"] == "架构专家"
+    assert created[1]["name"] == "/tmp/plan.md"
+    assert created[1]["run_id"] is None
+    assert created[1]["task_id"] is None
+    assert created[1]["author_role"] is None
+
+
+def test_extract_artifacts_uses_fallback_params() -> None:
+    fake_repo = FakeArtifactRepository()
+    svc = MessageTraceService(
+        conversation_trace_service=FakeConversationTraceService({
+            "events": [
+                {"type": "artifact_created", "artifact_path": "/tmp/design.md"},
+            ],
+        }),
+        artifact_repo=fake_repo,
+    )
+
+    created = svc.extract_artifacts(
+        "conv-1",
+        project_id="proj-1",
+        run_id="run-2",
+        task_id="task-2",
+        author_role="产品专家",
+    )
+
+    assert len(created) == 1
+    assert created[0]["run_id"] == "run-2"
+    assert created[0]["task_id"] == "task-2"
+    assert created[0]["author_role"] == "产品专家"
+
+
+def test_extract_artifacts_skips_duplicates() -> None:
+    fake_repo = FakeArtifactRepository()
+    svc = MessageTraceService(
+        conversation_trace_service=FakeConversationTraceService({
+            "events": [
+                {"type": "artifact_created", "artifact_path": "/tmp/report.md"},
+                {"type": "artifact_created", "artifact_path": "/tmp/report.md"},
+            ],
+        }),
+        artifact_repo=fake_repo,
+    )
+
+    created = svc.extract_artifacts("conv-1")
+
+    assert len(created) == 1
+
+
+def test_extract_artifacts_no_repo_returns_empty() -> None:
+    svc = MessageTraceService(
+        conversation_trace_service=FakeConversationTraceService({"events": []}),
+        artifact_repo=None,
+    )
+
+    created = svc.extract_artifacts("conv-1")
+
+    assert created == []
+
+
+def test_extract_artifacts_trace_failure_returns_empty() -> None:
+    fake_repo = FakeArtifactRepository()
+    svc = MessageTraceService(
+        conversation_trace_service=FakeConversationTraceService(RuntimeError("store down")),
+        artifact_repo=fake_repo,
+    )
+
+    created = svc.extract_artifacts("conv-1")
+
+    assert created == []

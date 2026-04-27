@@ -18,7 +18,7 @@ class RunRepository:
     def create(
         self,
         *,
-        conversation_id: str,
+        conversation_id: str | None = None,
         project_id: str | None = None,
         goal: str | None = None,
         status: str = "running",

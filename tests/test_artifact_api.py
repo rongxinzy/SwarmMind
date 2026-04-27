@@ -12,6 +12,9 @@ from swarmmind.api.supervisor import app
 from swarmmind.db import dispose_engines, init_db
 from swarmmind.repositories.artifact import ArtifactRepository
 from swarmmind.repositories.conversation import ConversationRepository
+from swarmmind.repositories.project import ProjectRepository
+from swarmmind.repositories.run import RunRepository
+from swarmmind.repositories.task import TaskRepository
 
 client = TestClient(app)
 
@@ -89,3 +92,35 @@ class TestArtifactEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert data["extracted"] == 0
+
+    def test_list_artifacts_with_trace_fields(self):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        run_repo = RunRepository()
+        proj_repo = ProjectRepository()
+        task_repo = TaskRepository()
+
+        conv = conv_repo.create("Chat", "pending")
+        run = run_repo.create(conversation_id=conv.id)
+        proj = proj_repo.create(title="Test Project")
+        task = task_repo.create(project_id=proj.project_id, title="Test Task")
+
+        art_repo.create(
+            conv.id,
+            None,
+            "report.md",
+            "write_file",
+            run_id=run.run_id,
+            task_id=task.task_id,
+            author_role="产品专家",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        item = data["items"][0]
+        assert item["name"] == "report.md"
+        assert item["run_id"] == run.run_id
+        assert item["task_id"] == task.task_id
+        assert item["author_role"] == "产品专家"

@@ -8,6 +8,9 @@ from swarmmind.db import dispose_engines, init_db
 from swarmmind.repositories.artifact import ArtifactRepository
 from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.message import MessageRepository
+from swarmmind.repositories.project import ProjectRepository
+from swarmmind.repositories.run import RunRepository
+from swarmmind.repositories.task import TaskRepository
 
 
 @pytest.fixture(autouse=True)
@@ -76,3 +79,34 @@ class TestArtifactRepository:
     def test_get_not_found(self, artifact_repo):
         with pytest.raises(Exception):
             artifact_repo.get_by_id("nonexistent")
+
+    def test_create_with_trace_fields(self, artifact_repo):
+        conv_repo = ConversationRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        run_repo = RunRepository()
+        run = run_repo.create(conversation_id=conv.id)
+
+        proj_repo = ProjectRepository()
+        proj = proj_repo.create(title="Test Project")
+
+        task_repo = TaskRepository()
+        task = task_repo.create(project_id=proj.project_id, title="Test Task")
+
+        art = artifact_repo.create(
+            conversation_id=conv.id,
+            message_id=None,
+            name="report.md",
+            artifact_type="write_file",
+            run_id=run.run_id,
+            task_id=task.task_id,
+            author_role="架构专家",
+        )
+        assert art.run_id == run.run_id
+        assert art.task_id == task.task_id
+        assert art.author_role == "架构专家"
+
+        fetched = artifact_repo.get_by_id(art.artifact_id)
+        assert fetched.run_id == run.run_id
+        assert fetched.task_id == task.task_id
+        assert fetched.author_role == "架构专家"

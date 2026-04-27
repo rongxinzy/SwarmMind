@@ -69,6 +69,9 @@ def health_check() -> dict:
         "compaction_hints",
         "runtime_models",
         "runtime_model_assignments",
+        "tasks",
+        "approval_requests",
+        "audit_logs",
     ]
 
     inspector = inspect(get_engine())
@@ -313,7 +316,9 @@ def init_orm_db() -> None:
     from swarmmind.db_models import (  # noqa: F401
         ActionProposalDB,
         AgentDB,
+        ApprovalRequestDB,
         ArtifactDB,
+        AuditLogDB,
         CompactionHintDB,
         ConversationDB,
         EventLogDB,
@@ -329,6 +334,7 @@ def init_orm_db() -> None:
         SharedMemoryDB,
         StrategyChangeProposalDB,
         StrategyTableDB,
+        TaskDB,
     )
 
     SQLModel.metadata.create_all(bind=get_engine())

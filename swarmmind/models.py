@@ -3,7 +3,7 @@
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AgentStatus(str, Enum):
@@ -396,6 +396,78 @@ class DeleteProjectResponse(BaseModel):
     project_id: str
 
 
+class TaskStatus(str, Enum):
+    """Task Kanban status."""
+
+    TODO = "todo"
+    IN_PROGRESS = "in_progress"
+    BLOCKED = "blocked"
+    DONE = "done"
+
+
+class TaskPriority(str, Enum):
+    """Task priority level."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class Task(BaseModel):
+    """Project task for Kanban board."""
+
+    task_id: str
+    project_id: str
+    run_id: str | None = None
+    title: str
+    description: str | None = None
+    status: TaskStatus = TaskStatus.TODO
+    assignee_role: str | None = None
+    source_workstream: str | None = None
+    artifact_ids: list[str] = []
+    priority: TaskPriority = TaskPriority.MEDIUM
+    created_at: str
+    updated_at: str
+
+
+class TaskListResponse(BaseModel):
+    """Response containing list of tasks."""
+
+    items: list[Task]
+    total: int
+
+
+class CreateTaskRequest(BaseModel):
+    """Request to create a new task."""
+
+    title: str = Field(..., max_length=200)
+    description: str | None = Field(None, max_length=2000)
+    status: TaskStatus = TaskStatus.TODO
+    assignee_role: str | None = Field(None, max_length=100)
+    source_workstream: str | None = Field(None, max_length=100)
+    artifact_ids: list[str] = []
+    priority: TaskPriority = TaskPriority.MEDIUM
+
+
+class UpdateTaskRequest(BaseModel):
+    """Request to update a task."""
+
+    title: str | None = Field(None, max_length=200)
+    description: str | None = Field(None, max_length=2000)
+    status: TaskStatus | None = None
+    assignee_role: str | None = Field(None, max_length=100)
+    source_workstream: str | None = Field(None, max_length=100)
+    artifact_ids: list[str] | None = None
+    priority: TaskPriority | None = None
+
+
+class DeleteTaskResponse(BaseModel):
+    """Response after deleting a task."""
+
+    status: str = "deleted"
+    task_id: str
+
+
 # ---- Project models ----
 
 
@@ -501,6 +573,8 @@ class Project(BaseModel):
     source_conversation_id: str | None = None
     conversation_id: str | None = None
     next_step: str | None = None
+    phase: str | None = None
+    risk_level: str | None = None
     status: ProjectStatus = ProjectStatus.ACTIVE
     agent_team: ProjectAgentTeamInstance | None = None
     created_at: str
@@ -516,6 +590,8 @@ class ProjectCreateRequest(BaseModel):
     constraints: str | None = Field(None, max_length=2000)
     source_conversation_id: str | None = None
     next_step: str | None = Field(None, max_length=1000)
+    phase: str | None = Field(None, max_length=100)
+    risk_level: str | None = Field(None, max_length=20)
     team_template_id: str | None = None
 
 
@@ -547,6 +623,46 @@ class TraceSummaryResponse(BaseModel):
     summary: str = ""
 
 
+# ---- Audit log models ----
+
+
+class AuditLogEntry(BaseModel):
+    """Single audit log entry."""
+
+    audit_id: str
+    audit_type: str
+    project_id: str
+    run_id: str | None = None
+    approval_id: str | None = None
+    actor_id: str | None = None
+    actor_type: str = "user"
+    decision: str | None = None
+    reason: str | None = None
+    metadata: dict = {}
+    timestamp: str
+
+
+class AuditLogListResponse(BaseModel):
+    """Response containing list of audit log entries."""
+
+    items: list[AuditLogEntry]
+    total: int
+
+
+class CreateAuditLogEntry(BaseModel):
+    """Request to create a new audit log entry."""
+
+    audit_type: str = Field(default="approval_decision")
+    project_id: str
+    run_id: str | None = None
+    approval_id: str | None = None
+    actor_id: str | None = None
+    actor_type: str = "user"
+    decision: str | None = Field(None, max_length=50)
+    reason: str | None = Field(None, max_length=2000)
+    metadata: dict = {}
+
+
 # ---- Artifact models ----
 
 
@@ -557,6 +673,9 @@ class Artifact(BaseModel):
     conversation_id: str | None = None
     project_id: str | None = None
     message_id: str | None = None
+    run_id: str | None = None
+    task_id: str | None = None
+    author_role: str | None = None
     name: str | None = None
     artifact_type: str | None = None
     created_at: str
@@ -577,6 +696,8 @@ class ProjectUpdateRequest(BaseModel):
     scope: str | None = Field(None, max_length=2000)
     constraints: str | None = Field(None, max_length=2000)
     next_step: str | None = Field(None, max_length=1000)
+    phase: str | None = Field(None, max_length=100)
+    risk_level: str | None = Field(None, max_length=20)
     status: ProjectStatus | None = None
 
 
@@ -597,7 +718,7 @@ class Run(BaseModel):
 
     run_id: str
     project_id: str | None = None
-    conversation_id: str
+    conversation_id: str | None = None
     status: RunStatus = RunStatus.RUNNING
     goal: str | None = None
     summary: str | None = None
@@ -615,10 +736,16 @@ class RunListResponse(BaseModel):
 class CreateRunRequest(BaseModel):
     """Request to create a run."""
 
-    conversation_id: str
+    conversation_id: str | None = None
     project_id: str | None = None
     goal: str | None = Field(None, max_length=2000)
     status: RunStatus = RunStatus.RUNNING
+
+    @model_validator(mode="after")
+    def check_conversation_or_project(self):
+        if self.conversation_id is None and self.project_id is None:
+            raise ValueError("Either conversation_id or project_id must be provided")
+        return self
 
 
 class UpdateRunRequest(BaseModel):
@@ -628,6 +755,105 @@ class UpdateRunRequest(BaseModel):
     status: RunStatus | None = None
     goal: str | None = Field(None, max_length=2000)
     summary: str | None = Field(None, max_length=2000)
+
+
+# ---- Approval Request models ----
+
+
+class RiskTier(str, Enum):
+    """Risk tier for approval requests."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
+class ApprovalStatus(str, Enum):
+    """Status of an approval request."""
+
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    SUPPLEMENT_REQUESTED = "supplement_requested"
+
+
+class ApprovalRequest(BaseModel):
+    """Product-layer approval request."""
+
+    approval_id: str
+    project_id: str
+    run_id: str | None = None
+    action_proposal_id: str | None = None
+    title: str
+    description: str | None = None
+    risk_tier: RiskTier = RiskTier.MEDIUM
+    requested_capability: str | None = None
+    evidence: str | None = None
+    impact: str | None = None
+    approver_role: str | None = None
+    recovery_behavior: str | None = None
+    status: ApprovalStatus = ApprovalStatus.PENDING
+    decision_reason: str | None = None
+    created_at: str
+    updated_at: str
+
+
+class ApprovalRequestListResponse(BaseModel):
+    """Response containing list of approval requests."""
+
+    items: list[ApprovalRequest]
+    total: int
+
+
+class CreateApprovalRequest(BaseModel):
+    """Request to create a new approval request."""
+
+    project_id: str
+    run_id: str | None = None
+    title: str = Field(..., max_length=200)
+    description: str | None = Field(None, max_length=2000)
+    risk_tier: RiskTier = RiskTier.MEDIUM
+    requested_capability: str | None = Field(None, max_length=100)
+    evidence: str | None = Field(None, max_length=2000)
+    impact: str | None = Field(None, max_length=2000)
+    approver_role: str | None = Field(None, max_length=100)
+    recovery_behavior: str | None = Field(None, max_length=1000)
+
+
+class UpdateApprovalRequest(BaseModel):
+    """Request to update an approval request."""
+
+    status: ApprovalStatus | None = None
+    decision_reason: str | None = Field(None, max_length=2000)
+    title: str | None = Field(None, max_length=200)
+    description: str | None = Field(None, max_length=2000)
+    risk_tier: RiskTier | None = None
+
+
+class DeleteApprovalResponse(BaseModel):
+    """Response after deleting an approval request."""
+
+    status: str = "deleted"
+    approval_id: str
+
+
+class ProjectOverviewResponse(BaseModel):
+    """Aggregated project overview."""
+
+    project: Project
+    stats: dict
+    recent_tasks: list[Task]
+    recent_artifacts: list[Artifact]
+    recent_runs: list[Run]
+    recent_approvals: list[ApprovalRequest]
+
+
+class DeleteAuditLogResponse(BaseModel):
+    """Response after deleting an audit log entry."""
+
+    status: str = "deleted"
+    audit_id: str
+
 
 # ---- LLM Provider models ----
 

@@ -193,6 +193,8 @@ class ProjectDB(SQLModel, table=True):
         default=None, foreign_key="conversations.id"
     )
     next_step: str | None = None
+    phase: str | None = Field(default=None)  # e.g. "需求澄清", "设计", "开发", "测试", "交付"
+    risk_level: str | None = Field(default=None)  # 'low' | 'medium' | 'high'
     status: str = Field(default="active")  # 'active' | 'archived'
     created_at: datetime | None = Field(default_factory=utc_now)
     updated_at: datetime | None = Field(default_factory=utc_now)
@@ -213,6 +215,9 @@ class ArtifactDB(SQLModel, table=True):
     conversation_id: str | None = Field(default=None, foreign_key="conversations.id")
     project_id: str | None = Field(default=None, foreign_key="projects.project_id")
     message_id: str | None = Field(default=None, foreign_key="messages.id")
+    run_id: str | None = Field(default=None, foreign_key="runs.run_id")
+    task_id: str | None = Field(default=None, foreign_key="tasks.task_id")
+    author_role: str | None = None  # e.g. "产品专家", "架构专家"
     name: str | None = None
     artifact_type: str | None = None  # 'write_file' | 'edit_file' | 'present_files' | 'other'
     created_at: datetime | None = Field(default_factory=utc_now)
@@ -221,6 +226,8 @@ class ArtifactDB(SQLModel, table=True):
         Index("idx_artifacts_conversation", "conversation_id"),
         Index("idx_artifacts_project", "project_id"),
         Index("idx_artifacts_message", "message_id"),
+        Index("idx_artifacts_run", "run_id"),
+        Index("idx_artifacts_task", "task_id"),
     )
 
 
@@ -231,7 +238,7 @@ class RunDB(SQLModel, table=True):
 
     run_id: str = Field(primary_key=True)
     project_id: str | None = Field(default=None, foreign_key="projects.project_id")
-    conversation_id: str = Field(foreign_key="conversations.id")
+    conversation_id: str | None = Field(default=None, foreign_key="conversations.id")
     status: str = Field(default="running")  # 'running' | 'completed' | 'failed' | 'blocked'
     goal: str | None = None
     summary: str | None = None
@@ -367,6 +374,56 @@ class AgentTeamTemplateDB(SQLModel, table=True):
     )
 
 
+class TaskDB(SQLModel, table=True):
+    """Project task metadata for Kanban board."""
+
+    __tablename__ = "tasks"
+
+    task_id: str = Field(primary_key=True)
+    project_id: str = Field(foreign_key="projects.project_id")
+    run_id: str | None = Field(default=None, foreign_key="runs.run_id")
+    title: str
+    description: str | None = None
+    status: str = Field(default="todo")  # 'todo' | 'in_progress' | 'blocked' | 'done'
+    assignee_role: str | None = None
+    source_workstream: str | None = None
+    artifact_ids: list[str] | None = Field(default=None, sa_column=Column(JSON))
+    priority: str | None = Field(default="medium")  # 'low' | 'medium' | 'high'
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_tasks_project", "project_id"),
+        Index("idx_tasks_status", "status"),
+        Index("idx_tasks_run", "run_id"),
+    )
+
+
+class AuditLogDB(SQLModel, table=True):
+    """Audit log for approvals, policy changes, and provenance."""
+
+    __tablename__ = "audit_logs"
+
+    audit_id: str = Field(primary_key=True)
+    audit_type: str = Field(default="approval_decision")  # 'approval_decision' | 'risk_identified' | 'policy_change' | 'member_permission_change' | 'run_resumed'
+    project_id: str = Field(foreign_key="projects.project_id")
+    run_id: str | None = Field(default=None, foreign_key="runs.run_id")
+    approval_id: str | None = Field(default=None, foreign_key="approval_requests.approval_id")
+    actor_id: str | None = None  # user_id or agent_id
+    actor_type: str = Field(default="user")  # 'user' | 'agent' | 'system'
+    decision: str | None = None  # 'approved' | 'rejected' | 'supplement_requested' | 'escalated'
+    reason: str | None = None
+    extra_data: dict[str, Any] | None = Field(default=None, sa_column=Column("metadata", JSON))
+    timestamp: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_audit_logs_project", "project_id"),
+        Index("idx_audit_logs_run", "run_id"),
+        Index("idx_audit_logs_approval", "approval_id"),
+        Index("idx_audit_logs_timestamp", "timestamp"),
+    )
+
+
 class ProjectAgentTeamInstanceDB(SQLModel, table=True):
     """Team template instantiated inside a project."""
 
@@ -383,4 +440,34 @@ class ProjectAgentTeamInstanceDB(SQLModel, table=True):
     __table_args__ = (
         Index("idx_project_team_instances_project", "project_id"),
         Index("idx_project_team_instances_template", "team_template_id"),
+    )
+
+
+class ApprovalRequestDB(SQLModel, table=True):
+    """Product-layer approval request for high-risk run governance."""
+
+    __tablename__ = "approval_requests"
+
+    approval_id: str = Field(primary_key=True)
+    project_id: str = Field(foreign_key="projects.project_id")
+    run_id: str | None = Field(default=None, foreign_key="runs.run_id")
+    action_proposal_id: str | None = Field(default=None, foreign_key="action_proposals.id")
+    title: str
+    description: str | None = None
+    risk_tier: str = Field(default="medium")  # 'low' | 'medium' | 'high'
+    requested_capability: str | None = None
+    evidence: str | None = None
+    impact: str | None = None
+    approver_role: str | None = None
+    recovery_behavior: str | None = None
+    status: str = Field(default="pending")  # 'pending' | 'approved' | 'rejected' | 'supplement_requested'
+    decision_reason: str | None = None
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_approval_requests_project", "project_id"),
+        Index("idx_approval_requests_run", "run_id"),
+        Index("idx_approval_requests_status", "status"),
+        Index("idx_approval_requests_risk", "risk_tier"),
     )
