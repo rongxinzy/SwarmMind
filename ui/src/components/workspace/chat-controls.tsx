@@ -39,7 +39,7 @@ const MODE_OPTIONS: {
     id: "thinking",
     label: "Thinking",
     description: "保留推理过程，单轮深入分析",
-    accentClassName: "border-[var(--status-chat-border)] bg-[var(--status-chat-bg)] text-[var(--status-chat)]",
+    accentClassName: "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]",
     icon: Lightbulb,
   },
   {
@@ -78,11 +78,11 @@ export function ModePicker({
         }}
         aria-label={`当前执行模式：${current.label}`}
         className={cn(
-          "group flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all duration-200 hover:border-[var(--warm-border)] focus-visible:border-[var(--warm-ring)] focus-visible:ring-2 focus-visible:ring-[var(--warm-ring)]/50",
+          "group flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all duration-200 hover:border-border focus-visible:border-border focus-visible:ring-2 focus-visible:ring-accent/50",
           current.accentClassName,
         )}
       >
-        <span className="flex size-6 items-center justify-center rounded-md border border-black/5 bg-[var(--warm-ivory)]">
+        <span className="flex size-6 items-center justify-center rounded-md border border-black/5 bg-card">
           <CurrentIcon className="size-3" />
         </span>
         <span className="min-w-0">
@@ -118,7 +118,7 @@ export function ModePicker({
               className="absolute bottom-full left-0 z-50 mb-2.5 w-[286px] rounded-[18px] border border-border bg-card p-2"
             >
               <div className="mb-1.5 px-1">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">执行模式</p>
+                <p className="text-[10px] tracking-[0.04em] text-muted-foreground">执行模式</p>
                 <p className="text-[12px] text-foreground">选择这轮临时会话的执行方式</p>
               </div>
               <div className="space-y-1.5">
@@ -141,7 +141,7 @@ export function ModePicker({
                         "flex w-full items-start gap-2.5 rounded-[14px] border px-3 py-2.5 text-left transition-colors",
                         isSelected
                           ? cn("bg-card", mode.accentClassName)
-                          : "border-[var(--warm-border)] bg-[var(--warm-ivory)] text-[var(--neutral-900)] hover:border-[var(--warm-ring)] hover:bg-[var(--neutral-150)]",
+                          : "border-border bg-card text-foreground hover:border-border-strong hover:bg-surface-hover",
                       )}
                     >
                       <span
@@ -204,7 +204,7 @@ export function ModelPicker({
         }}
         disabled={isDisabled}
         title={loadError ?? undefined}
-        className="flex min-h-10 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[11px] tracking-[0.06em] text-[var(--neutral-600)] transition-all duration-200 hover:border-[var(--warm-border)] hover:bg-[var(--neutral-150)] hover:text-[var(--neutral-800)] focus-visible:border-[var(--warm-ring)] focus-visible:ring-2 focus-visible:ring-[var(--warm-ring)]/50"
+        className="flex min-h-10 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[11px] tracking-[0.04em] text-muted-foreground transition-all duration-200 hover:border-border hover:bg-surface-hover hover:text-foreground focus-visible:border-border focus-visible:ring-2 focus-visible:ring-accent/50"
       >
         {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
         <span className="max-w-[140px] truncate">{currentLabel}</span>
