@@ -29,15 +29,15 @@ export function ChatEmptyState({ onPromptSelect, isDraft = false }: ChatEmptySta
           className="mb-7"
         >
           <div
-            className="inline-flex size-10 items-center justify-center rounded-xl border bg-[var(--warm-ivory)] text-[var(--neutral-600)]"
+            className="inline-flex size-10 items-center justify-center rounded-xl border bg-card text-muted-foreground"
             style={{ boxShadow: "var(--shadow-whisper)" }}
           >
             <Sparkles className="size-4" />
           </div>
-          <p className="mt-5 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="mt-5 text-[11px] tracking-[0.04em] text-muted-foreground">
             {isDraft ? "Exploratory Session" : "New Conversation"}
           </p>
-          <h2 className="mt-2 text-[28px] leading-[36px] font-semibold tracking-[-0.02em] text-foreground">
+          <h2 className="mt-2 text-[24px] leading-[32px] font-semibold text-foreground">
             {isDraft ? "临时会话" : "新会话"}
           </h2>
           <p className="mt-2 max-w-[440px] text-[14px] leading-[22px] text-muted-foreground">
@@ -53,7 +53,7 @@ export function ChatEmptyState({ onPromptSelect, isDraft = false }: ChatEmptySta
           transition={{ delay: 0.15, duration: 0.2 }}
           className="mb-3 flex items-center gap-2"
         >
-          <p className="text-[12px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          <p className="text-[12px] font-medium tracking-[0.04em] text-muted-foreground">
             快速开始
           </p>
           <span className="h-px flex-1 bg-border/50" />
@@ -72,18 +72,18 @@ export function ChatEmptyState({ onPromptSelect, isDraft = false }: ChatEmptySta
               onClick={() => {
                 onPromptSelect(prompt);
               }}
-              className="group flex items-start gap-3 rounded-xl border bg-[var(--warm-ivory)] px-4 py-3.5 text-left transition-all duration-200 hover:border-[var(--warm-ring)] hover:bg-[var(--neutral-150)]"
+              className="group flex items-start gap-3 rounded-lg border bg-card px-4 py-3.5 text-left transition-all duration-200 hover:border-border-strong hover:bg-surface-hover"
             >
               <span
                 className={cn(
                   "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-black/5 transition-colors",
                   i === 0
-                    ? "bg-[#e2e8ee] text-[#49617a]"
+                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
                     : i === 1
-                      ? "bg-[#ece3d6] text-[#756046]"
+                      ? "bg-[var(--status-done-bg)] text-[var(--status-done)]"
                       : i === 2
-                        ? "bg-[#eae6ef] text-[#66597c]"
-                        : "bg-[#e4ebe4] text-[#4c6554]",
+                        ? "bg-[var(--status-approval-bg)] text-[var(--status-approval)]"
+                        : "bg-[var(--surface-hover)] text-foreground",
                 )}
               >
                 <Icon className="size-4" />

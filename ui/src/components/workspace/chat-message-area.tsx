@@ -64,10 +64,10 @@ function ErrorCard({
         <div className="flex items-start gap-3">
           <Icon className="mt-0.5 size-5 shrink-0 text-[var(--status-blocked)]" />
           <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-medium text-[var(--neutral-900)]">
+            <p className="text-[14px] font-medium text-foreground">
               {copy.title}
             </p>
-            <p className="mt-0.5 text-[13px] text-[var(--neutral-600)]">
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               {isExhausted ? copy.description : error.message || copy.description}
             </p>
           </div>
@@ -77,7 +77,7 @@ function ErrorCard({
                 variant="ghost"
                 size="sm"
                 onClick={onCopy}
-                className="text-[12px] text-[var(--neutral-600)] hover:text-[var(--neutral-900)]"
+                className="text-[12px] text-muted-foreground hover:text-foreground"
               >
                 复制问题
               </Button>
@@ -87,7 +87,7 @@ function ErrorCard({
                 size="sm"
                 onClick={onRetry}
                 disabled={isRetrying}
-                className="bg-[var(--warm-sand)] text-[12px] text-[var(--neutral-800)] hover:bg-[var(--warm-ring)]"
+                className="bg-surface-control text-[12px] text-foreground hover:bg-surface-hover"
               >
                 {isRetrying ? (
                   <>
@@ -198,7 +198,7 @@ export function ChatMessageArea({
             transition={{ duration: 0.2 }}
             className="flex justify-start"
           >
-            <div className="flex items-center gap-2 rounded-xl border border-[var(--warm-border)] bg-[var(--neutral-150)] px-4 py-2">
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-hover px-4 py-2">
               <StreamingDots />
               <span className="text-[13px] text-muted-foreground">正在生成回复</span>
             </div>
