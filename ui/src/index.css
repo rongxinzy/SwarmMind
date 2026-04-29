@@ -145,6 +145,21 @@
     --status-chat: var(--accent);
     --status-chat-bg: var(--accent-soft);
     --status-chat-border: var(--accent-border);
+
+    /* Font compatibility */
+    --font-body: var(--font-ui);
+    --font-heading: var(--font-ui);
+    --font-display: var(--font-ui);
+
+    /* Color soft tones for workbench cards */
+    --blue-soft: #EAF4FF;
+    --green-soft: #EAF8F0;
+    --orange-soft: #FFF7E8;
+    --purple-soft: #F3F0FF;
+
+    /* Shimmer component colors */
+    --color-background: hsl(var(--background));
+    --color-muted-foreground: hsl(var(--muted-foreground));
   }
 
   .dark {
@@ -193,6 +208,15 @@
     --status-chat: var(--accent);
     --status-chat-bg: rgba(51, 156, 255, 0.18);
     --status-chat-border: rgba(51, 156, 255, 0.48);
+    --font-body: var(--font-ui);
+    --font-heading: var(--font-ui);
+    --font-display: var(--font-ui);
+    --blue-soft: rgba(51, 156, 255, 0.18);
+    --green-soft: rgba(31, 143, 77, 0.24);
+    --orange-soft: rgba(183, 121, 31, 0.18);
+    --purple-soft: rgba(124, 58, 237, 0.18);
+    --color-background: hsl(var(--background));
+    --color-muted-foreground: hsl(var(--muted-foreground));
   }
 
   * {
