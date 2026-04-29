@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from swarmmind.db import init_orm_db
+from swarmmind.db import init_db
 from swarmmind.models import LlmProviderModelEntry
 from swarmmind.repositories.llm_provider import LlmProviderRepository
 
@@ -13,8 +13,7 @@ from swarmmind.repositories.llm_provider import LlmProviderRepository
 def _fresh_db(monkeypatch, tmp_path):
     db_path = tmp_path / "llm_provider_repo_test.db"
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setenv("SWARMMIND_DB_INIT_MODE", "create_all")
-    init_orm_db()
+    init_db()
 
 
 @pytest.fixture

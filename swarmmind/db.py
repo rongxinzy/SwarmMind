@@ -9,13 +9,14 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from alembic.config import Config
-from sqlalchemy import create_engine, event
+from alembic.script import ScriptDirectory
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
-from sqlmodel import Session, SQLModel
+from sqlmodel import Session
 
 from alembic import command
-from swarmmind.config import DATABASE_URL, DB_INIT_MODE, DB_PATH
+from swarmmind.config import DATABASE_URL, DB_PATH
 from swarmmind.prompting import SWARMMIND_PRODUCT_IDENTITY_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -43,47 +44,46 @@ def _is_sqlite_url(database_url: str) -> bool:
 
 
 def init_db() -> None:
-    """Initialize database schema using the configured initialization mode."""
-    apply_schema()
+    """Initialize database schema by applying Alembic migrations."""
+    run_migrations_to_head()
     logger.info("Database initialized at %s", _get_database_url())
 
 
 def health_check() -> dict:
-    """Verify all required tables exist.
-    Auto-creates missing tables (self-healing on first boot).
-    Returns dict with status.
-    """
+    """Verify Alembic-managed schema presence and revision."""
     from sqlalchemy import inspect
+    from sqlmodel import SQLModel
 
-    required_tables = [
-        "agents",
-        "working_memory",
-        "strategy_table",
-        "event_log",
-        "action_proposals",
-        "strategy_change_proposals",
-        "conversations",
-        "messages",
-        "memory_entries",
-        "session_promotions",
-        "compaction_hints",
-        "runtime_models",
-        "runtime_model_assignments",
-        "tasks",
-        "approval_requests",
-        "audit_logs",
-    ]
+    import swarmmind.db_models  # noqa: F401
 
-    inspector = inspect(get_engine())
+    required_tables = sorted({*SQLModel.metadata.tables.keys(), "alembic_version"})
+    engine = get_engine()
+
+    inspector = inspect(engine)
     existing = set(inspector.get_table_names())
 
     missing = [t for t in required_tables if t not in existing]
     if missing:
-        logger.warning("Missing tables detected: %s. Auto-creating schema.", missing)
-        apply_schema()
-        return {"status": "healed", "missing_tables": missing}
+        logger.warning("Missing Alembic-managed tables detected: %s", missing)
+        return {"status": "missing_schema", "missing_tables": missing}
 
-    return {"status": "ok", "missing_tables": []}
+    with engine.connect() as connection:
+        current_revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar()
+    expected_heads = sorted(ScriptDirectory.from_config(_build_alembic_config()).get_heads())
+    if current_revision not in expected_heads:
+        return {
+            "status": "migration_pending",
+            "missing_tables": [],
+            "revision": current_revision,
+            "heads": expected_heads,
+        }
+
+    return {
+        "status": "ok",
+        "missing_tables": [],
+        "revision": current_revision,
+        "heads": expected_heads,
+    }
 
 
 def seed_default_agents() -> None:
@@ -331,51 +331,3 @@ def _build_alembic_config() -> Config:
 def run_migrations_to_head() -> None:
     """Apply Alembic migrations to the configured database."""
     command.upgrade(_build_alembic_config(), "head")
-
-
-def apply_schema() -> None:
-    """Apply schema using the configured initialization mode.
-
-    Modes:
-    - ``migrate``: migration-first, suitable for real deployments.
-    - ``create_all``: test/dev fallback that creates metadata directly.
-    """
-    mode = os.environ.get("SWARMMIND_DB_INIT_MODE", DB_INIT_MODE).strip().lower()
-    if mode == "create_all":
-        init_orm_db()
-        return
-    if mode == "migrate":
-        run_migrations_to_head()
-        return
-    raise ValueError(f"Unsupported SWARMMIND_DB_INIT_MODE: {mode}")
-
-
-def init_orm_db() -> None:
-    """Initialize ORM tables (safe to call on existing DB)."""
-    # Import all models so SQLModel.metadata contains every table
-    from swarmmind.db_models import (  # noqa: F401
-        ActionProposalDB,
-        AgentDB,
-        ApprovalRequestDB,
-        ArtifactDB,
-        AuditLogDB,
-        CompactionHintDB,
-        ConversationDB,
-        EventLogDB,
-        LlmProviderDB,
-        LlmProviderModelDB,
-        MemoryEntryDB,
-        MessageDB,
-        ProjectDB,
-        RunDB,
-        RuntimeModelAssignmentDB,
-        RuntimeModelDB,
-        SessionPromotionDB,
-        SharedMemoryDB,
-        StrategyChangeProposalDB,
-        StrategyTableDB,
-        TaskDB,
-    )
-
-    SQLModel.metadata.create_all(bind=get_engine())
-    logger.info("ORM tables ensured at %s", _get_database_url())

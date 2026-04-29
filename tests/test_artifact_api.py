@@ -23,7 +23,6 @@ client = TestClient(app)
 def setup_db(monkeypatch, tmp_path):
     db_path = tmp_path / "artifact_test.db"
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setenv("SWARMMIND_DB_INIT_MODE", "create_all")
     dispose_engines()
     init_db()
 

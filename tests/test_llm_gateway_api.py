@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from swarmmind.api.supervisor import app
-from swarmmind.db import init_orm_db
+from swarmmind.db import init_db
 
 client = TestClient(app)
 
@@ -17,8 +17,7 @@ client = TestClient(app)
 def _fresh_db(monkeypatch, tmp_path):
     db_path = tmp_path / "llm_gateway_api_test.db"
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setenv("SWARMMIND_DB_INIT_MODE", "create_all")
-    init_orm_db()
+    init_db()
 
 
 def _auth_header():

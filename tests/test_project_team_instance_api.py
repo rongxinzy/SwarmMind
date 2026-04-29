@@ -17,7 +17,6 @@ client = TestClient(app)
 def setup_db(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setenv("SWARMMIND_DB_INIT_MODE", "create_all")
     init_db()
     seed_builtin_agent_teams()
 

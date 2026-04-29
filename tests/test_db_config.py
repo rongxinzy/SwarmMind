@@ -89,17 +89,10 @@ def test_get_engine_caches_per_database_url_and_disposes_stale_engines(monkeypat
     assert created[0].dispose_calls == 1
 
 
-def test_apply_schema_respects_init_mode(monkeypatch):
+def test_init_db_runs_alembic_migrations(monkeypatch):
     calls: list[str] = []
 
-    monkeypatch.setattr(db, "init_orm_db", lambda: calls.append("create_all"))
     monkeypatch.setattr(db, "run_migrations_to_head", lambda: calls.append("migrate"))
 
-    monkeypatch.setenv("SWARMMIND_DB_INIT_MODE", "create_all")
-    db.apply_schema()
-    assert calls == ["create_all"]
-
-    calls.clear()
-    monkeypatch.setenv("SWARMMIND_DB_INIT_MODE", "migrate")
-    db.apply_schema()
+    db.init_db()
     assert calls == ["migrate"]
