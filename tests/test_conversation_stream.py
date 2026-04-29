@@ -21,6 +21,7 @@ def setup_db(tmp_path, monkeypatch):
     seed_default_agents()
     # Materialize DeerFlow config so that title generation and runtime work
     from swarmmind.runtime.bootstrap import ensure_default_runtime_instance
+
     ensure_default_runtime_instance()
     yield
 

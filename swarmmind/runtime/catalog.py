@@ -287,7 +287,7 @@ def _sync_providers_to_catalog() -> None:
             for m in provider.models:
                 if not m.is_enabled:
                     continue
-                is_default = (m.model_name == default_model_name)
+                is_default = m.model_name == default_model_name
                 assignment = RuntimeModelAssignmentDB(
                     subject_type=ANONYMOUS_SUBJECT_TYPE,
                     subject_id=ANONYMOUS_SUBJECT_ID,
@@ -358,8 +358,7 @@ def sync_env_runtime_model() -> RuntimeModel:
 
     # No models at all — raise a clear error
     raise RuntimeConfigError(
-        "No runtime models are available. "
-        "Add an LLM provider via POST /llm-providers or set LLM_MODEL in .env."
+        "No runtime models are available. Add an LLM provider via POST /llm-providers or set LLM_MODEL in .env."
     )
 
 

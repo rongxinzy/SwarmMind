@@ -14,7 +14,7 @@ from swarmmind.db_models import AuditLogDB
 class AuditLogRepository:
     """Repository for audit log entries."""
 
-    def create(
+    def create(  # noqa: PLR0913
         self,
         *,
         audit_type: str = "approval_decision",
@@ -60,9 +60,7 @@ class AuditLogRepository:
         """List audit log entries for a project ordered by timestamp descending."""
         with session_scope() as session:
             results = session.exec(
-                select(AuditLogDB)
-                .where(AuditLogDB.project_id == project_id)
-                .order_by(AuditLogDB.timestamp.desc()),
+                select(AuditLogDB).where(AuditLogDB.project_id == project_id).order_by(AuditLogDB.timestamp.desc()),
             ).all()
             for r in results:
                 session.expunge(r)
@@ -72,9 +70,7 @@ class AuditLogRepository:
         """List audit log entries for a run ordered by timestamp descending."""
         with session_scope() as session:
             results = session.exec(
-                select(AuditLogDB)
-                .where(AuditLogDB.run_id == run_id)
-                .order_by(AuditLogDB.timestamp.desc()),
+                select(AuditLogDB).where(AuditLogDB.run_id == run_id).order_by(AuditLogDB.timestamp.desc()),
             ).all()
             for r in results:
                 session.expunge(r)
@@ -84,9 +80,7 @@ class AuditLogRepository:
         """List audit log entries for an approval request ordered by timestamp descending."""
         with session_scope() as session:
             results = session.exec(
-                select(AuditLogDB)
-                .where(AuditLogDB.approval_id == approval_id)
-                .order_by(AuditLogDB.timestamp.desc()),
+                select(AuditLogDB).where(AuditLogDB.approval_id == approval_id).order_by(AuditLogDB.timestamp.desc()),
             ).all()
             for r in results:
                 session.expunge(r)

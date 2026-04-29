@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
 from swarmmind.db import dispose_engines, init_db
 from swarmmind.repositories.audit_log import AuditLogRepository
@@ -91,9 +92,9 @@ class TestAuditLogRepository:
 
         audit_repo.delete(entry.audit_id)
 
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             audit_repo.get(entry.audit_id)
 
     def test_get_not_found(self, audit_repo):
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             audit_repo.get("nonexistent")

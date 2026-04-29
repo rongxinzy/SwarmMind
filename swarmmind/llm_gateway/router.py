@@ -9,12 +9,12 @@ Enhancements over basic routing:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 import uuid
-from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Any
 
 import httpx
 from litellm import Router as LiteLLMRouter
@@ -293,10 +293,7 @@ class LlmGateway:
     def list_models(self) -> GatewayModelListResponse:
         """Return available models in OpenAI-compatible format."""
         now = int(time.time())
-        data = [
-            GatewayModelInfo(id=name, created=now)
-            for name in sorted(self._model_names)
-        ]
+        data = [GatewayModelInfo(id=name, created=now) for name in sorted(self._model_names)]
         return GatewayModelListResponse(data=data)
 
     # ------------------------------------------------------------------
@@ -469,7 +466,7 @@ _gateway_instance: LlmGateway | None = None
 
 def get_gateway() -> LlmGateway:
     """Return the singleton gateway instance, creating it on first access."""
-    global _gateway_instance
+    global _gateway_instance  # noqa: PLW0603
     if _gateway_instance is None:
         _gateway_instance = LlmGateway()
     return _gateway_instance

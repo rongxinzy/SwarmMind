@@ -186,12 +186,8 @@ class ProjectDB(SQLModel, table=True):
     goal: str | None = None
     scope: str | None = None
     constraints: str | None = None
-    source_conversation_id: str | None = Field(
-        default=None, foreign_key="conversations.id"
-    )
-    conversation_id: str | None = Field(
-        default=None, foreign_key="conversations.id"
-    )
+    source_conversation_id: str | None = Field(default=None, foreign_key="conversations.id")
+    conversation_id: str | None = Field(default=None, foreign_key="conversations.id")
     next_step: str | None = None
     phase: str | None = Field(default=None)  # e.g. "需求澄清", "设计", "开发", "测试", "交付"
     risk_level: str | None = Field(default=None)  # 'low' | 'medium' | 'high'
@@ -405,7 +401,9 @@ class AuditLogDB(SQLModel, table=True):
     __tablename__ = "audit_logs"
 
     audit_id: str = Field(primary_key=True)
-    audit_type: str = Field(default="approval_decision")  # 'approval_decision' | 'risk_identified' | 'policy_change' | 'member_permission_change' | 'run_resumed'
+    audit_type: str = Field(
+        default="approval_decision"
+    )  # 'approval_decision' | 'risk_identified' | 'policy_change' | 'member_permission_change' | 'run_resumed'
     project_id: str = Field(foreign_key="projects.project_id")
     run_id: str | None = Field(default=None, foreign_key="runs.run_id")
     approval_id: str | None = Field(default=None, foreign_key="approval_requests.approval_id")

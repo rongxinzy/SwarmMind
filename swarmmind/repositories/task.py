@@ -15,7 +15,7 @@ from swarmmind.time_utils import utc_now
 class TaskRepository:
     """Repository for project task operations."""
 
-    def create(
+    def create(  # noqa: PLR0913
         self,
         *,
         project_id: str,
@@ -61,15 +61,13 @@ class TaskRepository:
         """List tasks for a project ordered by created_at descending."""
         with session_scope() as session:
             results = session.exec(
-                select(TaskDB)
-                .where(TaskDB.project_id == project_id)
-                .order_by(TaskDB.created_at.desc()),
+                select(TaskDB).where(TaskDB.project_id == project_id).order_by(TaskDB.created_at.desc()),
             ).all()
             for r in results:
                 session.expunge(r)
             return list(results)
 
-    def update(
+    def update(  # noqa: PLR0913
         self,
         task_id: str,
         *,

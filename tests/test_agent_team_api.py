@@ -48,13 +48,16 @@ def test_get_agent_team_not_found():
 
 
 def test_create_agent_team():
-    response = client.post("/agent-teams", json={
-        "name": "Custom Team",
-        "description": "A custom team",
-        "icon": "🔧",
-        "roles": [{"role_id": "builder", "name": "Builder"}],
-        "default_skills": ["build"],
-    })
+    response = client.post(
+        "/agent-teams",
+        json={
+            "name": "Custom Team",
+            "description": "A custom team",
+            "icon": "🔧",
+            "roles": [{"role_id": "builder", "name": "Builder"}],
+            "default_skills": ["build"],
+        },
+    )
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Custom Team"
@@ -65,9 +68,12 @@ def test_update_agent_team():
     repo = AgentTeamRepository()
     team = repo.create(name="Before")
 
-    response = client.patch(f"/agent-teams/{team.team_id}", json={
-        "name": "After",
-    })
+    response = client.patch(
+        f"/agent-teams/{team.team_id}",
+        json={
+            "name": "After",
+        },
+    )
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "After"

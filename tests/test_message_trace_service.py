@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
-
 from swarmmind.models import TraceSummaryResponse
 from swarmmind.services.message_trace_service import MessageTraceService
 
@@ -194,12 +192,21 @@ class FakeArtifactRepository:
 def test_extract_artifacts_from_trace_events() -> None:
     fake_repo = FakeArtifactRepository()
     svc = MessageTraceService(
-        conversation_trace_service=FakeConversationTraceService({
-            "events": [
-                {"type": "artifact_created", "artifact_path": "/tmp/report.md", "artifact_type": "write_file", "run_id": "run-1", "task_id": "task-1", "author_role": "架构专家"},
-                {"type": "artifact_created", "artifact_path": "/tmp/plan.md", "artifact_type": "present_files"},
-            ],
-        }),
+        conversation_trace_service=FakeConversationTraceService(
+            {
+                "events": [
+                    {
+                        "type": "artifact_created",
+                        "artifact_path": "/tmp/report.md",
+                        "artifact_type": "write_file",
+                        "run_id": "run-1",
+                        "task_id": "task-1",
+                        "author_role": "架构专家",
+                    },
+                    {"type": "artifact_created", "artifact_path": "/tmp/plan.md", "artifact_type": "present_files"},
+                ],
+            }
+        ),
         artifact_repo=fake_repo,
     )
 
@@ -219,11 +226,13 @@ def test_extract_artifacts_from_trace_events() -> None:
 def test_extract_artifacts_uses_fallback_params() -> None:
     fake_repo = FakeArtifactRepository()
     svc = MessageTraceService(
-        conversation_trace_service=FakeConversationTraceService({
-            "events": [
-                {"type": "artifact_created", "artifact_path": "/tmp/design.md"},
-            ],
-        }),
+        conversation_trace_service=FakeConversationTraceService(
+            {
+                "events": [
+                    {"type": "artifact_created", "artifact_path": "/tmp/design.md"},
+                ],
+            }
+        ),
         artifact_repo=fake_repo,
     )
 
@@ -244,12 +253,14 @@ def test_extract_artifacts_uses_fallback_params() -> None:
 def test_extract_artifacts_skips_duplicates() -> None:
     fake_repo = FakeArtifactRepository()
     svc = MessageTraceService(
-        conversation_trace_service=FakeConversationTraceService({
-            "events": [
-                {"type": "artifact_created", "artifact_path": "/tmp/report.md"},
-                {"type": "artifact_created", "artifact_path": "/tmp/report.md"},
-            ],
-        }),
+        conversation_trace_service=FakeConversationTraceService(
+            {
+                "events": [
+                    {"type": "artifact_created", "artifact_path": "/tmp/report.md"},
+                    {"type": "artifact_created", "artifact_path": "/tmp/report.md"},
+                ],
+            }
+        ),
         artifact_repo=fake_repo,
     )
 

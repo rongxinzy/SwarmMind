@@ -24,7 +24,8 @@ def _derive_key_from_machine_id() -> bytes:
     machine_id = ""
     for path in ["/etc/machine-id", "/var/lib/dbus/machine-id"]:
         try:
-            machine_id = open(path).read().strip()
+            with open(path, encoding="utf-8") as machine_id_file:
+                machine_id = machine_id_file.read().strip()
             break
         except FileNotFoundError:
             continue

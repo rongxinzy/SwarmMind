@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import uuid
-from datetime import datetime
 
 from sqlalchemy import func
 from sqlmodel import select
 
 from swarmmind.db import session_scope
 from swarmmind.db_models import LlmProviderDB, LlmProviderModelDB
-import json
-
 from swarmmind.models import LlmProvider, LlmProviderDetail, LlmProviderModelEntry
 from swarmmind.time_utils import utc_now
 from swarmmind.utils.crypto import decrypt, encrypt

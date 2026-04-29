@@ -46,8 +46,8 @@ class TestProjectRepository:
 
     def test_list_all_orders_by_updated_at_desc(self):
         repo = ProjectRepository()
-        p1 = repo.create(title="First")
-        p2 = repo.create(title="Second")
+        repo.create(title="First")
+        repo.create(title="Second")
         items = repo.list_all()
         assert len(items) >= 2
         assert items[0].title == "Second"

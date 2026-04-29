@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from swarmmind.api.conversation_routes import (
@@ -94,13 +94,13 @@ from swarmmind.repositories.action_proposal import (
     ActionProposalRepository,
     _db_to_action_proposal,
 )
+from swarmmind.repositories.agent_team import AgentTeamRepository
 from swarmmind.repositories.approval_request import ApprovalRequestRepository
 from swarmmind.repositories.artifact import ArtifactRepository
 from swarmmind.repositories.audit_log import AuditLogRepository
 from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
-from swarmmind.repositories.agent_team import AgentTeamRepository
 from swarmmind.repositories.project import ProjectRepository
 from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
 from swarmmind.repositories.run import RunRepository
@@ -114,7 +114,6 @@ from swarmmind.services.conversation_support import (
 from swarmmind.services.conversation_trace_service import ConversationTraceService
 from swarmmind.services.lifecycle import run_cleanup_scanner, startup_lifecycle
 from swarmmind.services.message_trace_service import (
-    MessageTraceService,
     _default_message_trace_service,
 )
 from swarmmind.services.runtime_support import RuntimeSupportService
@@ -178,15 +177,6 @@ from swarmmind.runtime.catalog import (
 logger = logging.getLogger(__name__)
 
 NEW_CONVERSATION_TITLE = "New Conversation"
-
-# ---- Pydantic models ----
-
-
-class StatusResponse(BaseModel):
-    """Status response with summary and goal."""
-
-    summary: str
-    goal: str
 
 
 class StrategyChangeApproveRequest(BaseModel):
@@ -617,6 +607,7 @@ def _ensure_project_conversation(project_id: str) -> str:
 
 def _db_to_team_instance(instance) -> ProjectAgentTeamInstance:
     import json
+
     template = agent_team_repo.get_by_id(instance.team_template_id)
     return ProjectAgentTeamInstance(
         instance_id=instance.instance_id,
@@ -634,6 +625,7 @@ def _db_to_team_instance(instance) -> ProjectAgentTeamInstance:
 
 def _db_to_team_template(team) -> AgentTeamTemplate:
     import json
+
     return AgentTeamTemplate(
         team_id=team.team_id,
         name=team.name,
@@ -703,7 +695,9 @@ def delete_project(project_id: str) -> DeleteProjectResponse:
     return DeleteProjectResponse(project_id=project_id)
 
 
-def _generate_project_seed_from_conversation(conversation_id: str, override: PromoteConversationRequest | None = None) -> dict:
+def _generate_project_seed_from_conversation(
+    conversation_id: str, override: PromoteConversationRequest | None = None
+) -> dict:
     """Generate project seed fields from conversation messages.
 
     Strategy:
@@ -744,7 +738,7 @@ def _generate_project_seed_from_conversation(conversation_id: str, override: Pro
         # Take first sentence or first 100 chars as next-step hint
         sentence_end = max(last.find("."), last.find("。"), last.find("\n"))
         if sentence_end > 0:
-            next_step = last[:sentence_end + 1]
+            next_step = last[: sentence_end + 1]
         else:
             next_step = last[:100] + "..." if len(last) > 100 else last
 
@@ -758,7 +752,11 @@ def _generate_project_seed_from_conversation(conversation_id: str, override: Pro
     }
 
 
-@app.post("/conversations/{conversation_id}/promote", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+@app.post(
+    "/conversations/{conversation_id}/promote",
+    tags=["conversations"],
+    responses={404: {"description": "Conversation not found"}},
+)
 def promote_conversation(
     conversation_id: str,
     body: PromoteConversationRequest | None = None,
@@ -812,7 +810,11 @@ def promote_conversation(
 # ---- Trace summary endpoint (F1) ----
 
 
-@app.get("/conversations/{conversation_id}/messages/{message_id}/trace", tags=["conversations"], responses={404: {"description": "Conversation or message not found"}})
+@app.get(
+    "/conversations/{conversation_id}/messages/{message_id}/trace",
+    tags=["conversations"],
+    responses={404: {"description": "Conversation or message not found"}},
+)
 def get_message_trace(conversation_id: str, message_id: str) -> TraceSummaryResponse:
     """Return a readable trace summary for an assistant message.
 
@@ -860,7 +862,11 @@ def _db_to_artifact(art) -> Artifact:
     )
 
 
-@app.get("/conversations/{conversation_id}/artifacts", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+@app.get(
+    "/conversations/{conversation_id}/artifacts",
+    tags=["conversations"],
+    responses={404: {"description": "Conversation not found"}},
+)
 def list_conversation_artifacts(conversation_id: str) -> ArtifactListResponse:
     """List artifacts for a conversation."""
     conversation_repo.get_by_id(conversation_id)
@@ -868,7 +874,11 @@ def list_conversation_artifacts(conversation_id: str) -> ArtifactListResponse:
     return ArtifactListResponse(items=[_db_to_artifact(r) for r in rows], total=len(rows))
 
 
-@app.post("/conversations/{conversation_id}/extract-artifacts", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+@app.post(
+    "/conversations/{conversation_id}/extract-artifacts",
+    tags=["conversations"],
+    responses={404: {"description": "Conversation not found"}},
+)
 def extract_conversation_artifacts(conversation_id: str) -> ExtractArtifactsResponse:
     """Extract artifacts from conversation trace and persist them.
 
@@ -978,7 +988,9 @@ def list_project_runs(project_id: str) -> RunListResponse:
     return RunListResponse(items=[_db_to_run(r) for r in rows], total=len(rows))
 
 
-@app.get("/conversations/{conversation_id}/runs", tags=["runs"], responses={404: {"description": "Conversation not found"}})
+@app.get(
+    "/conversations/{conversation_id}/runs", tags=["runs"], responses={404: {"description": "Conversation not found"}}
+)
 def list_conversation_runs(conversation_id: str) -> RunListResponse:
     """List runs for a conversation."""
     conversation_repo.get_by_id(conversation_id)
@@ -1071,7 +1083,11 @@ def create_task(project_id: str, body: CreateTaskRequest) -> Task:
     return _db_to_task(task)
 
 
-@app.get("/projects/{project_id}/tasks/{task_id}", tags=["projects"], responses={404: {"description": "Project or task not found"}})
+@app.get(
+    "/projects/{project_id}/tasks/{task_id}",
+    tags=["projects"],
+    responses={404: {"description": "Project or task not found"}},
+)
 def get_task(project_id: str, task_id: str) -> Task:
     """Get a single task by ID."""
     project_repo.get_by_id(project_id)
@@ -1081,7 +1097,11 @@ def get_task(project_id: str, task_id: str) -> Task:
     return _db_to_task(task)
 
 
-@app.patch("/projects/{project_id}/tasks/{task_id}", tags=["projects"], responses={404: {"description": "Project or task not found"}})
+@app.patch(
+    "/projects/{project_id}/tasks/{task_id}",
+    tags=["projects"],
+    responses={404: {"description": "Project or task not found"}},
+)
 def update_task(project_id: str, task_id: str, body: UpdateTaskRequest) -> Task:
     """Update a task. Only provided fields are changed."""
     project_repo.get_by_id(project_id)
@@ -1112,7 +1132,11 @@ def update_task(project_id: str, task_id: str, body: UpdateTaskRequest) -> Task:
     return _db_to_task(updated)
 
 
-@app.delete("/projects/{project_id}/tasks/{task_id}", tags=["projects"], responses={404: {"description": "Project or task not found"}})
+@app.delete(
+    "/projects/{project_id}/tasks/{task_id}",
+    tags=["projects"],
+    responses={404: {"description": "Project or task not found"}},
+)
 def delete_task(project_id: str, task_id: str) -> DeleteTaskResponse:
     """Delete a task."""
     project_repo.get_by_id(project_id)
@@ -1193,7 +1217,11 @@ def get_approval(approval_id: str) -> ApprovalRequest:
     return _db_to_approval_request(ar)
 
 
-@app.patch("/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}, 409: {"description": "Invalid status transition"}})
+@app.patch(
+    "/approvals/{approval_id}",
+    tags=["approvals"],
+    responses={404: {"description": "Approval request not found"}, 409: {"description": "Invalid status transition"}},
+)
 def update_approval(approval_id: str, body: UpdateApprovalRequest) -> ApprovalRequest:
     """Update an approval request. Only provided fields are changed."""
     ar = approval_request_repo.get(approval_id)
@@ -1223,7 +1251,9 @@ def update_approval(approval_id: str, body: UpdateApprovalRequest) -> ApprovalRe
     return _db_to_approval_request(updated)
 
 
-@app.delete("/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}})
+@app.delete(
+    "/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}}
+)
 def delete_approval(approval_id: str) -> DeleteApprovalResponse:
     """Delete an approval request."""
     approval_request_repo.get(approval_id)
@@ -1297,7 +1327,9 @@ def get_audit_log(audit_id: str) -> AuditLogEntry:
     return _db_to_audit_log_entry(entry)
 
 
-@app.delete("/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}})
+@app.delete(
+    "/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}}
+)
 def delete_audit_log(audit_id: str) -> DeleteAuditLogResponse:
     """Delete an audit log entry."""
     audit_log_repo.get(audit_id)
@@ -1317,6 +1349,7 @@ def list_project_audit_logs(project_id: str) -> AuditLogListResponse:
 
 
 # ---- Agent Team endpoints ----
+
 
 @app.get("/agent-teams", tags=["agent-teams"])
 def list_agent_teams() -> AgentTeamTemplateListResponse:
@@ -1373,10 +1406,16 @@ def delete_agent_team(team_id: str) -> None:
 
 # ---- Project Agent Team Instance endpoints ----
 
-@app.post("/projects/{project_id}/agent-team", tags=["projects"], status_code=201, responses={
-    404: {"description": "Project or team template not found"},
-    409: {"description": "Project already has a team attached"},
-})
+
+@app.post(
+    "/projects/{project_id}/agent-team",
+    tags=["projects"],
+    status_code=201,
+    responses={
+        404: {"description": "Project or team template not found"},
+        409: {"description": "Project already has a team attached"},
+    },
+)
 def attach_team_to_project(project_id: str, body: AttachTeamRequest) -> ProjectAgentTeamInstance:
     """Attach an agent team template to a project."""
     project_repo.get_by_id(project_id)
@@ -1398,7 +1437,11 @@ def get_project_team(project_id: str) -> ProjectAgentTeamInstance:
     return _db_to_team_instance(instance)
 
 
-@app.patch("/projects/{project_id}/agent-team", tags=["projects"], responses={404: {"description": "Project or team instance not found"}})
+@app.patch(
+    "/projects/{project_id}/agent-team",
+    tags=["projects"],
+    responses={404: {"description": "Project or team instance not found"}},
+)
 def update_project_team(project_id: str, body: UpdateTeamInstanceRequest) -> ProjectAgentTeamInstance:
     """Update the agent team instance for a project."""
     instance = project_team_repo.update(
@@ -1416,7 +1459,9 @@ def detach_team_from_project(project_id: str) -> None:
     project_team_repo.delete(project_id)
 
 
-@app.post("/projects/{project_id}/messages/stream", tags=["projects"], responses={404: {"description": "Project not found"}})
+@app.post(
+    "/projects/{project_id}/messages/stream", tags=["projects"], responses={404: {"description": "Project not found"}}
+)
 def send_project_message_stream(project_id: str, body: SendMessageRequest) -> StreamingResponse:
     """Stream a project execution turn with SwarmMind runtime semantics.
 

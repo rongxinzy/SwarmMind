@@ -10,8 +10,8 @@ from swarmmind.llm_gateway.models import (
     ChatCompletionResponse,
     GatewayModelListResponse,
 )
-from swarmmind.models import GatewayStatusResponse
 from swarmmind.llm_gateway.router import get_gateway
+from swarmmind.models import GatewayStatusResponse
 
 router = APIRouter(tags=["gateway"])
 

@@ -69,9 +69,7 @@ class ArtifactRepository:
         """List artifacts for a project ordered by created_at descending."""
         with session_scope() as session:
             results = session.exec(
-                select(ArtifactDB)
-                .where(ArtifactDB.project_id == project_id)
-                .order_by(ArtifactDB.created_at.desc()),
+                select(ArtifactDB).where(ArtifactDB.project_id == project_id).order_by(ArtifactDB.created_at.desc()),
             ).all()
             for r in results:
                 session.expunge(r)

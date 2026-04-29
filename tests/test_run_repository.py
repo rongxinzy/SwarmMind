@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
 from swarmmind.db import dispose_engines, init_db
 from swarmmind.repositories.conversation import ConversationRepository
@@ -107,5 +108,5 @@ class TestRunRepository:
         assert run.goal == "Plan it"
 
     def test_get_not_found(self, run_repo):
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             run_repo.get_by_id("nonexistent")

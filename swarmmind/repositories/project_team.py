@@ -20,8 +20,7 @@ class ProjectTeamInstanceRepository:
         """Get the team instance for a project, or None if not attached."""
         with session_scope() as session:
             result = session.exec(
-                select(ProjectAgentTeamInstanceDB)
-                .where(ProjectAgentTeamInstanceDB.project_id == project_id),
+                select(ProjectAgentTeamInstanceDB).where(ProjectAgentTeamInstanceDB.project_id == project_id),
             ).first()
             if result is not None:
                 session.expunge(result)
@@ -38,8 +37,7 @@ class ProjectTeamInstanceRepository:
         with session_scope() as session:
             # Check if project already has a team instance
             existing = session.exec(
-                select(ProjectAgentTeamInstanceDB)
-                .where(ProjectAgentTeamInstanceDB.project_id == project_id),
+                select(ProjectAgentTeamInstanceDB).where(ProjectAgentTeamInstanceDB.project_id == project_id),
             ).first()
             if existing is not None:
                 raise HTTPException(
@@ -70,8 +68,7 @@ class ProjectTeamInstanceRepository:
         """Update a project team instance."""
         with session_scope() as session:
             instance = session.exec(
-                select(ProjectAgentTeamInstanceDB)
-                .where(ProjectAgentTeamInstanceDB.project_id == project_id),
+                select(ProjectAgentTeamInstanceDB).where(ProjectAgentTeamInstanceDB.project_id == project_id),
             ).first()
             if instance is None:
                 raise HTTPException(
@@ -92,8 +89,7 @@ class ProjectTeamInstanceRepository:
         """Detach the team from a project."""
         with session_scope() as session:
             instance = session.exec(
-                select(ProjectAgentTeamInstanceDB)
-                .where(ProjectAgentTeamInstanceDB.project_id == project_id),
+                select(ProjectAgentTeamInstanceDB).where(ProjectAgentTeamInstanceDB.project_id == project_id),
             ).first()
             if instance is None:
                 return False

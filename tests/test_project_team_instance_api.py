@@ -34,9 +34,12 @@ class TestProjectTeamInstanceAPI:
         team_id = teams[0].team_id
 
         # Attach team
-        response = client.post(f"/projects/{proj.project_id}/agent-team", json={
-            "team_template_id": team_id,
-        })
+        response = client.post(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "team_template_id": team_id,
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["team_template_id"] == team_id
@@ -52,15 +55,21 @@ class TestProjectTeamInstanceAPI:
         team_id = teams[0].team_id
 
         # First attach
-        response = client.post(f"/projects/{proj.project_id}/agent-team", json={
-            "team_template_id": team_id,
-        })
+        response = client.post(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "team_template_id": team_id,
+            },
+        )
         assert response.status_code == 201
 
         # Second attach should fail
-        response = client.post(f"/projects/{proj.project_id}/agent-team", json={
-            "team_template_id": team_id,
-        })
+        response = client.post(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "team_template_id": team_id,
+            },
+        )
         assert response.status_code == 409
 
     def test_get_project_team(self):
@@ -71,9 +80,12 @@ class TestProjectTeamInstanceAPI:
         teams = team_repo.list_all(include_disabled=False)
         team_id = teams[0].team_id
 
-        client.post(f"/projects/{proj.project_id}/agent-team", json={
-            "team_template_id": team_id,
-        })
+        client.post(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "team_template_id": team_id,
+            },
+        )
 
         response = client.get(f"/projects/{proj.project_id}/agent-team")
         assert response.status_code == 200
@@ -95,13 +107,19 @@ class TestProjectTeamInstanceAPI:
         teams = team_repo.list_all(include_disabled=False)
         team_id = teams[0].team_id
 
-        client.post(f"/projects/{proj.project_id}/agent-team", json={
-            "team_template_id": team_id,
-        })
+        client.post(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "team_template_id": team_id,
+            },
+        )
 
-        response = client.patch(f"/projects/{proj.project_id}/agent-team", json={
-            "status": "paused",
-        })
+        response = client.patch(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "status": "paused",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "paused"
@@ -114,9 +132,12 @@ class TestProjectTeamInstanceAPI:
         teams = team_repo.list_all(include_disabled=False)
         team_id = teams[0].team_id
 
-        client.post(f"/projects/{proj.project_id}/agent-team", json={
-            "team_template_id": team_id,
-        })
+        client.post(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "team_template_id": team_id,
+            },
+        )
 
         response = client.delete(f"/projects/{proj.project_id}/agent-team")
         assert response.status_code == 204
@@ -133,9 +154,12 @@ class TestProjectTeamInstanceAPI:
         teams = team_repo.list_all(include_disabled=False)
         team_id = teams[0].team_id
 
-        client.post(f"/projects/{proj.project_id}/agent-team", json={
-            "team_template_id": team_id,
-        })
+        client.post(
+            f"/projects/{proj.project_id}/agent-team",
+            json={
+                "team_template_id": team_id,
+            },
+        )
 
         response = client.get(f"/projects/{proj.project_id}")
         assert response.status_code == 200
@@ -148,19 +172,25 @@ class TestProjectTeamInstanceAPI:
         teams = team_repo.list_all(include_disabled=False)
         team_id = teams[0].team_id
 
-        response = client.post("/projects", json={
-            "title": "Project with Team",
-            "team_template_id": team_id,
-        })
+        response = client.post(
+            "/projects",
+            json={
+                "title": "Project with Team",
+                "team_template_id": team_id,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["agent_team"] is not None
         assert data["agent_team"]["team_template_id"] == team_id
 
     def test_project_without_team_has_null_agent_team(self):
-        response = client.post("/projects", json={
-            "title": "Project without Team",
-        })
+        response = client.post(
+            "/projects",
+            json={
+                "title": "Project without Team",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["agent_team"] is None

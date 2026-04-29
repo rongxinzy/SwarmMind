@@ -34,7 +34,7 @@ class ConversationRouteHandlers:
     """Direct-call handlers re-exported by supervisor for compatibility."""
 
     list_conversations: Callable[[], ConversationListResponse]
-    create_conversation: Callable[[GoalRequest], Conversation]
+    create_conversation: Callable[[CreateConversationRequest], Conversation]
     get_conversation: Callable[..., Conversation]
     get_recent_conversation: Callable[[], RecentConversationResponse | None]
     get_conversation_messages: Callable[[str], MessageListResponse]
@@ -84,7 +84,11 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
             return Response(status_code=204)
         return result
 
-    @router.get("/conversations/{conversation_id}", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+    @router.get(
+        "/conversations/{conversation_id}",
+        tags=["conversations"],
+        responses={404: {"description": "Conversation not found"}},
+    )
     def get_conversation(
         conversation_id: str,
         include_messages: bool = Query(False),
@@ -92,7 +96,11 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         """Get a single conversation by ID."""
         return deps.get_conversation(conversation_id, include_messages=include_messages)
 
-    @router.get("/conversations/{conversation_id}/messages", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+    @router.get(
+        "/conversations/{conversation_id}/messages",
+        tags=["conversations"],
+        responses={404: {"description": "Conversation not found"}},
+    )
     def get_conversation_messages(conversation_id: str) -> MessageListResponse:
         """Get all messages for a conversation."""
         return deps.get_conversation_messages(conversation_id)
@@ -102,12 +110,20 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         """Internal compatibility endpoint for non-streaming conversation turns."""
         return deps.send_message(conversation_id, body)
 
-    @router.delete("/conversations/{conversation_id}", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+    @router.delete(
+        "/conversations/{conversation_id}",
+        tags=["conversations"],
+        responses={404: {"description": "Conversation not found"}},
+    )
     def delete_conversation(conversation_id: str) -> DeleteConversationResponse:
         """Delete a conversation and all its messages."""
         return deps.delete_conversation(conversation_id)
 
-    @router.get("/conversations/{conversation_id}/trace", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+    @router.get(
+        "/conversations/{conversation_id}/trace",
+        tags=["conversations"],
+        responses={404: {"description": "Conversation not found"}},
+    )
     def get_conversation_trace(conversation_id: str) -> ConversationTraceResponse:
         """Return the collaboration trace for a conversation."""
         return deps.get_conversation_trace(conversation_id)
@@ -116,7 +132,11 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         """Stream a ChatSession turn with SwarmMind runtime semantics."""
         yield from deps.stream_conversation_message(conversation_id, body)
 
-    @router.post("/conversations/{conversation_id}/messages/stream", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+    @router.post(
+        "/conversations/{conversation_id}/messages/stream",
+        tags=["conversations"],
+        responses={404: {"description": "Conversation not found"}},
+    )
     def send_message_stream(conversation_id: str, body: SendMessageRequest) -> StreamingResponse:
         """Stream a ChatSession turn with runtime state and final persistence."""
         get_conversation(conversation_id)
@@ -125,7 +145,11 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
             media_type="application/x-ndjson",
         )
 
-    @router.post("/conversations/{conversation_id}/clarification", tags=["conversations"], responses={404: {"description": "Conversation not found"}})
+    @router.post(
+        "/conversations/{conversation_id}/clarification",
+        tags=["conversations"],
+        responses={404: {"description": "Conversation not found"}},
+    )
     def respond_to_clarification(conversation_id: str, body: ClarificationResponseRequest) -> Message:
         """Resume the conversation from a clarification response."""
         return deps.respond_to_clarification(

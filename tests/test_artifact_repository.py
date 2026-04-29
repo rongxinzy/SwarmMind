@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
 from swarmmind.db import dispose_engines, init_db
 from swarmmind.repositories.artifact import ArtifactRepository
 from swarmmind.repositories.conversation import ConversationRepository
-from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.project import ProjectRepository
 from swarmmind.repositories.run import RunRepository
 from swarmmind.repositories.task import TaskRepository
@@ -73,11 +73,11 @@ class TestArtifactRepository:
 
         artifact_repo.delete(art.artifact_id)
 
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             artifact_repo.get_by_id(art.artifact_id)
 
     def test_get_not_found(self, artifact_repo):
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             artifact_repo.get_by_id("nonexistent")
 
     def test_create_with_trace_fields(self, artifact_repo):

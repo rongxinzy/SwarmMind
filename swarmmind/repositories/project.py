@@ -65,7 +65,7 @@ class ProjectRepository:
             session.expunge(proj)
             return proj
 
-    def update(
+    def update(  # noqa: PLR0913
         self,
         project_id: str,
         *,

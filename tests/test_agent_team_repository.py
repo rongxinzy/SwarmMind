@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
 from swarmmind.db import init_db, seed_builtin_agent_teams
 from swarmmind.repositories.agent_team import AgentTeamRepository
@@ -39,7 +40,7 @@ class TestAgentTeamRepository:
 
     def test_get_by_id_not_found(self):
         repo = AgentTeamRepository()
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             repo.get_by_id("nonexistent")
 
     def test_list_all_excludes_disabled(self):

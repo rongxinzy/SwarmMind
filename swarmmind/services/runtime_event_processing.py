@@ -212,15 +212,14 @@ def process_values_mode_state(
         return []
 
     # Normalize todo items to a comparable form
-    normalized: list[dict[str, str]] = []
-    for item in todos:
-        if isinstance(item, dict):
-            normalized.append(
-                {
-                    "description": str(item.get("description", "")),
-                    "status": str(item.get("status", "pending")),
-                }
-            )
+    normalized = [
+        {
+            "description": str(item.get("description", "")),
+            "status": str(item.get("status", "pending")),
+        }
+        for item in todos
+        if isinstance(item, dict)
+    ]
 
     if capture_state.last_todos == normalized:
         return []

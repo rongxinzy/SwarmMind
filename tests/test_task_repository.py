@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
 from swarmmind.db import dispose_engines, init_db
 from swarmmind.repositories.project import ProjectRepository
@@ -95,9 +96,9 @@ class TestTaskRepository:
 
         task_repo.delete(task.task_id)
 
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             task_repo.get_by_id(task.task_id)
 
     def test_get_not_found(self, task_repo):
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             task_repo.get_by_id("nonexistent")

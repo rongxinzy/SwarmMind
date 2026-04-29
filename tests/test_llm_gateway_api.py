@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -23,6 +23,7 @@ def _fresh_db(monkeypatch, tmp_path):
 
 def _auth_header():
     from swarmmind.services.gateway_key import get_gateway_key
+
     return {"Authorization": f"Bearer {get_gateway_key()}"}
 
 
@@ -50,10 +51,13 @@ def test_list_models_with_mocked_gateway(monkeypatch):
 
 
 def test_chat_completions_unauthorized():
-    resp = client.post("/gateway/v1/chat/completions", json={
-        "model": "gpt-4o",
-        "messages": [{"role": "user", "content": "Hi"}],
-    })
+    resp = client.post(
+        "/gateway/v1/chat/completions",
+        json={
+            "model": "gpt-4o",
+            "messages": [{"role": "user", "content": "Hi"}],
+        },
+    )
     assert resp.status_code == 401
 
 
@@ -66,9 +70,13 @@ def test_chat_completions_no_router(monkeypatch):
         "swarmmind.api.llm_gateway_routes.get_gateway",
         lambda: mock_gateway,
     )
-    resp = client.post("/gateway/v1/chat/completions", json={
-        "model": "gpt-4o",
-        "messages": [{"role": "user", "content": "Hi"}],
-        "stream": False,
-    }, headers=_auth_header())
+    resp = client.post(
+        "/gateway/v1/chat/completions",
+        json={
+            "model": "gpt-4o",
+            "messages": [{"role": "user", "content": "Hi"}],
+            "stream": False,
+        },
+        headers=_auth_header(),
+    )
     assert resp.status_code == 503

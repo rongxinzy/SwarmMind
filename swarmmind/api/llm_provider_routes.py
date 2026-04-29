@@ -41,7 +41,11 @@ def create_provider(request: LlmProviderCreateRequest) -> LlmProviderDetail:
     return provider
 
 
-@router.get("/llm-providers/{provider_id}", response_model=LlmProviderDetail, responses={404: {"description": "Provider not found"}})
+@router.get(
+    "/llm-providers/{provider_id}",
+    response_model=LlmProviderDetail,
+    responses={404: {"description": "Provider not found"}},
+)
 def get_provider(provider_id: str) -> LlmProviderDetail:
     """Get a provider by ID."""
     provider = repo.get_by_id(provider_id)
@@ -50,7 +54,11 @@ def get_provider(provider_id: str) -> LlmProviderDetail:
     return provider
 
 
-@router.patch("/llm-providers/{provider_id}", response_model=LlmProviderDetail, responses={404: {"description": "Provider not found"}})
+@router.patch(
+    "/llm-providers/{provider_id}",
+    response_model=LlmProviderDetail,
+    responses={404: {"description": "Provider not found"}},
+)
 def update_provider(
     provider_id: str,
     request: LlmProviderUpdateRequest,

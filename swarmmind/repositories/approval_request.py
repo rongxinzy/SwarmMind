@@ -15,7 +15,7 @@ from swarmmind.time_utils import utc_now
 class ApprovalRequestRepository:
     """Repository for approval request operations."""
 
-    def create(
+    def create(  # noqa: PLR0913
         self,
         *,
         project_id: str,

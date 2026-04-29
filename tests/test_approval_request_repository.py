@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 
 from swarmmind.db import dispose_engines, init_db
 from swarmmind.repositories.approval_request import ApprovalRequestRepository
@@ -123,9 +124,9 @@ class TestApprovalRequestRepository:
 
         approval_repo.delete(ar.approval_id)
 
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             approval_repo.get(ar.approval_id)
 
     def test_get_not_found(self, approval_repo):
-        with pytest.raises(Exception):
+        with pytest.raises(HTTPException):
             approval_repo.get("nonexistent")

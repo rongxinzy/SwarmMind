@@ -12,7 +12,7 @@ from typing import Any
 
 from swarmmind.models import TraceSummaryResponse
 from swarmmind.services.conversation_trace_service import ConversationTraceService
-from swarmmind.services.trace_service import TraceService, trace_service
+from swarmmind.services.trace_service import trace_service
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,6 @@ class MessageTraceService:
 
         summary = MessageTraceService._generate_human_summary(
             events=events,
-            steps_count=steps_count,
             subagent_calls_count=subagent_calls_count,
             artifacts_count=artifacts_count,
             blocked_points=blocked_points,
@@ -103,7 +102,6 @@ class MessageTraceService:
     def _generate_human_summary(
         *,
         events: list[dict[str, Any]],
-        steps_count: int,
         subagent_calls_count: int,
         artifacts_count: int,
         blocked_points: list[str],
@@ -184,14 +182,16 @@ class MessageTraceService:
                 task_id=event.get("task_id") or task_id,
                 author_role=event.get("author_role") or author_role,
             )
-            created.append({
-                "artifact_id": artifact.artifact_id,
-                "name": artifact.name,
-                "artifact_type": artifact.artifact_type,
-                "run_id": artifact.run_id,
-                "task_id": artifact.task_id,
-                "author_role": artifact.author_role,
-            })
+            created.append(
+                {
+                    "artifact_id": artifact.artifact_id,
+                    "name": artifact.name,
+                    "artifact_type": artifact.artifact_type,
+                    "run_id": artifact.run_id,
+                    "task_id": artifact.task_id,
+                    "author_role": artifact.author_role,
+                }
+            )
             existing_names.add(name)
 
         return created

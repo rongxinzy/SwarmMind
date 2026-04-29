@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
+from typing import Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -742,7 +743,8 @@ class CreateRunRequest(BaseModel):
     status: RunStatus = RunStatus.RUNNING
 
     @model_validator(mode="after")
-    def check_conversation_or_project(self):
+    def check_conversation_or_project(self) -> Self:
+        """Ensure a run is anchored to a conversation or project."""
         if self.conversation_id is None and self.project_id is None:
             raise ValueError("Either conversation_id or project_id must be provided")
         return self

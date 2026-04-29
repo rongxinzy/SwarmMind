@@ -51,9 +51,7 @@ class RunRepository:
         """List runs for a project ordered by started_at descending."""
         with session_scope() as session:
             results = session.exec(
-                select(RunDB)
-                .where(RunDB.project_id == project_id)
-                .order_by(RunDB.started_at.desc()),
+                select(RunDB).where(RunDB.project_id == project_id).order_by(RunDB.started_at.desc()),
             ).all()
             for r in results:
                 session.expunge(r)
@@ -63,9 +61,7 @@ class RunRepository:
         """List runs for a conversation ordered by started_at descending."""
         with session_scope() as session:
             results = session.exec(
-                select(RunDB)
-                .where(RunDB.conversation_id == conversation_id)
-                .order_by(RunDB.started_at.desc()),
+                select(RunDB).where(RunDB.conversation_id == conversation_id).order_by(RunDB.started_at.desc()),
             ).all()
             for r in results:
                 session.expunge(r)
