@@ -35,25 +35,25 @@ const functionCards = [
     title: "文档生成",
     description: "一键生成结构化报告、方案与会议纪要。",
     icon: <FileText className="size-5" />,
-    tone: "var(--blue-soft)",
+    tone: "var(--accent-soft)",
   },
   {
     title: "数据分析",
     description: "上传数据后输出洞察、结论和汇报摘要。",
     icon: <FileSpreadsheet className="size-5" />,
-    tone: "var(--green-soft)",
+    tone: "var(--status-done-bg)",
   },
   {
     title: "任务拆解",
     description: "把目标拆成步骤、负责人和交付清单。",
     icon: <ListChecks className="size-5" />,
-    tone: "var(--orange-soft)",
+    tone: "var(--status-approval-bg)",
   },
   {
     title: "知识问答",
     description: "基于企业知识源生成可引用的回答。",
     icon: <Sparkles className="size-5" />,
-    tone: "var(--purple-soft)",
+    tone: "var(--surface-hover)",
   },
 ]
 
@@ -222,8 +222,8 @@ export function Workbench({
         <section className="rounded-lg border border-border bg-secondary/65 p-6">
           <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-start">
             <div>
-              <p className="text-[11px] leading-4 tracking-[0.08em] text-muted-foreground uppercase">Enterprise AI Workspace</p>
-              <h1 className="mt-3 text-[28px] leading-9 font-semibold tracking-[-0.02em] text-foreground">
+              <p className="text-[11px] leading-4 tracking-[0.04em] text-muted-foreground">Enterprise AI Workspace</p>
+              <h1 className="mt-3 text-[24px] leading-8 font-semibold text-foreground">
                 强结构、强引导、强结果
               </h1>
               <p className="mt-3 max-w-[620px] text-[14px] leading-[22px] text-muted-foreground">
