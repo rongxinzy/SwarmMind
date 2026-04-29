@@ -64,7 +64,7 @@ function streamStatusText(mode: ConversationMode, status: StreamStatus, step: St
 }
 
 function streamBadgeTone(status: StreamStatus) {
-  if (status === "thinking") return "border-[var(--status-chat-border)] bg-[var(--status-chat-bg)] text-[var(--status-chat)]";
+  if (status === "thinking") return "border-accent-border bg-accent-soft text-accent";
   if (status === "running" || status === "artifact") return "border-[var(--status-running-border)] bg-[var(--status-running-bg)] text-[var(--status-running)]";
   if (status === "clarification") return "border-[var(--status-approval-border)] bg-[var(--status-approval-bg)] text-[var(--status-approval)]";
   return "border-[var(--status-draft-border)] bg-[var(--status-draft-bg)] text-[var(--status-draft)]";
@@ -113,14 +113,14 @@ export function ChatComposerPanel({
       className="sticky bottom-0 z-20"
       style={{
         background:
-          "linear-gradient(to top, var(--warm-paper) 0%, var(--warm-paper) 85%, transparent 100%)",
+          "linear-gradient(to top, var(--codex-bg) 0%, var(--codex-bg) 85%, transparent 100%)",
       }}
     >
-      <div className="relative border-t border-[var(--warm-border)]/50 bg-[var(--warm-paper)]">
+      <div className="relative border-t border-border/50 bg-background">
         <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-2.5">
           <div
-            className="rounded-2xl border border-[var(--warm-border)] bg-[var(--warm-ivory)] transition-all duration-200 focus-within:border-[var(--warm-ring)]"
-            style={{ boxShadow: "var(--shadow-whisper)" }}
+            className="rounded-xl border border-border bg-card transition-all duration-200 focus-within:border-accent"
+            style={{ boxShadow: "var(--shadow-xs)" }}
           >
             <AnimatePresence>
               {showStatusBar ? (
@@ -130,7 +130,7 @@ export function ChatComposerPanel({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  className="min-h-[40px] border-b border-[var(--warm-border)] bg-[var(--neutral-150)] px-5 py-2.5"
+                  className="min-h-[40px] border-b border-border bg-surface-hover px-5 py-2.5"
                   aria-live="polite"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -180,7 +180,7 @@ export function ChatComposerPanel({
                   transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   className="overflow-hidden"
                 >
-                  <div className="flex flex-col gap-1 border-b border-[var(--warm-border)] px-4 py-2">
+                  <div className="flex flex-col gap-1 border-b border-border px-4 py-2">
                     {runtime.activities.slice(0, 5).map((activity) => (
                       <div key={activity.id} className="flex items-center gap-2 text-xs">
                         {activity.status === "running" ? (
@@ -192,21 +192,21 @@ export function ChatComposerPanel({
                           className={cn(
                             "truncate",
                             activity.status === "running"
-                              ? "text-[var(--neutral-700)]"
-                              : "text-[var(--neutral-500)]",
+                              ? "text-foreground"
+                              : "text-muted-foreground",
                           )}
                         >
                           {activity.label}
                         </span>
                         {activity.detail ? (
-                          <span className="ml-auto max-w-[120px] shrink-0 truncate text-[var(--neutral-400)]">
+                          <span className="ml-auto max-w-[120px] shrink-0 truncate text-muted-foreground/70">
                             {activity.detail}
                           </span>
                         ) : null}
                       </div>
                     ))}
                     {runtime.activities.length > 5 ? (
-                      <p className="pl-5 text-xs text-[var(--neutral-400)]">
+                      <p className="pl-5 text-xs text-muted-foreground/70">
                         +{runtime.activities.length - 5} 个任务...
                       </p>
                     ) : null}
@@ -221,14 +221,14 @@ export function ChatComposerPanel({
                   {attachedFiles.map((file, index) => (
                     <div
                       key={`${file.name}-${index}`}
-                      className="flex items-center gap-1.5 rounded-md border border-[var(--warm-border)] bg-[var(--warm-ivory)] px-2.5 py-1 text-xs text-[var(--neutral-700)]"
+                      className="flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground"
                     >
-                      <Paperclip className="size-3 shrink-0 text-[var(--neutral-500)]" />
+                      <Paperclip className="size-3 shrink-0 text-muted-foreground" />
                       <span className="max-w-[120px] truncate">{file.name}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveFile(index)}
-                        className="ml-0.5 text-[var(--neutral-400)] hover:text-[var(--neutral-700)]"
+                        className="ml-0.5 text-muted-foreground hover:text-foreground"
                         aria-label={`移除 ${file.name}`}
                       >
                         <XIcon className="size-3" />
@@ -250,10 +250,10 @@ export function ChatComposerPanel({
                       ? "输入问题或任务..."
                       : "当前没有可用模型，暂时无法开始会话"
                 }
-                className="min-h-[100px] resize-none border-none bg-card px-5 py-4 text-[15px] leading-[24px] tracking-[-0.003em] focus-visible:ring-0"
+                className="min-h-[100px] resize-none border-none bg-card px-5 py-4 text-[14px] leading-[22px] focus-visible:ring-0"
                 disabled={isComposerDisabled}
               />
-              <div className="flex flex-col gap-2 border-t border-[var(--warm-border)] bg-[var(--neutral-150)]/70 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 border-t border-border bg-surface-hover/70 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
                   <ModePicker selected={selectedMode} onSelect={setSelectedMode} />
                   <>
@@ -269,7 +269,7 @@ export function ChatComposerPanel({
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => fileInputRef.current?.click()}
-                      className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
+                      className="size-10 rounded-lg border border-transparent text-muted-foreground hover:border-border hover:bg-card"
                       title="上传附件"
                     >
                       <Paperclip className="size-4" />
@@ -279,7 +279,7 @@ export function ChatComposerPanel({
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      className="size-10 rounded-lg border border-transparent text-[var(--neutral-600)] hover:border-[var(--warm-border)] hover:bg-[var(--warm-ivory)]"
+                      className="size-10 rounded-lg border border-transparent text-muted-foreground hover:border-border hover:bg-card"
                       onClick={() => navigator.clipboard.writeText(lastAssistantMessage.content)}
                       title="复制回复"
                     >
@@ -300,7 +300,7 @@ export function ChatComposerPanel({
                     onClick={handleSubmit}
                     disabled={!input.trim() || isComposerDisabled}
                     size="icon-sm"
-                    className="size-10 rounded-md shadow-none"
+                    className="size-10 rounded-md bg-accent text-accent-foreground shadow-none hover:bg-accent-hover"
                   >
                     {isLoading ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
                   </Button>
