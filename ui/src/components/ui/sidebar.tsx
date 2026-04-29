@@ -72,8 +72,8 @@ const utilityItems: { value: SidebarView; label: string; icon: React.ReactNode }
 ]
 
 function projectMetaClassName(meta: string) {
-  if (meta === "进行中") return "text-[#61788b]"
-  if (meta === "待审批") return "text-[#846d4c]"
+  if (meta === "进行中") return "text-[var(--status-running)]"
+  if (meta === "待审批") return "text-[var(--status-approval)]"
   return "text-muted-foreground"
 }
 
@@ -85,7 +85,7 @@ function SectionLabel({
   className?: string
 }) {
   return (
-    <p className={cn("px-3 text-[10px] leading-4 font-medium tracking-[0.1em] text-muted-foreground/90 uppercase", className)}>
+    <p className={cn("px-3 text-[10px] leading-4 font-medium text-muted-foreground/90", className)}>
       {children}
     </p>
   )
@@ -116,7 +116,7 @@ function NavButton({
       )}
     >
       {active ? (
-        <span className="absolute left-1.5 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[#71879a]" />
+        <span className="absolute left-1.5 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-accent" />
       ) : null}
       <span className={cn("mr-2 text-muted-foreground", active && "text-foreground")}>{icon}</span>
       <span className="flex-1 truncate text-[13px] leading-5">{label}</span>
@@ -152,7 +152,7 @@ function SidebarHeader({
             <p className="truncate text-[14px] font-semibold tracking-[-0.02em] text-foreground">
               SwarmMind
             </p>
-            <p className="mt-0.5 truncate text-[11px] leading-4 tracking-[0.08em] text-muted-foreground">
+            <p className="mt-0.5 truncate text-[11px] leading-4 tracking-[0.04em] text-muted-foreground">
               SUPERVISED WORK SURFACE
             </p>
           </div>
@@ -309,7 +309,7 @@ export function Sidebar({
                       className={cn(
                         "h-auto min-h-10 min-w-0 flex-1 justify-start rounded-md border border-transparent px-3 py-2 hover:border-sidebar-border/60 hover:bg-sidebar-accent/60",
                         activeView === "chat" && conversation.id === activeConversationId
-                          ? "bg-[var(--warm-ivory)] border-l-2 border-l-[var(--neutral-800)]"
+                          ? "bg-accent-soft border-l-2 border-l-accent"
                           : ""
                       )}
                     >
