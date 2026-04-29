@@ -6,101 +6,128 @@
 
 @layer base {
   :root {
-    /* Warm Neutral Palette - Design System v2.0 */
-    --warm-paper: #F7F7F5;
-    --warm-ivory: #FAFAF8;
-    --warm-sand: #E8E6E0;
-    --warm-border: #E5E3DD;
-    --warm-ring: #D1CFC8;
-    --warm-ring-subtle: #E8E6E0;
+    color-scheme: light;
 
-    /* Neutral Ladder */
-    --neutral-50: #FAFAF8;
-    --neutral-100: #F7F7F5;
-    --neutral-150: #F0EEEA;
-    --neutral-200: #E8E6E0;
-    --neutral-300: #D8D6D0;
-    --neutral-400: #B8B6B0;
-    --neutral-500: #8A8882;
-    --neutral-600: #6A6862;
-    --neutral-700: #5A5852;
-    --neutral-800: #3A3832;
-    --neutral-900: #1E1E1C;
+    /* Codex Theme Anchors */
+    --codex-accent: #339CFF;
+    --codex-bg: #FFFFFF;
+    --codex-fg: #1A1C1F;
+    --codex-sidebar: rgba(247, 247, 248, 0.82);
+    --codex-control: #F4F4F5;
+    --codex-border: #E7E7E8;
 
-    /* Semantic Colors (oklch) */
-    --status-running: oklch(0.72 0.17 140);
-    --status-running-bg: oklch(0.96 0.04 140);
-    --status-running-border: oklch(0.88 0.08 140);
+    /* Core Surface Tokens */
+    --background: #FFFFFF;
+    --foreground: #1A1C1F;
+    --surface: #FFFFFF;
+    --surface-muted: #F7F7F8;
+    --surface-control: #F4F4F5;
+    --surface-hover: #ECECEE;
+    --border: #E7E7E8;
+    --border-subtle: #EFEFF0;
+    --border-strong: #D3D3D6;
+    --muted-foreground: #76777C;
+    --secondary-foreground: #5F6065;
 
-    --status-approval: oklch(0.72 0.17 55);
-    --status-approval-bg: oklch(0.97 0.04 55);
-    --status-approval-border: oklch(0.90 0.08 55);
+    /* Accent Family */
+    --accent: #339CFF;
+    --accent-hover: #2F91EE;
+    --accent-active: #287FD3;
+    --accent-soft: #EAF4FF;
+    --accent-border: #A8D4FF;
+    --accent-ring: rgba(51, 156, 255, 0.20);
 
-    --status-blocked: oklch(0.65 0.20 25);
-    --status-blocked-bg: oklch(0.97 0.04 25);
-    --status-blocked-border: oklch(0.90 0.08 25);
+    /* Semantic Status Colors - hex, not oklch */
+    --status-running: #339CFF;
+    --status-running-bg: #EAF4FF;
+    --status-running-border: #A8D4FF;
+    --status-approval: #B7791F;
+    --status-approval-bg: #FFF7E8;
+    --status-approval-border: #F0D59A;
+    --status-blocked: #C2413B;
+    --status-blocked-bg: #FFF0EF;
+    --status-blocked-border: #F0B7B3;
+    --status-done: #1F8F4D;
+    --status-done-bg: #EAF8F0;
+    --status-done-border: #A9DFC0;
+    --status-draft: #76777C;
+    --status-draft-bg: #F4F4F5;
+    --status-draft-border: #E2E2E4;
 
-    --status-done: oklch(0.55 0.15 250);
-    --status-done-bg: oklch(0.96 0.04 250);
-    --status-done-border: oklch(0.88 0.08 250);
+    /* Diff and Code */
+    --diff-add-bg: #E1F3E8;
+    --diff-add-gutter: #0EA55E;
+    --diff-remove-bg: #F7E8E8;
+    --diff-remove-gutter: #E53935;
+    --code-surface: #FBFBFB;
 
-    --status-draft: oklch(0.55 0.05 270);
-    --status-draft-bg: oklch(0.97 0.02 270);
-    --status-draft-border: oklch(0.90 0.04 270);
+    /* Typography - system fonts only */
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-    --status-chat: oklch(0.55 0.12 270);
-    --status-chat-bg: oklch(0.96 0.04 270);
-    --status-chat-border: oklch(0.88 0.08 270);
+    /* Radius Scale */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+    --radius-pill: 999px;
 
-    /* ShadCN Theme Mapping */
-    --background: 45 8% 97%;        /* warm-paper #F7F7F5 */
-    --foreground: 45 6% 11%;        /* neutral-900 #1E1E1C */
-    --card: 40 9% 98%;              /* warm-ivory #FAFAF8 */
-    --card-foreground: 45 6% 11%;
-    --popover: 40 9% 98%;
-    --popover-foreground: 45 6% 11%;
-    --primary: 45 6% 11%;           /* neutral-900 */
-    --primary-foreground: 40 9% 98%;
-    --secondary: 40 7% 94%;         /* warm-sand tint */
-    --secondary-foreground: 45 6% 11%;
-    --muted: 40 9% 93%;             /* neutral-150 */
-    --muted-foreground: 45 4% 45%;  /* neutral-500 */
-    --accent: 40 7% 94%;
-    --accent-foreground: 45 6% 11%;
-    --destructive: 12 35% 45%;
+    /* Shadows */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.10);
+    --focus-ring: 0 0 0 3px var(--accent-ring);
+
+    /* ShadCN Theme Mapping - MUST be HSL for shadcn tailwind plugin */
+    --background: 0 0% 100%;
+    --foreground: 220 9% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 9% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 9% 12%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 220 9% 12%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 210 100% 95%;
+    --accent-foreground: 220 9% 12%;
+    --destructive: 0 60% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 38 9% 88%;            /* warm-border #E5E3DD */
-    --input: 40 9% 98%;
-    --ring: 210 20% 50%;            /* status-running muted */
+    --border: 240 6% 90%;
+    --input: 0 0% 100%;
+    --ring: 210 100% 60%;
     --radius: 10px;
+    --sidebar: 240 5% 96%;
+    --sidebar-foreground: 220 9% 12%;
+    --sidebar-primary: 210 100% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 96%;
+    --sidebar-accent-foreground: 220 9% 12%;
+    --sidebar-border: 240 6% 90%;
+    --sidebar-ring: 210 100% 60%;
 
-    /* Sidebar */
-    --sidebar: 40 7% 94%;
-    --sidebar-foreground: 45 6% 11%;
-    --sidebar-primary: 45 6% 11%;
-    --sidebar-primary-foreground: 40 9% 98%;
-    --sidebar-accent: 40 9% 93%;
-    --sidebar-accent-foreground: 45 6% 11%;
-    --sidebar-border: 38 9% 88%;
-    --sidebar-ring: 210 20% 50%;
+    /* User Bubble - HSL */
+    --user-bubble: 240 5% 96%;
+    --user-bubble-border: 240 6% 90%;
 
-    /* Shadows - Design System v2.0 */
-    --shadow-ring: 0 0 0 1px #D1CFC8;
-    --shadow-ring-subtle: 0 0 0 1px #E8E6E0;
-    --shadow-whisper: 0 4px 12px rgba(0,0,0,0.04);
-    --shadow-sticky: 0 -2px 20px rgba(0,0,0,0.06);
-    --shadow-elevated: 0 8px 24px rgba(0,0,0,0.06);
-
-    /* User Bubble */
-    --user-bubble: 36 20% 93%;
-    --user-bubble-border: 34 14% 85%;
-
-    /* Typography */
-    --font-display: "Newsreader", "Noto Serif SC", Georgia, serif;
-    --font-sans: "Geist", "PingFang SC", system-ui, sans-serif;
-    --font-mono: "Geist Mono", "Cascadia Code", monospace;
-    --font-heading: "Geist", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
-    --font-body: "Geist", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+    /* Deprecated compatibility aliases.
+     * Existing implementation may still reference the old v2 warm/brass names.
+     * Map them to Codex tokens during migration, then remove direct usage.
+     */
+    --warm-paper: var(--background);
+    --warm-ivory: var(--surface);
+    --warm-mist: var(--surface-muted);
+    --warm-sand: var(--surface-control);
+    --warm-border: var(--border);
+    --warm-ring: var(--border-strong);
+    --warm-ring-subtle: var(--border-subtle);
+    --brass: var(--accent);
+    --brass-light: var(--accent-soft);
+    --brass-border: var(--accent-border);
+    --brass-dark: var(--accent-active);
   }
 
   .dark {
