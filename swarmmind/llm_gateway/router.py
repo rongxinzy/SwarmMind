@@ -39,6 +39,7 @@ COOLDOWN_TIME_SECONDS = 60
 ALLOWED_FAILS = 3
 ROUTER_TIMEOUT_SECONDS = 120
 ROUTER_NUM_RETRIES = 2
+STREAM_UPSTREAM_ERROR_MESSAGE = "上游模型流式连接中断，本轮回答没有完整返回。请重试。"
 
 
 @dataclass
@@ -321,6 +322,7 @@ class LlmGateway:
             "stream": False,
             "presence_penalty": request.presence_penalty,
             "frequency_penalty": request.frequency_penalty,
+            "drop_params": True,
         }
         if request.stop is not None:
             kwargs["stop"] = request.stop
@@ -376,10 +378,20 @@ class LlmGateway:
     ) -> AsyncIterator[str]:
         """Handle a streaming chat completion request; yields SSE lines."""
         if self._router is None:
-            raise RuntimeError("Gateway router is not available. No providers configured.")
+            async for line in self._stream_error_response(
+                request.model,
+                "Gateway router is not available. No providers configured.",
+            ):
+                yield line
+            return
 
         if request.model not in self._model_names:
-            raise RuntimeError(f"Model '{request.model}' is not available through the Gateway.")
+            async for line in self._stream_error_response(
+                request.model,
+                f"Model '{request.model}' is not available through the Gateway.",
+            ):
+                yield line
+            return
 
         messages = [m.model_dump(exclude_none=True) for m in request.messages]
         kwargs: dict[str, Any] = {
@@ -391,6 +403,7 @@ class LlmGateway:
             "stream": True,
             "presence_penalty": request.presence_penalty,
             "frequency_penalty": request.frequency_penalty,
+            "drop_params": True,
         }
         if request.stop is not None:
             kwargs["stop"] = request.stop
@@ -402,61 +415,118 @@ class LlmGateway:
         completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
         created_ts = int(time.time())
 
-        # Yield the first chunk with role
-        first_chunk = ChatCompletionResponse(
-            id=completion_id,
-            object="chat.completion.chunk",
-            created=created_ts,
+        try:
+            response = await self._router.acompletion(**kwargs)
+        except Exception as exc:
+            logger.warning("Gateway upstream stream setup failed: %s", exc, exc_info=True)
+            async for line in self._stream_error_response(
+                request.model,
+                self._format_stream_error_message(exc),
+                completion_id=completion_id,
+                created_ts=created_ts,
+            ):
+                yield line
+            return
+
+        yield self._sse_chunk(
+            completion_id=completion_id,
+            created_ts=created_ts,
             model=request.model,
-            choices=[
-                ChatCompletionChoice(
-                    index=0,
-                    delta=ChatMessage(role="assistant"),
-                    finish_reason=None,
-                ),
-            ],
+            delta=ChatMessage(role="assistant"),
         )
-        yield f"data: {first_chunk.model_dump_json(exclude_none=True)}\n\n"
 
-        response = await self._router.acompletion(**kwargs)
+        try:
+            async for chunk in response:
+                delta_content = ""
+                if hasattr(chunk, "choices") and chunk.choices:
+                    delta = chunk.choices[0].delta
+                    if hasattr(delta, "content") and delta.content:
+                        delta_content = delta.content
 
-        async for chunk in response:
-            delta_content = ""
-            if hasattr(chunk, "choices") and chunk.choices:
-                delta = chunk.choices[0].delta
-                if hasattr(delta, "content") and delta.content:
-                    delta_content = delta.content
-
-            chunk_data = ChatCompletionResponse(
-                id=completion_id,
-                object="chat.completion.chunk",
-                created=created_ts,
+                if delta_content:
+                    yield self._sse_chunk(
+                        completion_id=completion_id,
+                        created_ts=created_ts,
+                        model=request.model,
+                        delta=ChatMessage(role="assistant", content=delta_content),
+                    )
+        except Exception as exc:
+            logger.warning("Gateway upstream stream interrupted: %s", exc, exc_info=True)
+            yield self._sse_chunk(
+                completion_id=completion_id,
+                created_ts=created_ts,
                 model=request.model,
-                choices=[
-                    ChatCompletionChoice(
-                        index=0,
-                        delta=ChatMessage(content=delta_content) if delta_content else None,
-                        finish_reason=None,
-                    ),
-                ],
+                delta=ChatMessage(role="assistant", content=self._format_stream_error_message(exc)),
             )
-            yield f"data: {chunk_data.model_dump_json(exclude_none=True)}\n\n"
 
-        # Yield final chunk
-        final_chunk = ChatCompletionResponse(
+        yield self._sse_chunk(
+            completion_id=completion_id,
+            created_ts=created_ts,
+            model=request.model,
+            delta=ChatMessage(role="assistant"),
+            finish_reason="stop",
+        )
+        yield "data: [DONE]\n\n"
+
+    def _sse_chunk(
+        self,
+        *,
+        completion_id: str,
+        created_ts: int,
+        model: str,
+        delta: ChatMessage | None,
+        finish_reason: str | None = None,
+    ) -> str:
+        chunk = ChatCompletionResponse(
             id=completion_id,
             object="chat.completion.chunk",
             created=created_ts,
-            model=request.model,
+            model=model,
             choices=[
                 ChatCompletionChoice(
                     index=0,
-                    delta=ChatMessage(),
-                    finish_reason="stop",
+                    delta=delta,
+                    finish_reason=finish_reason,
                 ),
             ],
         )
-        yield f"data: {final_chunk.model_dump_json(exclude_none=True)}\n\n"
+        return f"data: {chunk.model_dump_json(exclude_none=True)}\n\n"
+
+    def _format_stream_error_message(self, exc: Exception) -> str:
+        detail = str(exc)
+        if "does not support parameters" in detail:
+            return "本地 LLM Gateway 参数适配失败，已阻止不完整流式响应。请重试。"
+        return STREAM_UPSTREAM_ERROR_MESSAGE
+
+    async def _stream_error_response(
+        self,
+        model: str,
+        message: str,
+        *,
+        completion_id: str | None = None,
+        created_ts: int | None = None,
+    ) -> AsyncIterator[str]:
+        completion_id = completion_id or f"chatcmpl-{uuid.uuid4().hex[:12]}"
+        created_ts = created_ts or int(time.time())
+        yield self._sse_chunk(
+            completion_id=completion_id,
+            created_ts=created_ts,
+            model=model,
+            delta=ChatMessage(role="assistant"),
+        )
+        yield self._sse_chunk(
+            completion_id=completion_id,
+            created_ts=created_ts,
+            model=model,
+            delta=ChatMessage(role="assistant", content=message),
+        )
+        yield self._sse_chunk(
+            completion_id=completion_id,
+            created_ts=created_ts,
+            model=model,
+            delta=ChatMessage(role="assistant"),
+            finish_reason="stop",
+        )
         yield "data: [DONE]\n\n"
 
 
