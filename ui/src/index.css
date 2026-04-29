@@ -17,8 +17,6 @@
     --codex-border: #E7E7E8;
 
     /* Core Surface Tokens */
-    --background: #FFFFFF;
-    --foreground: #1A1C1F;
     --surface: #FFFFFF;
     --surface-muted: #F7F7F8;
     --surface-control: #F4F4F5;
@@ -30,7 +28,6 @@
     --secondary-foreground: #5F6065;
 
     /* Accent Family */
-    --accent: #339CFF;
     --accent-hover: #2F91EE;
     --accent-active: #287FD3;
     --accent-soft: #EAF4FF;
