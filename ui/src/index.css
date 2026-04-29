@@ -125,6 +125,26 @@
     --brass-light: var(--accent-soft);
     --brass-border: var(--accent-border);
     --brass-dark: var(--accent-active);
+
+    /* Neutral scale compatibility */
+    --neutral-150: #F0F0F1;
+    --neutral-200: #E2E2E4;
+    --neutral-500: #76777C;
+    --neutral-600: #5F6065;
+    --neutral-700: #48494D;
+    --neutral-800: #313235;
+    --neutral-900: #1A1C1F;
+
+    /* Shadow compatibility */
+    --shadow-whisper: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-ring: 0 0 0 1px var(--border-strong);
+    --shadow-sticky: 0 -2px 20px rgba(0, 0, 0, 0.06);
+
+    /* Status chat compatibility (mapped to accent since v4.0 removed it) */
+    --status-chat: var(--accent);
+    --status-chat-bg: var(--accent-soft);
+    --status-chat-border: var(--accent-border);
   }
 
   .dark {
@@ -157,6 +177,22 @@
     --sidebar-ring: 210 30% 55%;
     --user-bubble: 30 8% 22%;
     --user-bubble-border: 28 10% 30%;
+
+    /* Dark mode compatibility aliases */
+    --neutral-150: #262626;
+    --neutral-200: #303030;
+    --neutral-500: #A1A1A1;
+    --neutral-600: #C9C9C9;
+    --neutral-700: #D6D6D6;
+    --neutral-800: #E0E0E0;
+    --neutral-900: #FFFFFF;
+    --shadow-whisper: 0 1px 3px rgba(0, 0, 0, 0.20);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.30);
+    --shadow-ring: 0 0 0 1px var(--border-strong);
+    --shadow-sticky: 0 -2px 20px rgba(0, 0, 0, 0.25);
+    --status-chat: var(--accent);
+    --status-chat-bg: rgba(51, 156, 255, 0.18);
+    --status-chat-border: rgba(51, 156, 255, 0.48);
   }
 
   * {
