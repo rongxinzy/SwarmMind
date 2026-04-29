@@ -61,7 +61,7 @@ export function MessageListSkeleton() {
       </div>
 
       <div className="flex justify-start">
-        <div className="w-full max-w-[520px] rounded-2xl border border-[var(--warm-border)] bg-[var(--neutral-150)] px-4 py-4">
+        <div className="w-full max-w-[520px] rounded-xl border border-border bg-surface-hover px-4 py-4">
           <div className="space-y-2">
             <div className="skeleton-line h-3.5 w-[120px] rounded-full" />
             <div className="skeleton-line h-4 rounded-full" />
@@ -118,7 +118,7 @@ export const MessageBubble = memo(function MessageBubble({
         className={cn(
           "relative max-w-[90%]",
           isUser
-            ? "rounded-[22px] border user-bubble px-[20px] py-[14px] text-[var(--neutral-900)]"
+            ? "rounded-[22px] border user-bubble px-[20px] py-[14px] text-foreground"
             : "px-1 py-1 md:px-2",
         )}
       >
@@ -140,7 +140,7 @@ export const MessageBubble = memo(function MessageBubble({
                 "h-8 w-8 rounded-[10px] text-muted-foreground md:h-7 md:w-7",
                 isUser
                   ? "border border-border bg-card hover:bg-card hover:text-foreground"
-                  : "border border-transparent bg-[var(--warm-ivory)] hover:border-[var(--warm-border)] hover:bg-[var(--neutral-150)] hover:text-[var(--neutral-700)]",
+                  : "border border-transparent bg-card hover:border-border hover:bg-surface-hover hover:text-foreground",
               )}
               title={copied ? "已复制" : "复制消息"}
             >
@@ -162,9 +162,9 @@ export const MessageBubble = memo(function MessageBubble({
 
         {message.content ? (
           isUser ? (
-            <div className="whitespace-pre-wrap font-[var(--font-body)] text-[14px] leading-[22px]">{message.content}</div>
+            <div className="whitespace-pre-wrap text-[14px] leading-[22px]">{message.content}</div>
           ) : (
-            <div className="assistant-markdown prose prose-sm max-w-none px-[12px] py-1 font-[var(--font-body)] text-[14px] leading-[24px] tracking-[-0.003em] text-foreground prose-headings:font-sans prose-pre:my-0 prose-pre:mx-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0 prose-code:font-mono">
+            <div className="assistant-markdown prose prose-sm max-w-none px-3 py-1 text-[14px] leading-[24px] text-foreground prose-headings:font-sans prose-pre:my-0 prose-pre:mx-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0 prose-code:font-mono">
               <Streamdown
                 mode={isMessageStreaming ? "streaming" : "static"}
                 remarkPlugins={isMessageStreaming ? streamingRemarkPlugins : staticRemarkPlugins}
