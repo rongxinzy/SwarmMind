@@ -3,6 +3,8 @@ name = "swarmmind"
 version = "0.1.1"
 description = "AI Agent Team Operating System"
 readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",

@@ -58,4 +58,4 @@ make dev
 
 ## 许可证
 
-Apache-2.0
+[GNU Affero 通用公共许可证 v3.0](LICENSE) (AGPL-3.0)
