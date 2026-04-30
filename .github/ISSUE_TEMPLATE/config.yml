@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞报告 / Security Vulnerability
+    url: https://github.com/rongxinzy/SwarmMind/security/advisories/new
+    about: 请通过 GitHub Security Advisory 私下报告安全问题，不要公开提交 issue。
+  - name: 文档 / Documentation
+    url: https://github.com/rongxinzy/SwarmMind/tree/main/docs
+    about: 在提问前请先查阅 docs/ 目录下的产品定位、架构与路线图文档。
