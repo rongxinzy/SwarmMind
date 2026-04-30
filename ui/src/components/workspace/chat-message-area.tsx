@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-import { MessageBubble, StreamingDots } from "@/components/workspace/chat-message-ui";
+import { MessageBubble, SuggestedFollowUps } from "@/components/workspace/chat-message-ui";
 import { ClarificationCard } from "@/components/workspace/messages/clarification-card";
 import { SubtaskCard } from "@/components/workspace/messages/subtask-card";
 import { parseClarificationContent } from "@/core/messages/clarification";
@@ -28,6 +28,40 @@ interface ChatMessageAreaProps {
   onRetry?: () => void;
   onCopy?: () => void;
   isRetrying?: boolean;
+  onSuggestionSelect?: (value: string) => void;
+}
+
+function buildSuggestedFollowUps(content: string) {
+  const normalized = content.trim();
+  if (!normalized) {
+    return [
+      "你能帮我做些什么？",
+      "帮我总结一下今天的重要信息",
+      "给我一个适合下一步执行的建议",
+    ];
+  }
+
+  if (normalized.includes("你好")) {
+    return [
+      "你能帮我做些什么？",
+      "帮我总结一下今天的 AI 新闻",
+      "我想了解一下你的功能",
+    ];
+  }
+
+  if (normalized.includes("报告") || normalized.includes("总结")) {
+    return [
+      "把这个内容整理成更正式的版本",
+      "继续补充 3 条关键行动建议",
+      "帮我压缩成一页摘要",
+    ];
+  }
+
+  return [
+    "继续展开这个话题",
+    "帮我提炼 3 个重点结论",
+    "给我一个适合下一步执行的建议",
+  ];
 }
 
 function ErrorCard({
@@ -117,13 +151,30 @@ export function ChatMessageArea({
   onRetry,
   onCopy,
   isRetrying,
+  onSuggestionSelect,
 }: ChatMessageAreaProps) {
   const taskList = Object.values(tasks);
+  const lastAssistantMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === "assistant" && message.content.trim().length > 0);
+  const shouldShowSuggestedFollowUps = Boolean(
+    lastAssistantMessage &&
+    !isLoading &&
+    !pendingClarification &&
+    !error,
+  );
+  const followUps = lastAssistantMessage
+    ? buildSuggestedFollowUps(lastAssistantMessage.content)
+    : [];
 
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5 px-6 py-6">
+    <div className="mx-auto flex w-full max-w-[820px] flex-col gap-5 px-6 py-6">
       <AnimatePresence initial={false}>
-        {messages.map((message) => (
+        {messages.map((message) => {
+          const isLastAssistant =
+            message.role === "assistant" && lastAssistantMessage?.id === message.id;
+
+          return (
           <motion.div
             key={message.id}
             initial={{ opacity: 0, y: 12 }}
@@ -134,9 +185,24 @@ export function ChatMessageArea({
               key={message.id}
               message={message}
               isMessageStreaming={message.isStreaming || message.isReasoningStreaming}
+              showCompletion={Boolean(
+                isLastAssistant &&
+                !message.isStreaming &&
+                !message.isReasoningStreaming &&
+                message.content.trim().length > 0,
+              )}
             />
+            {isLastAssistant && shouldShowSuggestedFollowUps ? (
+              <SuggestedFollowUps
+                items={followUps}
+                onSelect={(value) => {
+                  onSuggestionSelect?.(value);
+                }}
+              />
+            ) : null}
           </motion.div>
-        ))}
+          );
+        })}
       </AnimatePresence>
 
       {pendingClarification ? (
@@ -190,20 +256,6 @@ export function ChatMessageArea({
         />
       ) : null}
 
-      {isLoading &&
-        !messages.some((message) => message.content.trim().length > 0 && message.role === "assistant") && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex justify-start"
-          >
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-surface-hover px-4 py-2">
-              <StreamingDots />
-              <span className="text-[13px] text-muted-foreground">正在生成回复</span>
-            </div>
-          </motion.div>
-        )}
     </div>
   );
 }

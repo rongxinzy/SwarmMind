@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
 import "streamdown/styles.css";
 import remarkGfm from "remark-gfm";
-import { Check, Copy } from "lucide-react";
+import { ArrowRight, Check, Copy, MessageCircle, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
@@ -14,6 +14,7 @@ interface ChatMessageLike {
   id: string;
   role: "user" | "assistant";
   content: string;
+  created_at?: string;
   thinking?: string;
   isReasoningStreaming?: boolean;
 }
@@ -28,15 +29,35 @@ const streamAnimateOptions = {
 const streamingRemarkPlugins = [remarkGfm];
 const staticRemarkPlugins = [remarkGfm];
 
+function formatMessageTime(createdAt?: string) {
+  const normalizedCreatedAt = createdAt
+    ? /(?:Z|[+-]\d{2}:\d{2})$/.test(createdAt)
+      ? createdAt
+      : `${createdAt}Z`
+    : undefined;
+  const date = normalizedCreatedAt ? new Date(normalizedCreatedAt) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+  return date.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Shanghai",
+  });
+}
+
 export function StreamingDots({ className }: { className?: string }) {
   return (
     <div className={cn("inline-flex items-center", className)} aria-hidden="true">
       {[0, 1, 2].map((index) => (
         <span
           key={index}
-          className="chat-stream-dot"
+          className="chat-stream-dot text-[1em] leading-none"
           style={{ animationDelay: `${index * 0.16}s` }}
-        />
+        >
+          .
+        </span>
       ))}
     </div>
   );
@@ -44,7 +65,7 @@ export function StreamingDots({ className }: { className?: string }) {
 
 export function MessageListSkeleton() {
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-7 px-6 py-6">
+    <div className="mx-auto flex w-full max-w-[820px] flex-col gap-7 px-6 py-6">
       <div className="flex justify-end">
         <div className="w-full max-w-[420px] space-y-2">
           <div className="skeleton-line h-4 rounded-full" />
@@ -74,17 +95,49 @@ export function MessageListSkeleton() {
   );
 }
 
+export function SuggestedFollowUps({
+  items,
+  onSelect,
+}: {
+  items: string[];
+  onSelect: (value: string) => void;
+}) {
+  return (
+    <div className="mt-5 border-t border-border/80 pt-4 pl-4">
+      <p className="text-[13px] font-medium text-muted-foreground">推荐追问</p>
+      <div className="mt-2 overflow-hidden rounded-[18px] border border-border/70 bg-card">
+        {items.map((item, index) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => { onSelect(item); }}
+            className={cn(
+              "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-hover",
+              index !== items.length - 1 && "border-b border-border/70",
+            )}
+          >
+            <MessageCircle className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 text-[15px] text-foreground">{item}</span>
+            <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export const MessageBubble = memo(function MessageBubble({
   message,
   isMessageStreaming = false,
+  showCompletion = false,
 }: {
   message: ChatMessageLike;
   isMessageStreaming?: boolean;
+  showCompletion?: boolean;
 }) {
   const isUser = message.role === "user";
-  const hasCodeBlock = !isUser && message.content.includes("```");
-  const shouldShowMessageCopy = message.content.trim().length > 0 && (isUser || !hasCodeBlock);
   const [copied, setCopied] = useState(false);
+  const formattedTime = formatMessageTime(message.created_at);
 
   useEffect(() => {
     if (!copied) {
@@ -113,39 +166,31 @@ export const MessageBubble = memo(function MessageBubble({
   }, [message.content]);
 
   return (
-    <div className={cn("group flex w-full", isUser ? "justify-end" : "justify-start md:pr-8")}>
+    <div className={cn("group flex w-full", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "relative max-w-[90%]",
+          "relative",
           isUser
-            ? "rounded-[22px] border user-bubble px-[20px] py-[14px] text-foreground"
-            : "px-1 py-1 md:px-2",
+            ? "max-w-[260px] py-[6px] text-foreground"
+            : "w-full max-w-none py-2 pl-4",
         )}
       >
-        {shouldShowMessageCopy ? (
-          <div
-            className={cn(
-              "absolute transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100",
-              isUser ? "-right-1 -top-1 opacity-100" : "right-2 top-1 opacity-80",
-            )}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => {
-                void handleCopy();
-              }}
-              className={cn(
-                "h-8 w-8 rounded-[10px] text-muted-foreground md:h-7 md:w-7",
-                isUser
-                  ? "border border-border bg-card hover:bg-card hover:text-foreground"
-                  : "border border-transparent bg-card hover:border-border hover:bg-surface-hover hover:text-foreground",
-              )}
-              title={copied ? "已复制" : "复制消息"}
-            >
-              {copied ? <Check className="size-3 text-[var(--status-done)]" /> : <Copy className="size-3" />}
-            </Button>
+        {!isUser ? (
+          <div className="mb-4 flex flex-col items-start gap-3">
+            <div className="flex flex-col items-start gap-2">
+              <div className="flex items-center gap-3">
+                <div className="flex size-9 items-center justify-center rounded-[14px] border border-border bg-surface-muted text-foreground">
+                  <Sparkles className="size-4" />
+                </div>
+                <p className="text-[15px] font-medium text-foreground">SwarmMind</p>
+              </div>
+              {!message.content ? (
+                <div className="flex items-center gap-1 text-[14px] text-muted-foreground">
+                  <span>SwarmMind 正在思考中</span>
+                  <StreamingDots />
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -162,9 +207,28 @@ export const MessageBubble = memo(function MessageBubble({
 
         {message.content ? (
           isUser ? (
-            <div className="whitespace-pre-wrap text-[14px] leading-[22px]">{message.content}</div>
+            <div className="flex flex-col items-end gap-2">
+              <div className="rounded-[20px] border border-border bg-card px-[18px] py-[14px] shadow-[0_2px_8px_rgba(24,24,27,0.04)]">
+                <div className="whitespace-pre-wrap text-[14px] leading-[22px]">{message.content}</div>
+              </div>
+              <div className="mt-[-2px] flex items-center gap-2 pr-1 text-[12px] text-muted-foreground">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => {
+                    void handleCopy();
+                  }}
+                  className="h-7 w-7 rounded-[10px] border border-transparent bg-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+                  title={copied ? "已复制" : "复制消息"}
+                >
+                  {copied ? <Check className="size-3 text-[var(--status-done)]" /> : <Copy className="size-3" />}
+                </Button>
+                {formattedTime ? <span>{formattedTime}</span> : null}
+              </div>
+            </div>
           ) : (
-            <div className="assistant-markdown prose prose-sm max-w-none px-3 py-1 text-[14px] leading-[24px] text-foreground prose-headings:font-sans prose-pre:my-0 prose-pre:mx-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0 prose-code:font-mono">
+            <div className="assistant-markdown prose prose-sm max-w-none py-1 text-[15px] leading-[28px] text-foreground prose-headings:font-sans prose-pre:my-0 prose-pre:mx-0 prose-pre:rounded-none prose-pre:border-0 prose-pre:bg-transparent prose-pre:p-0 prose-code:font-mono">
               <Streamdown
                 mode={isMessageStreaming ? "streaming" : "static"}
                 remarkPlugins={isMessageStreaming ? streamingRemarkPlugins : staticRemarkPlugins}
@@ -174,12 +238,14 @@ export const MessageBubble = memo(function MessageBubble({
               </Streamdown>
             </div>
           )
-        ) : (
-          <div className="flex items-center gap-2 text-[14px] leading-[22px] text-muted-foreground">
-            <StreamingDots />
-            正在整理回复
+        ) : null}
+
+        {!isUser && showCompletion ? (
+          <div className="mt-5 flex items-center gap-2 border-t border-border/80 pt-4 text-[14px] font-medium text-[var(--status-done)]">
+            <Check className="size-4" />
+            <span>任务已完成</span>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -10,22 +10,22 @@
 
     /* Codex Theme Anchors */
     --codex-accent: #339CFF;
-    --codex-bg: #FFFFFF;
-    --codex-fg: #1A1C1F;
-    --codex-sidebar: rgba(247, 247, 248, 0.82);
-    --codex-control: #F4F4F5;
-    --codex-border: #E7E7E8;
+    --codex-bg: #FBFBFA;
+    --codex-fg: #252525;
+    --codex-sidebar: rgba(243, 243, 242, 0.94);
+    --codex-control: #F0F0EF;
+    --codex-border: #E6E4E1;
 
     /* Core Surface Tokens */
     --surface: #FFFFFF;
-    --surface-muted: #F7F7F8;
-    --surface-control: #F4F4F5;
-    --surface-hover: #ECECEE;
-    --border: #E7E7E8;
-    --border-subtle: #EFEFF0;
-    --border-strong: #D3D3D6;
-    --muted-foreground: #76777C;
-    --secondary-foreground: #5F6065;
+    --surface-muted: #F6F6F5;
+    --surface-control: #F0F0EF;
+    --surface-hover: #ECECEA;
+    --border: #E6E4E1;
+    --border-subtle: #EFEEEB;
+    --border-strong: #D8D5D0;
+    --muted-foreground: #8D8A85;
+    --secondary-foreground: #6B6863;
 
     /* Accent Family */
     --accent-hover: #2F91EE;
@@ -77,38 +77,38 @@
     --focus-ring: 0 0 0 3px var(--accent-ring);
 
     /* ShadCN Theme Mapping - MUST be HSL for shadcn tailwind plugin */
-    --background: 0 0% 100%;
-    --foreground: 220 9% 12%;
+    --background: 48 8% 98%;
+    --foreground: 0 0% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 220 9% 12%;
+    --card-foreground: 0 0% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 9% 12%;
+    --popover-foreground: 0 0% 15%;
     --primary: 210 100% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 220 9% 12%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    --secondary: 48 6% 94%;
+    --secondary-foreground: 0 0% 15%;
+    --muted: 48 6% 94%;
+    --muted-foreground: 32 5% 53%;
     --accent: 210 100% 95%;
-    --accent-foreground: 220 9% 12%;
+    --accent-foreground: 0 0% 15%;
     --destructive: 0 60% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 6% 90%;
+    --border: 40 8% 89%;
     --input: 0 0% 100%;
     --ring: 210 100% 60%;
     --radius: 10px;
-    --sidebar: 240 5% 96%;
-    --sidebar-foreground: 220 9% 12%;
+    --sidebar: 48 6% 95%;
+    --sidebar-foreground: 0 0% 15%;
     --sidebar-primary: 210 100% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 96%;
-    --sidebar-accent-foreground: 220 9% 12%;
-    --sidebar-border: 240 6% 90%;
+    --sidebar-accent: 40 6% 91%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 40 8% 89%;
     --sidebar-ring: 210 100% 60%;
 
     /* User Bubble - HSL */
-    --user-bubble: 240 5% 96%;
-    --user-bubble-border: 240 6% 90%;
+    --user-bubble: 40 6% 93%;
+    --user-bubble-border: 40 8% 89%;
 
     /* Deprecated compatibility aliases.
      * Existing implementation may still reference the old v2 warm/brass names.
@@ -127,13 +127,13 @@
     --brass-dark: var(--accent-active);
 
     /* Neutral scale compatibility */
-    --neutral-150: #F0F0F1;
-    --neutral-200: #E2E2E4;
-    --neutral-500: #76777C;
-    --neutral-600: #5F6065;
-    --neutral-700: #48494D;
-    --neutral-800: #313235;
-    --neutral-900: #1A1C1F;
+    --neutral-150: #F0F0EE;
+    --neutral-200: #E4E2DE;
+    --neutral-500: #8D8A85;
+    --neutral-600: #6B6863;
+    --neutral-700: #4D4A46;
+    --neutral-800: #353330;
+    --neutral-900: #252525;
 
     /* Shadow compatibility */
     --shadow-whisper: 0 1px 3px rgba(0, 0, 0, 0.04);
@@ -237,6 +237,32 @@
   ::selection {
     background: rgba(51, 156, 255, 0.15);
     color: hsl(var(--foreground));
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(60, 60, 67, 0.22);
+    border-radius: 999px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(60, 60, 67, 0.32);
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Animation Keyframes */
@@ -407,11 +433,10 @@
   }
 
   .chat-stream-dot {
-    width: 6px;
-    height: 6px;
-    margin-inline: 2px;
-    border-radius: 999px;
-    background: var(--muted-foreground);
+    display: inline-block;
+    min-width: 4px;
+    margin-inline: 1px;
+    color: var(--muted-foreground);
     animation: chat-dot-bounce 1.05s infinite ease-in-out;
   }
 

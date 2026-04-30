@@ -153,6 +153,7 @@ function PageHeader({
 
 export default function App() {
   const [activeView, setActiveView] = useState<SidebarView>("workbench");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
     string | undefined
   >(undefined);
@@ -468,6 +469,8 @@ export default function App() {
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
+        isCollapsed={isSidebarCollapsed}
+        onCollapsedChange={setIsSidebarCollapsed}
         recentConversations={filteredConversations}
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
@@ -479,13 +482,14 @@ export default function App() {
 
       <main
         className={cn(
-          "flex flex-col md:ml-[248px]",
+          "flex flex-col transition-[margin] duration-200 md:ml-[248px]",
+          isSidebarCollapsed && "md:ml-[84px]",
           activeView === "chat"
             ? "h-[100dvh] min-h-0 overflow-hidden"
             : "min-h-screen",
         )}
       >
-        {activeView !== "chat" && (
+        {activeView !== "chat" && activeView !== "workbench" && (
           <PageHeader
             activeView={activeView}
             onPrimaryAction={handlePrimaryAction}

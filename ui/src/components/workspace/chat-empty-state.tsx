@@ -1,32 +1,72 @@
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Brain, Lightbulb, Rocket, Sparkles, type LucideIcon } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-
-const QUICK_PROMPT_ITEMS: {
-  icon: LucideIcon;
-  prompt: string;
-}[] = [
-  { icon: Rocket, prompt: "帮我整理本周项目进展，输出 3 条重点结论。" },
-  { icon: Lightbulb, prompt: "生成一版 CRM MVP 范围说明，控制在一页内。" },
-  { icon: Brain, prompt: "把下面的会议讨论改写成正式纪要。" },
-  { icon: Sparkles, prompt: "总结当前续费风险，并给出 3 条行动建议。" },
-];
+export const EMPTY_STATE_PROMPTS = [
+  {
+    title: "项目周报复盘",
+    subtitle: "输出 3 条重点结论",
+    prompt: "帮我整理本周项目进展，输出 3 条重点结论。",
+    tag: "分析",
+    uses: "408 次使用",
+    gradient: "linear-gradient(135deg, #18181b 0%, #2b1f58 40%, #0f766e 100%)",
+  },
+  {
+    title: "CRM MVP 范围",
+    subtitle: "控制在一页内",
+    prompt: "生成一版 CRM MVP 范围说明，控制在一页内。",
+    tag: "方案",
+    uses: "263 次使用",
+    gradient: "linear-gradient(135deg, #f5f1e8 0%, #fbfbfb 65%, #d9f99d 100%)",
+  },
+  {
+    title: "会议纪要改写",
+    subtitle: "改写为正式纪要",
+    prompt: "把下面的会议讨论改写成正式纪要。",
+    tag: "文档",
+    uses: "351 次使用",
+    gradient: "linear-gradient(135deg, #f3efe7 0%, #f8fafc 55%, #dbeafe 100%)",
+  },
+  {
+    title: "续费风险总结",
+    subtitle: "给出 3 条行动建议",
+    prompt: "总结当前续费风险，并给出 3 条行动建议。",
+    tag: "策略",
+    uses: "512 次使用",
+    gradient: "linear-gradient(135deg, #0f172a 0%, #111827 45%, #facc15 100%)",
+  },
+  {
+    title: "数据看板摘要",
+    subtitle: "生成可读业务结论",
+    prompt: "根据这份销售数据看板，提炼 5 条业务结论，并指出两个异常波动。",
+    tag: "报表",
+    uses: "286 次使用",
+    gradient: "linear-gradient(135deg, #e0f2fe 0%, #eff6ff 55%, #dbeafe 100%)",
+  },
+  {
+    title: "产品 PRD 草案",
+    subtitle: "整理核心需求结构",
+    prompt: "帮我整理一个新功能的 PRD 草案，包含目标、用户场景、关键流程和验收标准。",
+    tag: "产品",
+    uses: "194 次使用",
+    gradient: "linear-gradient(135deg, #fdf2f8 0%, #fff7ed 55%, #fef3c7 100%)",
+  },
+] as const;
 
 interface ChatEmptyStateProps {
-  onPromptSelect: (prompt: string) => void;
   isDraft?: boolean;
+  children?: ReactNode;
 }
 
-export function ChatEmptyState({ onPromptSelect, isDraft = false }: ChatEmptyStateProps) {
+export function ChatEmptyState({ isDraft = false, children }: ChatEmptyStateProps) {
   return (
-    <div className="flex flex-1 flex-col px-6 pt-14">
-      <div className="mx-auto w-full max-w-[560px]">
+    <div className="px-6 pb-14 pt-[9vh]">
+      <div className="mx-auto flex w-full max-w-[920px] flex-col items-center text-center">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="mb-7"
+          className="w-full"
         >
           <div
             className="inline-flex size-10 items-center justify-center rounded-xl border bg-card text-muted-foreground"
@@ -34,66 +74,19 @@ export function ChatEmptyState({ onPromptSelect, isDraft = false }: ChatEmptySta
           >
             <Sparkles className="size-4" />
           </div>
-          <p className="mt-5 text-[11px] tracking-[0.04em] text-muted-foreground">
+          <p className="mt-4 text-[11px] tracking-[0.04em] text-muted-foreground">
             {isDraft ? "Exploratory Session" : "New Conversation"}
           </p>
-          <h2 className="mt-2 text-[24px] leading-[32px] font-semibold text-foreground">
-            {isDraft ? "临时会话" : "新会话"}
+          <h2 className="mt-3 text-[32px] leading-[1.2] font-semibold text-foreground md:text-[40px]">
+            {isDraft ? "我能为你做什么" : "新会话"}
           </h2>
-          <p className="mt-2 max-w-[440px] text-[14px] leading-[22px] text-muted-foreground">
+          <p className="mx-auto mt-4 max-w-[620px] text-[15px] leading-8 text-muted-foreground">
             {isDraft
               ? "用一个明确任务开始探索。首次发送成功后，系统才会创建正式会话记录。"
               : "选择一个快速开始提示，或直接输入你的问题。"}
           </p>
         </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15, duration: 0.2 }}
-          className="mb-3 flex items-center gap-2"
-        >
-          <p className="text-[12px] font-medium tracking-[0.04em] text-muted-foreground">
-            快速开始
-          </p>
-          <span className="h-px flex-1 bg-border/50" />
-        </motion.div>
-        <div className="grid gap-2.5 sm:grid-cols-2">
-          {QUICK_PROMPT_ITEMS.map(({ icon: Icon, prompt }, i) => (
-            <motion.button
-              key={prompt}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                delay: 0.2 + i * 0.06,
-                duration: 0.25,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              onClick={() => {
-                onPromptSelect(prompt);
-              }}
-              className="group flex items-start gap-3 rounded-lg border bg-card px-4 py-3.5 text-left transition-all duration-200 hover:border-border-strong hover:bg-surface-hover"
-            >
-              <span
-                className={cn(
-                  "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border border-black/5 transition-colors",
-                  i === 0
-                    ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-                    : i === 1
-                      ? "bg-[var(--status-done-bg)] text-[var(--status-done)]"
-                      : i === 2
-                        ? "bg-[var(--status-approval-bg)] text-[var(--status-approval)]"
-                        : "bg-[var(--surface-hover)] text-foreground",
-                )}
-              >
-                <Icon className="size-4" />
-              </span>
-              <span className="text-[13px] leading-[20px] text-muted-foreground group-hover:text-foreground">
-                {prompt}
-              </span>
-            </motion.button>
-          ))}
-        </div>
+        {children ? <div className="mt-8 w-full">{children}</div> : null}
       </div>
     </div>
   );

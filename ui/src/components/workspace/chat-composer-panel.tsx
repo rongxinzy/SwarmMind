@@ -1,20 +1,17 @@
 import type { ChangeEvent, KeyboardEvent, RefObject } from "react";
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Check, Copy, Loader2, Paperclip, XIcon } from "lucide-react";
+import { ArrowUp, Check, Loader2, Paperclip, XIcon } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModePicker, ModelPicker } from "@/components/workspace/chat-controls";
-import type { ChatMessage, ConversationMode, RuntimeModelOption, RuntimeState, StreamStatus, StreamStep } from "@/core/chat/types";
-import type { ChatError } from "@/core/chat/types";
-import { MODE_BADGE_TOKENS } from "@/core/chat/mode-config";
+import type { ConversationMode, RuntimeModelOption, RuntimeState, StreamStatus, StreamStep } from "@/core/chat/types";
 import { cn } from "@/lib/utils";
 
 interface ChatComposerPanelProps {
   attachedFiles: File[];
-  error: ChatError | null;
+  error?: unknown;
   fetchModels: () => void;
   fileInputRef: RefObject<HTMLInputElement | null>;
   handleFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
@@ -24,7 +21,6 @@ interface ChatComposerPanelProps {
   isComposerDisabled: boolean;
   isLoading: boolean;
   isModelsLoading: boolean;
-  lastAssistantMessage?: ChatMessage;
   modelLoadError: string | null;
   modelOptions: RuntimeModelOption[];
   onInputChange: (value: string) => void;
@@ -34,53 +30,23 @@ interface ChatComposerPanelProps {
   selectedModel: string;
   setSelectedMode: (mode: ConversationMode) => void;
   setSelectedModel: (model: string) => void;
+  isEmpty?: boolean;
+  quickPrompts?: Array<{
+    title: string;
+    subtitle: string;
+    prompt: string;
+    tag: string;
+    uses: string;
+    gradient: string;
+  }>;
+  onQuickPromptSelect?: (prompt: string) => void;
   streamStatus?: StreamStatus;
   streamStep?: StreamStep | null;
   streamLabel?: string | null;
 }
 
-function streamStatusText(mode: ConversationMode, status: StreamStatus, step: StreamStep | null, label: string | null): string {
-  const token = MODE_BADGE_TOKENS[mode];
-  if (status === "thinking") {
-    if (label) return label;
-    if (mode === "pro") return "多步规划中…";
-    if (mode === "ultra") return "深度推理与协作中…";
-    if (mode === "thinking") return "深入分析中…";
-    return token.streamLabel;
-  }
-  if (status === "running") {
-    if (mode === "pro" && step) {
-      return step.totalSteps
-        ? `步骤执行中…（第 ${step.step} / ${step.totalSteps} 步）`
-        : "步骤执行中…";
-    }
-    if (mode === "ultra") return "深度推理与协作中…";
-    if (mode === "thinking") return "深入分析中…";
-    return token.streamLabel;
-  }
-  if (status === "clarification") return "等待澄清…";
-  if (status === "artifact") return "生成产物中…";
-  return token.streamLabel;
-}
-
-function streamBadgeTone(status: StreamStatus) {
-  if (status === "thinking") return "border-accent-border bg-accent-soft text-accent";
-  if (status === "running" || status === "artifact") return "border-[var(--status-running-border)] bg-[var(--status-running-bg)] text-[var(--status-running)]";
-  if (status === "clarification") return "border-[var(--status-approval-border)] bg-[var(--status-approval-bg)] text-[var(--status-approval)]";
-  return "border-[var(--status-draft-border)] bg-[var(--status-draft-bg)] text-[var(--status-draft)]";
-}
-
-function streamBadgeLabel(status: StreamStatus) {
-  if (status === "thinking") return "思考中";
-  if (status === "running") return "执行中";
-  if (status === "clarification") return "等待澄清";
-  if (status === "artifact") return "生成产物";
-  return "待机";
-}
-
 export function ChatComposerPanel({
   attachedFiles,
-  error,
   fetchModels,
   fileInputRef,
   handleFileSelect,
@@ -90,7 +56,6 @@ export function ChatComposerPanel({
   isComposerDisabled,
   isLoading,
   isModelsLoading,
-  lastAssistantMessage,
   modelLoadError,
   modelOptions,
   onInputChange,
@@ -100,76 +65,32 @@ export function ChatComposerPanel({
   selectedModel,
   setSelectedMode,
   setSelectedModel,
-  streamStatus,
-  streamStep,
-  streamLabel,
+  isEmpty = false,
+  quickPrompts = [],
+  onQuickPromptSelect,
 }: ChatComposerPanelProps) {
-  const modeToken = MODE_BADGE_TOKENS[selectedMode];
-  const ModeIcon = modeToken.icon;
-  const showStatusBar = isLoading || streamStatus || (runtime.phase !== "idle" && runtime.phase !== "completed") || error;
+  const pickerPlacement = isEmpty ? "bottom" : "top";
+  const unifiedTextareaClassName =
+    "h-[118px] min-h-[118px] max-h-[118px] overflow-y-auto rounded-none [field-sizing:fixed]";
 
   return (
     <div
-      className="sticky bottom-0 z-20"
+      className={cn(
+        "z-20",
+        isEmpty ? "relative mx-auto" : "sticky bottom-0",
+      )}
       style={{
         background:
           "linear-gradient(to top, var(--codex-bg) 0%, var(--codex-bg) 85%, transparent 100%)",
       }}
     >
-      <div className="relative border-t border-border/50 bg-background">
-        <div className="mx-auto w-full max-w-[760px] px-6 pb-5 pt-2.5">
+      <div className="relative bg-background">
+        <div className="mx-auto w-full max-w-[820px] px-6 pt-0 pb-0">
           <div
-            className="rounded-xl border border-border bg-card transition-all duration-200 focus-within:border-accent"
-            style={{ boxShadow: "var(--shadow-xs)" }}
+            className="overflow-visible rounded-[28px] border-[1.5px] border-[rgba(210,210,207,1)] bg-card transition-all duration-200 focus-within:border-[rgba(196,196,192,1)]"
+            style={{ boxShadow: "0 8px 22px rgba(24, 24, 27, 0.06)" }}
           >
-            <AnimatePresence>
-              {showStatusBar ? (
-                <motion.div
-                  key="status-bar"
-                  initial={{ opacity: 0, y: -6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                  className="min-h-[40px] border-b border-border bg-surface-hover px-5 py-2.5"
-                  aria-live="polite"
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span
-                        className={cn(
-                          "flex size-6 items-center justify-center rounded-md border",
-                          modeToken.accent,
-                        )}
-                      >
-                        <ModeIcon className="size-3" />
-                      </span>
-                      <p className="text-[13px] text-muted-foreground">
-                        {error && !isLoading
-                          ? error.message
-                          : streamStatusText(selectedMode, streamStatus ?? null, streamStep ?? null, streamLabel ?? null)}
-                      </p>
-                      {isLoading && (
-                        <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
-                      )}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-[11px]",
-                        error && !isLoading
-                          ? "status-pill-blocked"
-                          : streamBadgeTone(streamStatus ?? null),
-                      )}
-                    >
-                      {error && !isLoading
-                        ? "失败"
-                        : streamBadgeLabel(streamStatus ?? null)}
-                    </Badge>
-                  </div>
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-
+            <div className="rounded-[28px] bg-card">
             <AnimatePresence>
               {runtime.activities.length > 0 && (
                 <motion.div
@@ -213,7 +134,7 @@ export function ChatComposerPanel({
                   </div>
                 </motion.div>
               )}
-            </AnimatePresence>
+              </AnimatePresence>
 
             <div>
               {attachedFiles.length > 0 ? (
@@ -247,15 +168,18 @@ export function ChatComposerPanel({
                   isModelsLoading
                     ? "正在加载模型..."
                     : selectedModel
-                      ? "输入问题或任务..."
+                      ? "分配一个任务或提问任何问题"
                       : "当前没有可用模型，暂时无法开始会话"
                 }
-                className="min-h-[100px] resize-none border-none bg-card px-5 py-4 text-[14px] leading-[22px] focus-visible:ring-0"
+                className={cn(
+                  "resize-none border-none bg-transparent px-6 py-5 text-[14px] leading-[22px] focus-visible:ring-0 shadow-none",
+                  unifiedTextareaClassName,
+                )}
                 disabled={isComposerDisabled}
               />
-              <div className="flex flex-col gap-2 border-t border-border bg-surface-hover/70 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-2 bg-transparent px-5 pb-3 pt-0 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
-                  <ModePicker selected={selectedMode} onSelect={setSelectedMode} />
+                  <ModePicker selected={selectedMode} onSelect={setSelectedMode} placement={pickerPlacement} />
                   <>
                     <input
                       ref={fileInputRef as React.RefObject<HTMLInputElement>}
@@ -269,23 +193,12 @@ export function ChatComposerPanel({
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => fileInputRef.current?.click()}
-                      className="size-10 rounded-lg border border-transparent text-muted-foreground hover:border-border hover:bg-card"
+                      className="size-9 rounded-full border border-transparent text-muted-foreground hover:border-border hover:bg-secondary"
                       title="上传附件"
                     >
-                      <Paperclip className="size-4" />
+                      <Paperclip className="size-3.5" />
                     </Button>
                   </>
-                  {lastAssistantMessage ? (
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="size-10 rounded-lg border border-transparent text-muted-foreground hover:border-border hover:bg-card"
-                      onClick={() => navigator.clipboard.writeText(lastAssistantMessage.content)}
-                      title="复制回复"
-                    >
-                      <Copy className="size-4" />
-                    </Button>
-                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
                   <ModelPicker
@@ -295,19 +208,66 @@ export function ChatComposerPanel({
                     isLoading={isModelsLoading}
                     loadError={modelLoadError}
                     onRetry={fetchModels}
+                    placement={pickerPlacement}
                   />
                   <Button
                     onClick={handleSubmit}
                     disabled={!input.trim() || isComposerDisabled}
                     size="icon-sm"
-                    className="size-10 rounded-md bg-accent text-accent-foreground shadow-none hover:bg-accent-hover"
+                    className="size-9 rounded-full bg-accent text-accent-foreground shadow-none hover:bg-accent-hover"
                   >
-                    {isLoading ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+                    {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <ArrowUp className="size-3.5" />}
                   </Button>
                 </div>
               </div>
             </div>
+            </div>
           </div>
+
+          {isEmpty && quickPrompts.length > 0 ? (
+            <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {quickPrompts.map((item) => (
+                <button
+                  key={item.prompt}
+                  type="button"
+                  onClick={() => { onQuickPromptSelect?.(item.prompt); }}
+                  className="group text-left"
+                >
+                  <div
+                    className="h-[190px] rounded-[26px] border border-border/80 transition-transform duration-200 group-hover:-translate-y-0.5"
+                    style={{
+                      background: item.gradient,
+                      boxShadow: "0 10px 24px rgba(0, 0, 0, 0.06)",
+                    }}
+                  >
+                    <div className="flex h-full flex-col justify-between p-5">
+                      <span className="inline-flex w-fit rounded-full border border-black/6 bg-white/82 px-2.5 py-1 text-[11px] text-foreground/70">
+                        {item.tag}
+                      </span>
+                      <div className="max-w-[220px]">
+                        <p className="text-[22px] leading-tight font-semibold text-foreground/90">
+                          {item.title}
+                        </p>
+                        <p className="mt-2 text-[13px] leading-5 text-foreground/70">
+                          {item.subtitle}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 px-1">
+                    <p className="text-[16px] font-medium tracking-[-0.02em] text-foreground">
+                      {item.title}
+                    </p>
+                    <p className="mt-1 text-[14px] text-muted-foreground">{item.subtitle}</p>
+                    <div className="mt-2 flex items-center gap-2 text-[12px] text-muted-foreground">
+                      <span className="rounded-full bg-secondary px-2.5 py-1">{item.tag}</span>
+                      <span>{item.uses}</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
