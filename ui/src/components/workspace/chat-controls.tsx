@@ -26,6 +26,7 @@ const MODE_OPTIONS: {
   label: string;
   description: string;
   accentClassName: string;
+  selectedRowClassName: string;
   icon: typeof Zap;
 }[] = [
   {
@@ -33,13 +34,15 @@ const MODE_OPTIONS: {
     label: "Flash",
     description: "最快回复，不展开推理",
     accentClassName: "border-[var(--status-running-border)] bg-[var(--status-running-bg)] text-[var(--status-running)]",
+    selectedRowClassName: "bg-[var(--status-running-bg)] text-[var(--status-running)]",
     icon: Zap,
   },
   {
     id: "thinking",
     label: "Thinking",
     description: "保留推理过程，单轮深入分析",
-    accentClassName: "border-[var(--status-chat-border)] bg-[var(--status-chat-bg)] text-[var(--status-chat)]",
+    accentClassName: "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]",
+    selectedRowClassName: "bg-[var(--accent-soft)] text-[var(--accent)]",
     icon: Lightbulb,
   },
   {
@@ -47,6 +50,7 @@ const MODE_OPTIONS: {
     label: "Pro",
     description: "先规划再执行",
     accentClassName: "border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done)]",
+    selectedRowClassName: "bg-[var(--status-done-bg)] text-[var(--status-done)]",
     icon: GraduationCap,
   },
   {
@@ -54,6 +58,7 @@ const MODE_OPTIONS: {
     label: "Ultra",
     description: "启用完整协作流程",
     accentClassName: "border-[var(--status-approval-border)] bg-[var(--status-approval-bg)] text-[var(--status-approval)]",
+    selectedRowClassName: "bg-[var(--status-approval-bg)] text-[var(--status-approval)]",
     icon: Rocket,
   },
 ];
@@ -61,9 +66,11 @@ const MODE_OPTIONS: {
 export function ModePicker({
   selected,
   onSelect,
+  placement = "top",
 }: {
   selected: ConversationMode;
   onSelect: (id: ConversationMode) => void;
+  placement?: "top" | "bottom";
 }) {
   const [open, setOpen] = useState(false);
   const current = MODE_OPTIONS.find((mode) => mode.id === selected) ?? MODE_OPTIONS[0];
@@ -78,15 +85,15 @@ export function ModePicker({
         }}
         aria-label={`当前执行模式：${current.label}`}
         className={cn(
-          "group flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-left transition-all duration-200 hover:border-[var(--warm-border)] focus-visible:border-[var(--warm-ring)] focus-visible:ring-2 focus-visible:ring-[var(--warm-ring)]/50",
+          "group flex h-9 items-center gap-2 rounded-[18px] border px-2.5 py-1.5 text-left transition-all duration-200 hover:border-border focus-visible:border-border focus-visible:ring-2 focus-visible:ring-accent/40",
           current.accentClassName,
         )}
       >
-        <span className="flex size-6 items-center justify-center rounded-md border border-black/5 bg-[var(--warm-ivory)]">
+        <span className="flex size-6 items-center justify-center rounded-[10px] border border-black/5 bg-card">
           <CurrentIcon className="size-3" />
         </span>
         <span className="min-w-0">
-          <span className="block text-[10px] leading-4 font-semibold tracking-[0.08em]">{current.label}</span>
+          <span className="block text-[11px] leading-4 font-semibold">{current.label}</span>
         </span>
         <ChevronDown
           className={cn(
@@ -115,13 +122,16 @@ export function ModePicker({
                 damping: 28,
                 mass: 0.9,
               }}
-              className="absolute bottom-full left-0 z-50 mb-2.5 w-[286px] rounded-[18px] border border-border bg-card p-2"
+              className={cn(
+                "absolute left-0 z-50 w-[220px] rounded-[22px] border border-border bg-card p-2 shadow-[var(--shadow-popover)]",
+                placement === "top" ? "bottom-full mb-2.5" : "top-full mt-2.5",
+              )}
             >
-              <div className="mb-1.5 px-1">
-                <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">执行模式</p>
+              <div className="mb-1.5 px-1.5">
+                <p className="text-[11px] text-muted-foreground">执行模式</p>
                 <p className="text-[12px] text-foreground">选择这轮临时会话的执行方式</p>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-0.5">
                 {MODE_OPTIONS.map((mode, index) => {
                   const Icon = mode.icon;
                   const isSelected = mode.id === selected;
@@ -138,23 +148,23 @@ export function ModePicker({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.03 }}
                       className={cn(
-                        "flex w-full items-start gap-2.5 rounded-[14px] border px-3 py-2.5 text-left transition-colors",
+                        "flex w-full items-center gap-2.5 rounded-[16px] px-3 py-2 text-left transition-colors",
                         isSelected
-                          ? cn("bg-card", mode.accentClassName)
-                          : "border-[var(--warm-border)] bg-[var(--warm-ivory)] text-[var(--neutral-900)] hover:border-[var(--warm-ring)] hover:bg-[var(--neutral-150)]",
+                          ? mode.selectedRowClassName
+                          : "text-foreground hover:bg-surface-hover",
                       )}
                     >
                       <span
                         className={cn(
-                          "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md border bg-background",
-                          isSelected ? "border-black/5" : "border-border/80",
+                          "flex size-7 shrink-0 items-center justify-center rounded-[10px] bg-background/90",
+                          isSelected ? "text-current" : "text-muted-foreground",
                         )}
                       >
                         <Icon className="size-3.5" />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="text-[12px] font-semibold">{mode.label}</span>
-                        <span className="mt-0.5 block text-[11px] leading-4 opacity-80">{mode.description}</span>
+                        <span className="mt-0.5 block text-[10px] leading-4 opacity-75">{mode.description}</span>
                       </span>
                     </motion.button>
                   );
@@ -175,6 +185,7 @@ export function ModelPicker({
   isLoading,
   loadError,
   onRetry,
+  placement = "top",
 }: {
   models: RuntimeModelOptionLike[];
   selected: string;
@@ -182,6 +193,7 @@ export function ModelPicker({
   isLoading: boolean;
   loadError: string | null;
   onRetry: () => void;
+  placement?: "top" | "bottom";
 }) {
   const [open, setOpen] = useState(false);
   const current = models.find((model) => model.name === selected) ?? models[0];
@@ -204,10 +216,11 @@ export function ModelPicker({
         }}
         disabled={isDisabled}
         title={loadError ?? undefined}
-        className="flex min-h-10 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-[11px] tracking-[0.06em] text-[var(--neutral-600)] transition-all duration-200 hover:border-[var(--warm-border)] hover:bg-[var(--neutral-150)] hover:text-[var(--neutral-800)] focus-visible:border-[var(--warm-ring)] focus-visible:ring-2 focus-visible:ring-[var(--warm-ring)]/50"
+        className="flex h-9 items-center gap-1.5 rounded-[18px] border border-transparent bg-transparent px-2.5 text-[11px] text-muted-foreground transition-all duration-200 hover:border-border hover:bg-surface-hover hover:text-foreground focus-visible:border-border focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
-        <span className="max-w-[140px] truncate">{currentLabel}</span>
+        <span className="max-w-[124px] truncate">{currentLabel}</span>
+        {!isDisabled ? <ChevronDown className="size-3 shrink-0" /> : null}
       </button>
 
       <AnimatePresence>
@@ -229,7 +242,10 @@ export function ModelPicker({
                 damping: 30,
                 mass: 0.8,
               }}
-              className="absolute bottom-full left-0 z-50 mb-2 w-[220px] overflow-hidden rounded-[16px] border border-border bg-card p-1.5"
+              className={cn(
+                "absolute left-0 z-50 w-[190px] overflow-hidden rounded-[20px] border border-border bg-card p-1.5 shadow-[var(--shadow-popover)]",
+                placement === "top" ? "bottom-full mb-2" : "top-full mt-2",
+              )}
             >
               {models.map((model) => (
                 <button
@@ -240,7 +256,7 @@ export function ModelPicker({
                     setOpen(false);
                   }}
                   className={cn(
-                    "flex min-h-11 w-full items-center gap-2 rounded-[14px] px-3 py-2 text-[13px] transition-colors",
+                    "flex min-h-9 w-full items-center gap-2 rounded-[16px] px-3 py-2 text-[12px] transition-colors",
                     model.name === selected
                       ? "bg-secondary text-foreground font-medium"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground",

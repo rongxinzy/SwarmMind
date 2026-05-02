@@ -23,7 +23,7 @@ export const MODE_BADGE_TOKENS: Record<
     icon: Lightbulb,
     label: "推理",
     accent:
-      "border-[var(--status-chat-border)] bg-[var(--status-chat-bg)] text-[var(--status-chat)]",
+      "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]",
     streamLabel: "深入分析中…",
     statusLabel: "深入分析",
   },

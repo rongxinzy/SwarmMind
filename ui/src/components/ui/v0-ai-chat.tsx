@@ -1,14 +1,14 @@
 "use client";
 
 import type { ChangeEvent, KeyboardEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ArtifactsProvider } from "@/components/workspace/artifacts/context";
 import { ChatComposerPanel } from "@/components/workspace/chat-composer-panel";
-import { ChatEmptyState } from "@/components/workspace/chat-empty-state";
+import { ChatEmptyState, EMPTY_STATE_PROMPTS } from "@/components/workspace/chat-empty-state";
 import { ChatLayout } from "@/components/workspace/chat-layout";
 import { MessageListSkeleton } from "@/components/workspace/chat-message-ui";
 import { ChatMessageArea } from "@/components/workspace/chat-message-area";
@@ -30,6 +30,7 @@ import type {
   StreamStep,
   ChatError,
 } from "@/core/chat/types";
+import { cn } from "@/lib/utils";
 
 export type { ConversationRecord } from "@/core/chat/types";
 
@@ -360,6 +361,18 @@ function V0ChatInner({
   ]);
 
   useEffect(() => {
+    const nextIsEmpty = messages.length === 0 && !isLoading && !isConversationLoading;
+
+    if (nextIsEmpty) {
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTop = 0;
+      }
+      shouldStickToBottomRef.current = false;
+      setShowScrollToLatest(false);
+      return;
+    }
+
     if (!shouldStickToBottomRef.current) {
       const rafId = window.requestAnimationFrame(() => {
         syncScrollState();
@@ -371,7 +384,7 @@ function V0ChatInner({
       scrollToLatest(messages.length > 0 ? "smooth" : "auto");
     });
     return () => { window.cancelAnimationFrame(rafId); };
-  }, [messages, runtime, scrollToLatest, syncScrollState]);
+  }, [isConversationLoading, isLoading, messages, runtime, scrollToLatest, syncScrollState]);
 
   useEffect(() => {
     if (selectedModel) {
@@ -382,17 +395,6 @@ function V0ChatInner({
     }
     setSelectedModel(defaultModel);
   }, [defaultModel, selectedModel]);
-
-  const lastAssistantMessage = useMemo(
-    () =>
-      [...messages]
-        .reverse()
-        .find(
-          (message) =>
-            message.role === "assistant" && message.content.trim().length > 0,
-        ),
-    [messages],
-  );
 
   const createConversation = useCallback(
     async (goal: string) => {
@@ -965,6 +967,13 @@ function V0ChatInner({
           content: text,
           pendingPersist: true,
         },
+        {
+          id: `temp-assistant-${generateId()}`,
+          role: "assistant",
+          content: "",
+          isStreaming: false,
+          isReasoningStreaming: true,
+        },
       ]);
 
       try {
@@ -1132,18 +1141,57 @@ function V0ChatInner({
         <div
           ref={scrollContainerRef}
           onScroll={syncScrollState}
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+          className={cn(
+            "flex min-h-0 flex-1 flex-col overscroll-contain",
+            isEmpty ? "overflow-y-auto no-scrollbar" : "overflow-y-auto",
+          )}
         >
           {isConversationLoading ? (
             <MessageListSkeleton />
           ) : isEmpty ? (
             <ChatEmptyState
               isDraft={!currentConversationId}
-              onPromptSelect={(prompt) => {
-                setInput(prompt);
-                void handleSubmit(prompt);
-              }}
-            />
+            >
+              <ChatComposerPanel
+                attachedFiles={attachedFiles}
+                error={chatError}
+                fetchModels={() => {
+                  void fetchModels();
+                }}
+                fileInputRef={fileInputRef}
+                handleFileSelect={handleFileSelect}
+                handleRemoveFile={handleRemoveFile}
+                handleSubmit={() => {
+                  void handleSubmit();
+                }}
+                input={input}
+                isComposerDisabled={isComposerDisabled}
+                isLoading={isLoading}
+                isModelsLoading={isModelsLoading}
+                modelLoadError={modelLoadError}
+                modelOptions={modelOptions}
+                onInputChange={setInput}
+                onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void handleSubmit();
+                  }
+                }}
+                runtime={runtime}
+                selectedMode={selectedMode}
+                selectedModel={selectedModel}
+                setSelectedMode={setSelectedMode}
+                setSelectedModel={setSelectedModel}
+                isEmpty
+                quickPrompts={[...EMPTY_STATE_PROMPTS]}
+                onQuickPromptSelect={(prompt) => {
+                  setInput(prompt);
+                }}
+                streamStatus={streamStatus}
+                streamStep={streamStep}
+                streamLabel={streamLabel}
+              />
+            </ChatEmptyState>
           ) : (
             <ChatMessageArea
               isLoading={isLoading}
@@ -1158,6 +1206,9 @@ function V0ChatInner({
               onRetry={handleRetry}
               onCopy={handleCopyQuestion}
               isRetrying={isLoading}
+              onSuggestionSelect={(value) => {
+                setInput(value);
+              }}
             />
           )}
         </div>
@@ -1188,41 +1239,42 @@ function V0ChatInner({
         </AnimatePresence>
       </div>
 
-      <ChatComposerPanel
-        attachedFiles={attachedFiles}
-        error={chatError}
-        fetchModels={() => {
-          void fetchModels();
-        }}
-        fileInputRef={fileInputRef}
-        handleFileSelect={handleFileSelect}
-        handleRemoveFile={handleRemoveFile}
-        handleSubmit={() => {
-          void handleSubmit();
-        }}
-        input={input}
-        isComposerDisabled={isComposerDisabled}
-        isLoading={isLoading}
-        isModelsLoading={isModelsLoading}
-        lastAssistantMessage={lastAssistantMessage}
-        modelLoadError={modelLoadError}
-        modelOptions={modelOptions}
-        onInputChange={setInput}
-        onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
+      {!isEmpty ? (
+        <ChatComposerPanel
+          attachedFiles={attachedFiles}
+          error={chatError}
+          fetchModels={() => {
+            void fetchModels();
+          }}
+          fileInputRef={fileInputRef}
+          handleFileSelect={handleFileSelect}
+          handleRemoveFile={handleRemoveFile}
+          handleSubmit={() => {
             void handleSubmit();
-          }
-        }}
-        runtime={runtime}
-        selectedMode={selectedMode}
-        selectedModel={selectedModel}
-        setSelectedMode={setSelectedMode}
-        setSelectedModel={setSelectedModel}
-        streamStatus={streamStatus}
-        streamStep={streamStep}
-        streamLabel={streamLabel}
-      />
+          }}
+          input={input}
+          isComposerDisabled={isComposerDisabled}
+          isLoading={isLoading}
+          isModelsLoading={isModelsLoading}
+          modelLoadError={modelLoadError}
+          modelOptions={modelOptions}
+          onInputChange={setInput}
+          onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void handleSubmit();
+            }
+          }}
+          runtime={runtime}
+          selectedMode={selectedMode}
+          selectedModel={selectedModel}
+          setSelectedMode={setSelectedMode}
+          setSelectedModel={setSelectedModel}
+          streamStatus={streamStatus}
+          streamStep={streamStep}
+          streamLabel={streamLabel}
+        />
+      ) : null}
     </div>
     </ChatLayout>
     </ArtifactsProvider>
