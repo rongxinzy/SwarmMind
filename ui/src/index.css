@@ -6,133 +6,219 @@
 
 @layer base {
   :root {
-    /* Warm Neutral Palette - Design System v2.0 */
-    --warm-paper: #F7F7F5;
-    --warm-ivory: #FAFAF8;
-    --warm-sand: #E8E6E0;
-    --warm-border: #E5E3DD;
-    --warm-ring: #D1CFC8;
-    --warm-ring-subtle: #E8E6E0;
+    color-scheme: light;
 
-    /* Neutral Ladder */
-    --neutral-50: #FAFAF8;
-    --neutral-100: #F7F7F5;
-    --neutral-150: #F0EEEA;
-    --neutral-200: #E8E6E0;
-    --neutral-300: #D8D6D0;
-    --neutral-400: #B8B6B0;
-    --neutral-500: #8A8882;
-    --neutral-600: #6A6862;
-    --neutral-700: #5A5852;
-    --neutral-800: #3A3832;
-    --neutral-900: #1E1E1C;
+    /* Codex Theme Anchors */
+    --codex-accent: #339CFF;
+    --codex-bg: #FBFBFA;
+    --codex-fg: #252525;
+    --codex-sidebar: rgba(243, 243, 242, 0.94);
+    --codex-control: #F0F0EF;
+    --codex-border: #E6E4E1;
 
-    /* Semantic Colors (oklch) */
-    --status-running: oklch(0.72 0.17 140);
-    --status-running-bg: oklch(0.96 0.04 140);
-    --status-running-border: oklch(0.88 0.08 140);
+    /* Core Surface Tokens */
+    --surface: #FFFFFF;
+    --surface-muted: #F6F6F5;
+    --surface-control: #F0F0EF;
+    --surface-hover: #ECECEA;
+    --border: #E6E4E1;
+    --border-subtle: #EFEEEB;
+    --border-strong: #D8D5D0;
+    --muted-foreground: #8D8A85;
+    --secondary-foreground: #6B6863;
 
-    --status-approval: oklch(0.72 0.17 55);
-    --status-approval-bg: oklch(0.97 0.04 55);
-    --status-approval-border: oklch(0.90 0.08 55);
+    /* Accent Family */
+    --accent-hover: #2F91EE;
+    --accent-active: #287FD3;
+    --accent-soft: #EAF4FF;
+    --accent-border: #A8D4FF;
+    --accent-ring: rgba(51, 156, 255, 0.20);
 
-    --status-blocked: oklch(0.65 0.20 25);
-    --status-blocked-bg: oklch(0.97 0.04 25);
-    --status-blocked-border: oklch(0.90 0.08 25);
+    /* Semantic Status Colors - hex, not oklch */
+    --status-running: #339CFF;
+    --status-running-bg: #EAF4FF;
+    --status-running-border: #A8D4FF;
+    --status-approval: #B7791F;
+    --status-approval-bg: #FFF7E8;
+    --status-approval-border: #F0D59A;
+    --status-blocked: #C2413B;
+    --status-blocked-bg: #FFF0EF;
+    --status-blocked-border: #F0B7B3;
+    --status-done: #1F8F4D;
+    --status-done-bg: #EAF8F0;
+    --status-done-border: #A9DFC0;
+    --status-draft: #76777C;
+    --status-draft-bg: #F4F4F5;
+    --status-draft-border: #E2E2E4;
 
-    --status-done: oklch(0.55 0.15 250);
-    --status-done-bg: oklch(0.96 0.04 250);
-    --status-done-border: oklch(0.88 0.08 250);
+    /* Diff and Code */
+    --diff-add-bg: #E1F3E8;
+    --diff-add-gutter: #0EA55E;
+    --diff-remove-bg: #F7E8E8;
+    --diff-remove-gutter: #E53935;
+    --code-surface: #FBFBFB;
 
-    --status-draft: oklch(0.55 0.05 270);
-    --status-draft-bg: oklch(0.97 0.02 270);
-    --status-draft-border: oklch(0.90 0.04 270);
+    /* Typography - system fonts only */
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 
-    --status-chat: oklch(0.55 0.12 270);
-    --status-chat-bg: oklch(0.96 0.04 270);
-    --status-chat-border: oklch(0.88 0.08 270);
+    /* Radius Scale */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 10px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+    --radius-pill: 999px;
 
-    /* ShadCN Theme Mapping */
-    --background: 45 8% 97%;        /* warm-paper #F7F7F5 */
-    --foreground: 45 6% 11%;        /* neutral-900 #1E1E1C */
-    --card: 40 9% 98%;              /* warm-ivory #FAFAF8 */
-    --card-foreground: 45 6% 11%;
-    --popover: 40 9% 98%;
-    --popover-foreground: 45 6% 11%;
-    --primary: 45 6% 11%;           /* neutral-900 */
-    --primary-foreground: 40 9% 98%;
-    --secondary: 40 7% 94%;         /* warm-sand tint */
-    --secondary-foreground: 45 6% 11%;
-    --muted: 40 9% 93%;             /* neutral-150 */
-    --muted-foreground: 45 4% 45%;  /* neutral-500 */
-    --accent: 40 7% 94%;
-    --accent-foreground: 45 6% 11%;
-    --destructive: 12 35% 45%;
+    /* Shadows */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.10);
+    --focus-ring: 0 0 0 3px var(--accent-ring);
+
+    /* ShadCN Theme Mapping - MUST be HSL for shadcn tailwind plugin */
+    --background: 48 8% 98%;
+    --foreground: 0 0% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 48 6% 94%;
+    --secondary-foreground: 0 0% 15%;
+    --muted: 48 6% 94%;
+    --muted-foreground: 32 5% 53%;
+    --accent: 210 100% 95%;
+    --accent-foreground: 0 0% 15%;
+    --destructive: 0 60% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 38 9% 88%;            /* warm-border #E5E3DD */
-    --input: 40 9% 98%;
-    --ring: 210 20% 50%;            /* status-running muted */
+    --border: 40 8% 89%;
+    --input: 0 0% 100%;
+    --ring: 210 100% 60%;
     --radius: 10px;
+    --sidebar: 48 6% 95%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 210 100% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 6% 91%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 40 8% 89%;
+    --sidebar-ring: 210 100% 60%;
 
-    /* Sidebar */
-    --sidebar: 40 7% 94%;
-    --sidebar-foreground: 45 6% 11%;
-    --sidebar-primary: 45 6% 11%;
-    --sidebar-primary-foreground: 40 9% 98%;
-    --sidebar-accent: 40 9% 93%;
-    --sidebar-accent-foreground: 45 6% 11%;
-    --sidebar-border: 38 9% 88%;
-    --sidebar-ring: 210 20% 50%;
+    /* User Bubble - HSL */
+    --user-bubble: 40 6% 93%;
+    --user-bubble-border: 40 8% 89%;
 
-    /* Shadows - Design System v2.0 */
-    --shadow-ring: 0 0 0 1px #D1CFC8;
-    --shadow-ring-subtle: 0 0 0 1px #E8E6E0;
-    --shadow-whisper: 0 4px 12px rgba(0,0,0,0.04);
-    --shadow-sticky: 0 -2px 20px rgba(0,0,0,0.06);
-    --shadow-elevated: 0 8px 24px rgba(0,0,0,0.06);
+    /* Deprecated compatibility aliases.
+     * Existing implementation may still reference the old v2 warm/brass names.
+     * Map them to Codex tokens during migration, then remove direct usage.
+     */
+    --warm-paper: var(--background);
+    --warm-ivory: var(--surface);
+    --warm-mist: var(--surface-muted);
+    --warm-sand: var(--surface-control);
+    --warm-border: var(--border);
+    --warm-ring: var(--border-strong);
+    --warm-ring-subtle: var(--border-subtle);
+    --brass: var(--accent);
+    --brass-light: var(--accent-soft);
+    --brass-border: var(--accent-border);
+    --brass-dark: var(--accent-active);
 
-    /* User Bubble */
-    --user-bubble: 36 20% 93%;
-    --user-bubble-border: 34 14% 85%;
+    /* Neutral scale compatibility */
+    --neutral-150: #F0F0EE;
+    --neutral-200: #E4E2DE;
+    --neutral-500: #8D8A85;
+    --neutral-600: #6B6863;
+    --neutral-700: #4D4A46;
+    --neutral-800: #353330;
+    --neutral-900: #252525;
 
-    /* Typography */
-    --font-display: "Newsreader", "Noto Serif SC", Georgia, serif;
-    --font-sans: "Geist", "PingFang SC", system-ui, sans-serif;
-    --font-mono: "Geist Mono", "Cascadia Code", monospace;
-    --font-heading: "Geist", "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
-    --font-body: "Geist", "PingFang SC", "Noto Sans SC", "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+    /* Shadow compatibility */
+    --shadow-whisper: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-ring: 0 0 0 1px var(--border-strong);
+    --shadow-sticky: 0 -2px 20px rgba(0, 0, 0, 0.06);
+
+    /* Status chat compatibility (mapped to accent since v4.0 removed it) */
+    --status-chat: var(--accent);
+    --status-chat-bg: var(--accent-soft);
+    --status-chat-border: var(--accent-border);
+
+    /* Font compatibility */
+    --font-body: var(--font-ui);
+    --font-heading: var(--font-ui);
+    --font-display: var(--font-ui);
+
+    /* Color soft tones for workbench cards */
+    --blue-soft: #EAF4FF;
+    --green-soft: #EAF8F0;
+    --orange-soft: #FFF7E8;
+    --purple-soft: #F3F0FF;
+
+    /* Shimmer component colors */
+    --color-background: hsl(var(--background));
+    --color-muted-foreground: hsl(var(--muted-foreground));
   }
 
   .dark {
-    --background: 45 6% 10%;        /* Dark charcoal #1A1A18 */
-    --foreground: 40 9% 95%;        /* Light text */
-    --card: 45 6% 14%;              /* Elevated dark surface */
-    --card-foreground: 40 9% 95%;
-    --popover: 45 6% 14%;
-    --popover-foreground: 40 9% 95%;
-    --primary: 40 9% 95%;
-    --primary-foreground: 45 6% 10%;
-    --secondary: 45 5% 18%;
-    --secondary-foreground: 40 9% 95%;
-    --muted: 45 5% 18%;
-    --muted-foreground: 40 5% 65%;
-    --accent: 45 5% 18%;
-    --accent-foreground: 40 9% 95%;
-    --destructive: 0 40% 30%;
+    color-scheme: dark;
+
+    --background: 0 0% 9%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 210 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 63%;
+    --accent: 210 100% 18%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 50% 40%;
     --destructive-foreground: 0 0% 100%;
-    --border: 45 5% 22%;
-    --input: 45 5% 18%;
-    --ring: 210 30% 55%;
-    --sidebar: 45 5% 14%;
-    --sidebar-foreground: 40 9% 95%;
-    --sidebar-primary: 210 30% 55%;
-    --sidebar-primary-foreground: 40 9% 95%;
-    --sidebar-accent: 45 5% 18%;
-    --sidebar-accent-foreground: 40 9% 95%;
-    --sidebar-border: 45 5% 22%;
-    --sidebar-ring: 210 30% 55%;
-    --user-bubble: 30 8% 22%;
-    --user-bubble-border: 28 10% 30%;
+    --border: 0 0% 19%;
+    --input: 0 0% 15%;
+    --ring: 210 100% 60%;
+    --sidebar: 0 0% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 210 100% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 19%;
+    --sidebar-ring: 210 100% 60%;
+    --user-bubble: 0 0% 18%;
+    --user-bubble-border: 0 0% 22%;
+
+    /* Dark mode compatibility aliases */
+    --neutral-150: #262626;
+    --neutral-200: #303030;
+    --neutral-500: #A1A1A1;
+    --neutral-600: #C9C9C9;
+    --neutral-700: #D6D6D6;
+    --neutral-800: #E0E0E0;
+    --neutral-900: #FFFFFF;
+    --shadow-whisper: 0 1px 3px rgba(0, 0, 0, 0.20);
+    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.30);
+    --shadow-ring: 0 0 0 1px var(--border-strong);
+    --shadow-sticky: 0 -2px 20px rgba(0, 0, 0, 0.25);
+    --status-chat: var(--accent);
+    --status-chat-bg: rgba(51, 156, 255, 0.18);
+    --status-chat-border: rgba(51, 156, 255, 0.48);
+    --font-body: var(--font-ui);
+    --font-heading: var(--font-ui);
+    --font-display: var(--font-ui);
+    --blue-soft: rgba(51, 156, 255, 0.18);
+    --green-soft: rgba(31, 143, 77, 0.24);
+    --orange-soft: rgba(183, 121, 31, 0.18);
+    --purple-soft: rgba(124, 58, 237, 0.18);
+    --color-background: hsl(var(--background));
+    --color-muted-foreground: hsl(var(--muted-foreground));
   }
 
   * {
@@ -149,8 +235,34 @@
   }
 
   ::selection {
-    background: hsla(210, 20%, 50%, 0.15);
+    background: rgba(51, 156, 255, 0.15);
     color: hsl(var(--foreground));
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(60, 60, 67, 0.22);
+    border-radius: 999px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(60, 60, 67, 0.32);
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 
   /* Animation Keyframes */
@@ -176,15 +288,15 @@
   }
 
   @keyframes ring-pulse {
-    0%, 100% { box-shadow: 0 0 0 1px #D1CFC8; }
-    50% { box-shadow: 0 0 0 2px #D1CFC8; }
+    0%, 100% { box-shadow: 0 0 0 1px var(--border); }
+    50% { box-shadow: 0 0 0 2px var(--accent-border); }
   }
 }
 
 @layer components {
-  /* Status Pills - Design System v2.0 */
+  /* Status Pills - Codex v4.0 */
   .status-pill {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wide border;
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border;
   }
 
   .status-pill-running {
@@ -211,72 +323,66 @@
     border-color: var(--status-done-border);
   }
 
-  .status-pill-chat {
-    color: var(--status-chat);
-    background-color: var(--status-chat-bg);
-    border-color: var(--status-chat-border);
-  }
-
   .status-pill-draft {
     color: var(--status-draft);
     background-color: var(--status-draft-bg);
     border-color: var(--status-draft-border);
   }
 
-  /* Surface Cards - Anti-Gloss Design */
+  /* Surface Cards */
   .surface-card {
-    @apply rounded-xl border bg-card;
-    box-shadow: var(--shadow-whisper);
+    @apply rounded-lg border bg-card;
+    box-shadow: var(--shadow-xs);
   }
 
   .surface-card-flat {
-    @apply rounded-xl border bg-card;
+    @apply rounded-lg border bg-card;
   }
 
   .surface-elevated {
-    @apply rounded-2xl border bg-[var(--warm-ivory)];
-    box-shadow: var(--shadow-elevated);
+    @apply rounded-xl border bg-card;
+    box-shadow: var(--shadow-xs);
   }
 
-  /* Composer - Page Anchor Design */
+  /* Composer */
   .composer-container {
-    @apply rounded-2xl border bg-[var(--warm-ivory)] transition-all duration-200;
-    box-shadow: var(--shadow-whisper);
+    @apply rounded-xl border bg-card transition-all duration-200;
+    box-shadow: var(--shadow-xs);
   }
 
   .composer-container:focus-within {
-    border-color: var(--warm-ring);
-    box-shadow: var(--shadow-ring), var(--shadow-whisper);
+    border-color: var(--accent);
+    box-shadow: var(--focus-ring), var(--shadow-xs);
   }
 
   /* Sticky Composer Separator */
   .composer-sticky {
     @apply sticky bottom-0 z-20;
-    background: linear-gradient(to top, var(--warm-paper) 0%, var(--warm-paper) 85%, transparent 100%);
+    background: linear-gradient(to top, var(--codex-bg) 0%, var(--codex-bg) 85%, transparent 100%);
   }
 
   .composer-sticky::before {
     content: '';
     @apply absolute inset-x-0 -top-4 h-4 pointer-events-none;
-    background: linear-gradient(to bottom, transparent, var(--warm-paper));
+    background: linear-gradient(to bottom, transparent, var(--codex-bg));
   }
 
   /* Page Shell */
   .page-shell {
-    @apply bg-[var(--warm-paper)];
+    @apply bg-background;
   }
 
-  /* Typography Utilities */
+  /* Typography Utilities - No negative tracking */
   .text-display {
-    @apply text-[28px] leading-[36px] font-semibold tracking-[-0.02em];
+    @apply text-[24px] leading-[32px] font-semibold;
   }
 
   .text-heading {
-    @apply text-[22px] leading-[30px] font-semibold tracking-[-0.01em];
+    @apply text-[22px] leading-[30px] font-semibold;
   }
 
   .text-subheading {
-    @apply text-[18px] leading-[26px] font-medium;
+    @apply text-[18px] leading-[26px] font-semibold;
   }
 
   .text-body-large {
@@ -288,33 +394,33 @@
   }
 
   .text-caption {
-    @apply text-[12px] leading-[18px] font-medium tracking-wide;
+    @apply text-[12px] leading-[18px] font-medium;
   }
 
   .text-label {
-    @apply text-[11px] leading-[16px] font-medium tracking-[0.04em] uppercase;
+    @apply text-[11px] leading-[16px] font-medium;
   }
 
   .section-kicker {
-    @apply text-[11px] leading-4 font-medium tracking-[0.06em] text-muted-foreground uppercase;
+    @apply text-[11px] leading-4 font-medium text-muted-foreground;
   }
 
   .field-label {
-    @apply text-[11px] leading-4 font-medium tracking-[0.04em] text-muted-foreground uppercase;
+    @apply text-[11px] leading-4 font-medium text-muted-foreground;
   }
 
   /* Skeleton Loading */
   .skeleton-line {
-    background: linear-gradient(90deg, var(--neutral-200) 25%, var(--neutral-150) 37%, var(--neutral-200) 63%);
+    background: linear-gradient(90deg, var(--surface-control) 25%, var(--surface-hover) 37%, var(--surface-control) 63%);
     background-size: 400% 100%;
     animation: shimmer 1.6s ease infinite;
   }
 
   .skeleton-pulse {
-    @apply bg-[var(--neutral-200)] animate-pulse rounded;
+    @apply bg-surface-control animate-pulse rounded;
   }
 
-  /* User Bubble - Warm Sand Tint */
+  /* User Bubble - Neutral tint */
   .user-bubble {
     background-color: hsl(var(--user-bubble));
     border: 1px solid hsl(var(--user-bubble-border));
@@ -327,16 +433,15 @@
   }
 
   .chat-stream-dot {
-    width: 6px;
-    height: 6px;
-    margin-inline: 2px;
-    border-radius: 999px;
-    background: var(--neutral-500);
+    display: inline-block;
+    min-width: 4px;
+    margin-inline: 1px;
+    color: var(--muted-foreground);
     animation: chat-dot-bounce 1.05s infinite ease-in-out;
   }
 
   .ring-hover:hover {
-    box-shadow: var(--shadow-ring);
+    box-shadow: 0 0 0 1px var(--border);
   }
 
   /* Assistant Markdown Styling */
@@ -345,22 +450,21 @@
     padding: 0;
     gap: 0;
     overflow: hidden;
-    border: 1px solid #282828;
-    border-radius: 10px;
-    background: #1a1a1a;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--code-surface);
   }
 
   .assistant-markdown [data-streamdown="code-block-header"] {
     min-height: 36px;
     padding: 0 0.875rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    background: #141414;
-    color: #8c949c;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-control);
+    color: var(--muted-foreground);
     font-family: var(--font-mono);
     font-size: 10px;
     line-height: 36px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .assistant-markdown [data-streamdown="code-block-header"] span {
@@ -384,10 +488,10 @@
     height: 26px;
     width: 26px;
     padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    background: #141414;
-    color: #b8c1ca;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-control);
+    color: var(--muted-foreground);
     box-shadow: none;
     line-height: 0;
     overflow: hidden;
@@ -395,8 +499,8 @@
 
   .assistant-markdown [data-streamdown="code-block-copy-button"]:hover,
   .assistant-markdown [data-streamdown="code-block-download-button"]:hover {
-    background: #101010;
-    color: #d6dde4;
+    background: var(--surface-hover);
+    color: var(--foreground);
   }
 
   .assistant-markdown [data-streamdown="code-block-copy-button"] svg,
@@ -409,7 +513,7 @@
   .assistant-markdown [data-streamdown="code-block-body"] {
     border: 0;
     border-radius: 0;
-    background: #1a1a1a;
+    background: var(--code-surface);
     padding: 0.875rem 1.125rem 1rem;
     box-shadow: none;
   }
@@ -427,19 +531,19 @@
     font-family: var(--font-mono);
     font-size: 13px;
     line-height: 1.6;
-    color: #d7dee6;
+    color: var(--foreground);
   }
 
   .assistant-markdown :not(pre) > code {
-    border-radius: 6px;
-    background: var(--neutral-150);
-    border: 1px solid var(--warm-border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-control);
+    border: 1px solid var(--border);
     padding: 0.1rem 0.35rem;
     font-size: 0.875em;
     color: hsl(var(--foreground));
   }
 
-  /* Syntax Highlighting - Low Saturation */
+  /* Syntax Highlighting */
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-comment,
   .assistant-markdown [data-streamdown="code-block-body"] .token.comment,
   .assistant-markdown [data-streamdown="code-block-body"] .token.prolog,
@@ -451,28 +555,28 @@
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-selector-tag,
   .assistant-markdown [data-streamdown="code-block-body"] .token.keyword,
   .assistant-markdown [data-streamdown="code-block-body"] .token.atrule {
-    color: #88abc7;
+    color: var(--accent);
   }
 
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-string,
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-attribute,
   .assistant-markdown [data-streamdown="code-block-body"] .token.string,
   .assistant-markdown [data-streamdown="code-block-body"] .token.attr-value {
-    color: #90b29c;
+    color: var(--status-done);
   }
 
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-number,
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-literal,
   .assistant-markdown [data-streamdown="code-block-body"] .token.number,
   .assistant-markdown [data-streamdown="code-block-body"] .token.boolean {
-    color: #c0a86a;
+    color: var(--status-approval);
   }
 
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-title,
   .assistant-markdown [data-streamdown="code-block-body"] .hljs-function,
   .assistant-markdown [data-streamdown="code-block-body"] .token.function,
   .assistant-markdown [data-streamdown="code-block-body"] .token.class-name {
-    color: #a8c0d8;
+    color: var(--foreground);
   }
 
   /* Markdown Prose Rhythm */
@@ -487,7 +591,6 @@
     margin-top: 1.5rem;
     margin-bottom: 0.5rem;
     font-weight: 600;
-    letter-spacing: -0.02em;
     line-height: 1.3;
     color: hsl(var(--foreground));
   }
@@ -524,14 +627,14 @@
 
   .assistant-markdown hr {
     margin: 1.5rem 0;
-    border-color: var(--warm-border);
+    border-color: var(--border);
     border-top-width: 1px;
   }
 
   .assistant-markdown blockquote {
     margin: 1rem 0;
     padding: 0.5rem 0.875rem;
-    border-left: 2px solid var(--warm-border);
+    border-left: 2px solid var(--border);
     color: hsl(var(--muted-foreground));
     font-style: normal;
   }
@@ -546,7 +649,7 @@
   }
 
   .assistant-markdown a {
-    color: var(--status-running);
+    color: var(--accent);
     text-decoration: underline;
     text-decoration-thickness: 1px;
     text-underline-offset: 2px;
@@ -565,15 +668,13 @@
     text-align: left;
     font-size: 11px;
     font-weight: 500;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     color: hsl(var(--muted-foreground));
-    border-bottom: 1px solid var(--warm-border);
+    border-bottom: 1px solid var(--border);
   }
 
   .assistant-markdown td {
     padding: 0.4rem 0.75rem;
-    border-bottom: 1px solid var(--neutral-200);
+    border-bottom: 1px solid var(--border-subtle);
     color: hsl(var(--foreground));
     vertical-align: top;
   }
@@ -584,19 +685,19 @@
 
   /* Empty State Styling */
   .empty-state-icon {
-    @apply inline-flex items-center justify-center rounded-xl border bg-[var(--warm-ivory)];
-    box-shadow: var(--shadow-whisper);
+    @apply inline-flex items-center justify-center rounded-lg border bg-card;
+    box-shadow: var(--shadow-xs);
   }
 
   /* Quick Prompt Cards */
   .quick-prompt-card {
-    @apply flex items-start gap-3 rounded-xl border bg-[var(--warm-ivory)] px-4 py-3.5 text-left transition-all duration-200;
-    box-shadow: var(--shadow-whisper);
+    @apply flex items-start gap-3 rounded-lg border bg-card px-4 py-3.5 text-left transition-all duration-200;
+    box-shadow: var(--shadow-xs);
   }
 
   .quick-prompt-card:hover {
-    @apply bg-[var(--neutral-150)];
-    box-shadow: var(--shadow-ring), var(--shadow-whisper);
+    @apply bg-surface-hover;
+    box-shadow: 0 0 0 1px var(--border), var(--shadow-xs);
   }
 
   /* Mode Picker Button */
@@ -605,16 +706,16 @@
   }
 
   .mode-picker-button:hover {
-    @apply border-[var(--warm-border)] bg-[var(--neutral-150)];
+    @apply border-border bg-surface-hover;
   }
 
   /* Scroll to Latest Button */
   .scroll-to-latest {
-    @apply inline-flex items-center justify-center rounded-full border bg-[var(--warm-ivory)] p-2.5 transition-all duration-200;
-    box-shadow: var(--shadow-whisper);
+    @apply inline-flex items-center justify-center rounded-full border bg-card p-2.5 transition-all duration-200;
+    box-shadow: var(--shadow-xs);
   }
 
   .scroll-to-latest:hover {
-    box-shadow: var(--shadow-ring), var(--shadow-whisper);
+    box-shadow: 0 0 0 1px var(--border), var(--shadow-xs);
   }
 }

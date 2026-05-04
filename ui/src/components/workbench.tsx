@@ -1,209 +1,80 @@
 import {
-  CheckCircle2,
-  Copy,
-  Download,
+  ArrowUpRight,
+  Clock3,
   FileSpreadsheet,
   FileText,
   FolderKanban,
-  ListChecks,
-  PencilLine,
-  RotateCcw,
+  Globe,
+  MonitorSmartphone,
+  Plus,
   ShieldCheck,
   Sparkles,
   WandSparkles,
 } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-type Tone = "running" | "approval" | "blocked" | "done" | "chat" | "draft"
+const quickActions = [
+  { label: "制作幻灯片", icon: FileText },
+  { label: "分析数据", icon: FileSpreadsheet },
+  { label: "创建网站", icon: Globe },
+  { label: "开发应用", icon: MonitorSmartphone },
+]
 
-const toneClasses: Record<Tone, string> = {
-  running: "status-pill-running",
-  approval: "status-pill-approval",
-  blocked: "status-pill-blocked",
-  done: "status-pill-done",
-  chat: "status-pill-chat",
-  draft: "status-pill-draft",
-}
+const starterPrompts = [
+  "基于销售周报整理管理层可读的复盘结论",
+  "分析一份 CSV，并生成趋势图与摘要",
+  "把会议纪要改写为项目执行方案",
+  "围绕新项目输出一版可审批的启动文档",
+]
 
-const functionCards = [
+const focusCards = [
   {
-    title: "文档生成",
-    description: "一键生成结构化报告、方案与会议纪要。",
-    icon: <FileText className="size-5" />,
-    tone: "var(--blue-soft)",
+    title: "当前重点",
+    value: "Q2 销售复盘",
+    detail: "结果需要补充区域差异与续费风险",
   },
   {
-    title: "数据分析",
-    description: "上传数据后输出洞察、结论和汇报摘要。",
-    icon: <FileSpreadsheet className="size-5" />,
-    tone: "var(--green-soft)",
+    title: "待推进",
+    value: "2 项审批",
+    detail: "一个项目摘要、一个交付文档等待确认",
   },
   {
-    title: "任务拆解",
-    description: "把目标拆成步骤、负责人和交付清单。",
-    icon: <ListChecks className="size-5" />,
-    tone: "var(--orange-soft)",
-  },
-  {
-    title: "知识问答",
-    description: "基于企业知识源生成可引用的回答。",
-    icon: <Sparkles className="size-5" />,
-    tone: "var(--purple-soft)",
+    title: "最近产物",
+    value: "7 份输出",
+    detail: "报告、方案、纪要和数据分析结果可继续复用",
   },
 ]
 
-const steps = [
-  { step: "Step 1", title: "输入信息", detail: "填写主题、风格、受众等核心字段。" },
-  { step: "Step 2", title: "AI 处理", detail: "系统生成结构化草稿并给出处理状态。" },
-  { step: "Step 3", title: "输出结果", detail: "结果以标题、段落和列表形式展示。" },
-  { step: "Step 4", title: "编辑 / 导出", detail: "支持局部修改、复制、导出和复用。" },
-]
-
-const recentTasks = [
+const recentItems = [
   {
-    title: "Q2 销售复盘报告",
-    detail: "销售团队 / 需要补充区域维度分析",
-    tone: "running" as const,
-    meta: "生成中",
+    title: "医院经营数据分析报告生成任务",
+    meta: "运行中",
+    tone: "running",
   },
   {
-    title: "Partner Portal 项目摘要",
-    detail: "产品团队 / 等待 SSO 结论后重新输出",
-    tone: "approval" as const,
+    title: "基于简历创建浅色个人网站",
     meta: "待确认",
+    tone: "approval",
   },
   {
-    title: "招聘流程自动化方案",
-    detail: "HR 团队 / 已导出 docx 版本",
-    tone: "done" as const,
+    title: "CSV 文件数据分析及内容分析报告",
     meta: "已完成",
+    tone: "done",
   },
-]
+] as const
 
-const recentHistory = [
-  "CRM MVP 范围定义",
-  "企业知识接入建议",
-  "销售周报模板 v2",
-]
-
-function ToneBadge({ children, tone }: { children: React.ReactNode; tone: Tone }) {
+function StatusDot({ tone }: { tone: "running" | "approval" | "done" }) {
   return (
-    <Badge variant="outline" className={cn("px-2.5 py-0.5", toneClasses[tone])}>
-      {children}
-    </Badge>
-  )
-}
-
-function SectionTitle({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-}) {
-  return (
-    <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex size-8 items-center justify-center rounded-md border border-border bg-secondary text-foreground">
-        {icon}
-      </div>
-      <div>
-        <h2 className="text-[18px] leading-7 font-semibold tracking-[-0.01em] text-foreground">{title}</h2>
-        <p className="mt-1 text-[14px] leading-[22px] text-muted-foreground">{description}</p>
-      </div>
-    </div>
-  )
-}
-
-function FunctionCard({
-  icon,
-  title,
-  description,
-  tone,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-  tone: string
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-start gap-3">
-        <div
-          className="flex size-9 shrink-0 items-center justify-center rounded-md border border-black/5"
-          style={{ backgroundColor: tone }}
-        >
-          {icon}
-        </div>
-        <div className="min-w-0">
-          <h3 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
-          <p className="mt-1 text-[13px] leading-[20px] text-muted-foreground">{description}</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function StepCard({
-  step,
-  title,
-  detail,
-}: {
-  step: string
-  title: string
-  detail: string
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <p className="text-[11px] leading-4 tracking-[0.08em] text-muted-foreground">{step}</p>
-      <h3 className="mt-2 text-[15px] leading-6 font-semibold tracking-[-0.01em] text-foreground">{title}</h3>
-      <p className="mt-1.5 text-[13px] leading-[20px] text-muted-foreground">{detail}</p>
-    </div>
-  )
-}
-
-function ResultAction({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <Button variant="outline" size="sm" className="h-8 rounded-md px-2.5 text-[12px]">
-      {icon}
-      {label}
-    </Button>
-  )
-}
-
-function ListRow({
-  title,
-  detail,
-  meta,
-  tone,
-}: {
-  title: string
-  detail: string
-  meta: string
-  tone: Tone
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card px-4 py-3.5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-[14px] leading-[22px] font-medium tracking-[-0.01em] text-foreground">{title}</p>
-          <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">{detail}</p>
-        </div>
-        <ToneBadge tone={tone}>{meta}</ToneBadge>
-      </div>
-    </div>
-  )
-}
-
-function OutputListItem({ children }: { children: React.ReactNode }) {
-  return (
-    <li className="text-[14px] leading-[22px] text-muted-foreground">{children}</li>
+    <span
+      className={cn(
+        "inline-flex size-2.5 rounded-full",
+        tone === "running" && "bg-[var(--status-running)]",
+        tone === "approval" && "bg-[var(--status-approval)]",
+        tone === "done" && "bg-[var(--status-done)]",
+      )}
+    />
   )
 }
 
@@ -217,254 +88,209 @@ export function Workbench({
   onOpenApprovals: () => void
 }) {
   return (
-    <div className="px-4 pb-6 pt-4 md:px-6 md:pb-8">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5">
-        <section className="rounded-lg border border-border bg-secondary/65 p-6">
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-start">
-            <div>
-              <p className="text-[11px] leading-4 tracking-[0.08em] text-muted-foreground uppercase">Enterprise AI Workspace</p>
-              <h1 className="mt-3 text-[28px] leading-9 font-semibold tracking-[-0.02em] text-foreground">
-                强结构、强引导、强结果
-              </h1>
-              <p className="mt-3 max-w-[620px] text-[14px] leading-[22px] text-muted-foreground">
-                首页不再鼓励自由发散，而是直接进入结构化生成流程，让用户更快得到可编辑、可导出、可复用的结果。
+    <div className="min-h-screen bg-background px-4 pb-8 pt-5 md:px-6 md:pt-7">
+      <div className="mx-auto grid w-full max-w-[1480px] gap-6 xl:grid-cols-[272px_minmax(0,1fr)_300px]">
+        <aside className="hidden xl:flex xl:flex-col">
+          <div
+            className="flex h-full flex-col rounded-[24px] border border-border/70 bg-[var(--codex-sidebar)] px-4 py-4 backdrop-blur-md"
+            style={{ boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)" }}
+          >
+            <div className="flex items-center justify-between pb-3">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-2xl border border-border/80 bg-[rgba(255,255,255,0.88)] text-foreground">
+                  <Sparkles className="size-4" />
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-foreground">SwarmMind</p>
+                  <p className="text-[11px] tracking-[0.06em] text-muted-foreground">
+                    WORK SURFACE
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="size-9 rounded-xl"
+                onClick={onOpenProjects}
+                title="查看项目"
+              >
+                <FolderKanban className="size-4" />
+              </Button>
+            </div>
+
+            <Button
+              className="mt-4 h-11 justify-start rounded-2xl border border-border/60 bg-[rgba(0,0,0,0.06)] px-4 text-foreground hover:bg-[rgba(0,0,0,0.08)]"
+              onClick={onStartChat}
+            >
+              <Plus className="size-4" />
+              新建任务
+            </Button>
+
+            <div className="mt-6">
+              <p className="px-1 text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">
+                最近任务
               </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Button onClick={onStartChat}>开始生成</Button>
-                <Button variant="outline" onClick={onOpenProjects}>
-                  保存为项目
-                </Button>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border bg-card p-4">
-              <p className="text-[10px] leading-4 tracking-[0.1em] text-muted-foreground uppercase">工作流摘要</p>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between gap-4 text-[14px] leading-[22px]">
-                  <span className="text-muted-foreground">当前重点</span>
-                  <span className="font-medium text-foreground">销售复盘报告</span>
-                </div>
-                <div className="flex items-center justify-between gap-4 text-[14px] leading-[22px]">
-                  <span className="text-muted-foreground">待审批</span>
-                  <span className="font-medium text-foreground">2 项</span>
-                </div>
-                <div className="flex items-center justify-between gap-4 text-[14px] leading-[22px]">
-                  <span className="text-muted-foreground">可导出结果</span>
-                  <span className="font-medium text-foreground">7 份</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_320px]">
-          <div className="space-y-5">
-            <Card>
-              <CardHeader>
-                <SectionTitle
-                  icon={<WandSparkles className="size-4" />}
-                  title="结构化输入"
-                  description="用表单收集关键信息，再由 AI 处理，不再只给一个大输入框。"
-                />
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="field-label">主题</label>
-                    <Input value="Q2 销售复盘报告" readOnly />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="field-label">风格</label>
-                    <Input value="正式 / 管理层汇报" readOnly />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="field-label">受众</label>
-                    <Input value="销售负责人 / 管理层" readOnly />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="field-label">输出格式</label>
-                    <Input value="报告 + 关键结论 + 行动建议" readOnly />
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border bg-secondary/80 p-4">
-                  <p className="field-label">补充说明</p>
-                  <ul className="mt-3 list-disc space-y-1 pl-5">
-                    <OutputListItem>强调北区和华东区的增长差异</OutputListItem>
-                    <OutputListItem>补充续费风险与渠道贡献两个章节</OutputListItem>
-                    <OutputListItem>输出结果需要支持 docx 与 PDF 导出</OutputListItem>
-                  </ul>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <Button onClick={onStartChat}>开始生成</Button>
-                  <Button variant="outline" onClick={onOpenProjects}>
-                    保存为项目
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <SectionTitle
-                  icon={<ListChecks className="size-4" />}
-                  title="标准流程"
-                  description="统一的 4 步流程，减少学习成本。"
-                />
-              </CardHeader>
-              <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {steps.map((step) => (
-                  <StepCard key={step.step} step={step.step} title={step.title} detail={step.detail} />
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <SectionTitle
-                  icon={<FileText className="size-4" />}
-                  title="输出结果预览"
-                  description="结果以可读、可编辑、可导出的结构展示。"
-                />
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="rounded-lg border border-border bg-secondary/80 p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ToneBadge tone="running">Generating</ToneBadge>
-                    <span className="text-[12px] leading-[18px] text-muted-foreground">结果正在补充区域分析章节</span>
-                  </div>
-                  <div className="mt-3 grid gap-2">
-                    <div className="skeleton-line h-4 rounded-sm" />
-                    <div className="skeleton-line h-4 rounded-sm w-[82%]" />
-                    <div className="skeleton-line h-4 rounded-sm w-[64%]" />
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border bg-card px-4 py-3.5 fade-up">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <h3 className="text-[15px] leading-6 font-semibold tracking-[-0.01em] text-foreground">Q2 销售复盘报告</h3>
-                      <p className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">
-                        结构化输出，已自动生成摘要、列表与关键结论。
-                      </p>
-                    </div>
-                    <ToneBadge tone="done">Success</ToneBadge>
-                  </div>
-
-                  <div className="mt-4 space-y-3.5">
-                    <div>
-                      <p className="text-[14px] leading-[22px] font-medium text-foreground">执行摘要</p>
-                      <p className="mt-2 text-[14px] leading-[22px] text-muted-foreground">
-                        Q2 总体收入保持增长，但区域波动明显，北区续费风险上升，华东区由渠道带动的新增表现最好。
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-[14px] leading-[22px] font-medium text-foreground">关键结论</p>
-                      <ul className="mt-2 list-disc space-y-1 pl-5">
-                        <OutputListItem>北区续费风险主要集中在大客户延期采购。</OutputListItem>
-                        <OutputListItem>渠道贡献提升明显，建议保留联合营销预算。</OutputListItem>
-                        <OutputListItem>重点项目需要单独跟踪合同推进状态。</OutputListItem>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <ResultAction icon={<PencilLine className="size-4" />} label="编辑" />
-                  <ResultAction icon={<Copy className="size-4" />} label="复制" />
-                  <ResultAction icon={<Download className="size-4" />} label="导出 PDF / docx" />
-                  <ResultAction icon={<RotateCcw className="size-4" />} label="重新生成" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-5">
-            <Card>
-              <CardHeader>
-                <SectionTitle
-                  icon={<Sparkles className="size-4" />}
-                  title="功能入口"
-                  description="用户第一眼就知道能做什么。"
-                />
-              </CardHeader>
-              <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                {functionCards.map((card) => (
-                  <FunctionCard
-                    key={card.title}
-                    icon={card.icon}
-                    title={card.title}
-                    description={card.description}
-                    tone={card.tone}
-                  />
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <SectionTitle
-                  icon={<ShieldCheck className="size-4" />}
-                  title="最近任务"
-                  description="聚焦需要继续推进的结构化结果。"
-                />
-              </CardHeader>
-              <CardContent className="space-y-2.5">
-                {recentTasks.map((item) => (
-                  <ListRow
+              <div className="mt-3 space-y-2">
+                {recentItems.map((item) => (
+                  <button
                     key={item.title}
-                    title={item.title}
-                    detail={item.detail}
-                    meta={item.meta}
-                    tone={item.tone}
-                  />
+                    type="button"
+                    onClick={item.tone === "approval" ? onOpenApprovals : onStartChat}
+                    className="w-full rounded-2xl border border-transparent bg-[rgba(255,255,255,0.45)] px-3.5 py-3 text-left transition-colors hover:border-border/60 hover:bg-[rgba(255,255,255,0.72)]"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="pt-1">
+                        <StatusDot tone={item.tone} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-[13px] leading-5 text-foreground">
+                          {item.title}
+                        </p>
+                        <p className="mt-1 text-[11px] tracking-[0.04em] text-muted-foreground">
+                          {item.meta}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
                 ))}
-                <Button variant="outline" onClick={onOpenApprovals} className="w-full">
-                  查看全部审批
-                </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
-            <Card>
-              <CardHeader>
-                <SectionTitle
-                  icon={<FolderKanban className="size-4" />}
-                  title="历史记录"
-                  description="最近使用过的任务主题与结果上下文。"
-                />
-              </CardHeader>
-              <CardContent className="space-y-1.5">
-                {recentHistory.map((item) => (
-                  <div key={item} className="rounded-lg border border-border bg-card px-4 py-2.5">
-                    <p className="text-[14px] leading-[22px] text-foreground">{item}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <SectionTitle
-                  icon={<CheckCircle2 className="size-4" />}
-                  title="可控性"
-                  description="让用户始终感觉自己在控制 AI。"
-                />
-              </CardHeader>
-              <CardContent className="space-y-1.5">
-                <div className="rounded-lg border border-border bg-secondary/80 p-4">
-                  <p className="field-label">提供能力</p>
-                  <ul className="mt-2 list-disc space-y-1 pl-5">
-                    <OutputListItem>修改输入后重新生成</OutputListItem>
-                    <OutputListItem>对某一段落做局部重写</OutputListItem>
-                    <OutputListItem>将当前结果保存为模板复用</OutputListItem>
-                  </ul>
+            <div className="mt-auto rounded-[20px] border border-border/80 bg-[rgba(255,255,255,0.74)] p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--codex-accent)]">
+                  <ShieldCheck className="size-4" />
                 </div>
-              </CardContent>
-            </Card>
+                <div>
+                  <p className="text-[13px] font-medium text-foreground">可治理执行</p>
+                  <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+                    首页保留自由度，但任务进入执行后仍然走审批、追踪和产物沉淀流程。
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <section className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center xl:-translate-y-8">
+          <div className="w-full max-w-[860px]">
+            <div className="text-center">
+              <p className="text-[13px] tracking-[0.08em] text-muted-foreground">
+                SwarmMind 1.6
+              </p>
+              <h1 className="mx-auto mt-5 max-w-[720px] text-[30px] leading-[1.24] font-semibold tracking-[-0.03em] text-foreground md:text-[42px]">
+                先把任务定义清楚，
+                <br className="hidden md:block" />
+                再稳定地生成结果。
+              </h1>
+              <p className="mx-auto mt-4 max-w-[560px] text-[14px] leading-7 text-muted-foreground">
+                从一个明确任务开始，继续补充附件、约束条件和输出形式，让后续执行更可控。
+              </p>
+            </div>
+
+            <div
+              className="mt-8 rounded-[36px] border border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(246,246,245,0.96))] p-2.5 shadow-[0_18px_48px_rgba(0,0,0,0.06),0_2px_10px_rgba(0,0,0,0.04)] md:p-3"
+            >
+              <button
+                type="button"
+                onClick={onStartChat}
+                className="flex min-h-[194px] w-full flex-col rounded-[30px] border border-border/80 bg-[rgba(255,255,255,0.98)] px-5 py-5 text-left transition-colors hover:border-border-strong hover:bg-[rgba(255,255,255,1)] md:px-6 md:py-5"
+                style={{ boxShadow: "0 8px 24px rgba(0, 0, 0, 0.05)" }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div />
+                  <div className="hidden items-center gap-2 rounded-full border border-border/80 bg-secondary/70 px-3 py-1.5 text-[11px] text-muted-foreground md:flex">
+                    <Clock3 className="size-3.5" />
+                    平均 2-4 分钟产出首版
+                  </div>
+                </div>
+
+                <div className="mt-3 flex-1">
+                  <p className="text-[16px] leading-7 text-muted-foreground/88 md:text-[18px]">
+                    分配一个任务或提问任何问题
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {starterPrompts.map((prompt) => (
+                      <span
+                        key={prompt}
+                        className="inline-flex rounded-full border border-border/80 bg-secondary/65 px-3 py-1.5 text-[12px] text-muted-foreground"
+                      >
+                        {prompt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex size-11 items-center justify-center rounded-full border border-border/80 bg-[rgba(255,255,255,0.95)] text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                      <Plus className="size-[18px]" />
+                    </span>
+                    <span className="inline-flex size-11 items-center justify-center rounded-full border border-border/80 bg-[rgba(255,255,255,0.95)] text-muted-foreground shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                      <WandSparkles className="size-[18px]" />
+                    </span>
+                  </div>
+
+                  <span className="inline-flex size-11 items-center justify-center rounded-full bg-[#E5E5E7] text-[#7B7B80]">
+                    <ArrowUpRight className="size-[18px]" />
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              {quickActions.map(({ label, icon: Icon }) => (
+                <Button
+                  key={label}
+                  variant="outline"
+              className="h-11 rounded-full border-border/80 bg-secondary/65 px-4 text-[13px] hover:bg-secondary/90"
+                  onClick={onStartChat}
+                >
+                  <Icon className="size-4" />
+                  {label}
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                className="h-11 rounded-full px-4 text-[13px]"
+                onClick={onOpenProjects}
+              >
+                更多场景
+              </Button>
+            </div>
           </div>
         </section>
+
+        <aside className="space-y-4">
+          {focusCards.map((card) => (
+            <div
+              key={card.title}
+              className="rounded-[24px] border border-border/80 bg-secondary/55 p-5"
+            >
+              <p className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground">
+                {card.title}
+              </p>
+              <p className="mt-3 text-[18px] leading-7 font-semibold tracking-[-0.02em] text-foreground">
+                {card.value}
+              </p>
+              <p className="mt-2 text-[12px] leading-6 text-muted-foreground">{card.detail}</p>
+            </div>
+          ))}
+
+          <div className="rounded-[24px] border border-border/80 bg-[rgba(255,253,251,0.9)] p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 items-center justify-center rounded-2xl bg-[var(--accent-soft)] text-[var(--codex-accent)]">
+                <ShieldCheck className="size-4" />
+              </div>
+              <div>
+                <p className="text-[15px] font-medium text-foreground">首页改造原则</p>
+                <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
+                  保持中心任务入口清晰，辅助信息只做轻量提示，不抢主视觉。
+                </p>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   )
