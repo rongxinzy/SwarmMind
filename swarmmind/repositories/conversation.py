@@ -136,9 +136,9 @@ class ConversationRepository:
         pattern = f"%{q_lower}%"
 
         with session_scope() as session:
-            msg_subquery = select(MessageDB.conversation_id).where(
-                func.lower(MessageDB.content).like(pattern)
-            ).distinct()
+            msg_subquery = (
+                select(MessageDB.conversation_id).where(func.lower(MessageDB.content).like(pattern)).distinct()
+            )
             results = session.exec(
                 select(ConversationDB)
                 .where(
