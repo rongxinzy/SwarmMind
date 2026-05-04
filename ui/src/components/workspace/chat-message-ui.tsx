@@ -240,6 +240,24 @@ export const MessageBubble = memo(function MessageBubble({
           )
         ) : null}
 
+        {!isUser && message.content && !isMessageStreaming ? (
+          <div className="mt-3 flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              onClick={() => { void handleCopy(); }}
+              className="h-7 w-7 rounded-[10px] border border-transparent bg-transparent text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+              title={copied ? "已复制" : "复制回复"}
+            >
+              {copied ? <Check className="size-3 text-[var(--status-done)]" /> : <Copy className="size-3" />}
+            </Button>
+            {formattedTime ? (
+              <span className="text-[12px] text-muted-foreground">{formattedTime}</span>
+            ) : null}
+          </div>
+        ) : null}
+
         {!isUser && showCompletion ? (
           <div className="mt-5 flex items-center gap-2 border-t border-border/80 pt-4 text-[14px] font-medium text-[var(--status-done)]">
             <Check className="size-4" />

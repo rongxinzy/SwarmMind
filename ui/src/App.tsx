@@ -476,6 +476,7 @@ export default function App() {
         onDeleteConversation={handleDeleteConversation}
         pageTitle={VIEW_LABELS[activeView]}
         searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
         isRecentLoading={isRecentLoading}
         activeConversationId={activeConversationId}
       />

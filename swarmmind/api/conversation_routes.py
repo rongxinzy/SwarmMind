@@ -21,6 +21,9 @@ from swarmmind.models import (
     SendMessageRequest,
 )
 
+SearchConversationsCallable = Callable[[str, int], ConversationListResponse]
+ExportConversationCallable = Callable[[str, str], Response]
+
 
 class ClarificationResponseRequest(BaseModel):
     """Request to respond to a clarification prompt."""
@@ -44,6 +47,8 @@ class ConversationRouteHandlers:
     stream_conversation_message: Callable[[str, SendMessageRequest], object]
     send_message_stream: Callable[[str, SendMessageRequest], StreamingResponse]
     respond_to_clarification: Callable[[str, ClarificationResponseRequest], Message]
+    search_conversations: SearchConversationsCallable
+    export_conversation: ExportConversationCallable
 
 
 @dataclass(frozen=True)
@@ -60,6 +65,8 @@ class ConversationRouteDeps:
     get_conversation_trace: Callable[[str], ConversationTraceResponse]
     stream_conversation_message: Callable[[str, SendMessageRequest], object]
     respond_to_clarification: Callable[[str, str, str], Message]
+    search_conversations: SearchConversationsCallable
+    export_conversation: ExportConversationCallable
 
 
 def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter, ConversationRouteHandlers]:
@@ -83,6 +90,14 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         if result is None:
             return Response(status_code=204)
         return result
+
+    @router.get("/conversations/search", tags=["conversations"])
+    def search_conversations(
+        q: str = Query(..., min_length=1, max_length=200, description="Search query"),
+        limit: int = Query(20, ge=1, le=100),
+    ) -> ConversationListResponse:
+        """Search conversations by title or message content."""
+        return deps.search_conversations(q, limit)
 
     @router.get(
         "/conversations/{conversation_id}",
@@ -158,6 +173,18 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
             body.response,
         )
 
+    @router.get(
+        "/conversations/{conversation_id}/export",
+        tags=["conversations"],
+        responses={404: {"description": "Conversation not found"}},
+    )
+    def export_conversation(
+        conversation_id: str,
+        format: str = Query("markdown", pattern="^(markdown|json)$"),
+    ) -> Response:
+        """Export a conversation as markdown or JSON."""
+        return deps.export_conversation(conversation_id, format)
+
     return router, ConversationRouteHandlers(
         list_conversations=list_conversations,
         create_conversation=create_conversation,
@@ -170,4 +197,6 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         stream_conversation_message=_stream_conversation_message,
         send_message_stream=send_message_stream,
         respond_to_clarification=respond_to_clarification,
+        search_conversations=search_conversations,
+        export_conversation=export_conversation,
     )

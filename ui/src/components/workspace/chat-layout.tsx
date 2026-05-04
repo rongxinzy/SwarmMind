@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FilesIcon, XIcon } from "lucide-react";
+import { Download, FilesIcon, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ interface ChatLayoutProps {
   onSelectArtifact: (path: string | null) => void;
   artifactsOpen: boolean;
   setArtifactsOpen: (open: boolean) => void;
+  onExport?: (format: "markdown" | "json") => void;
 }
 
 export function ChatLayout({
@@ -24,6 +25,7 @@ export function ChatLayout({
   onSelectArtifact,
   artifactsOpen,
   setArtifactsOpen,
+  onExport,
 }: ChatLayoutProps) {
   return (
     <div className="flex h-full w-full">
@@ -33,19 +35,33 @@ export function ChatLayout({
           artifactsOpen ? "w-[60%]" : "w-full",
         )}
       >
-        {artifacts.length > 0 && !artifactsOpen && (
-          <div className="absolute right-3 top-3 z-10">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setArtifactsOpen(true);
-              }}
-              className="gap-1.5 text-xs"
-            >
-              <FilesIcon className="size-3.5" />
-              {artifacts.length} 个产物
-            </Button>
+        {(artifacts.length > 0 || onExport) && !artifactsOpen && (
+          <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
+            {onExport ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { onExport("markdown"); }}
+                className="gap-1.5 text-xs"
+                title="导出会话为 Markdown"
+              >
+                <Download className="size-3.5" />
+                导出
+              </Button>
+            ) : null}
+            {artifacts.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setArtifactsOpen(true);
+                }}
+                className="gap-1.5 text-xs"
+              >
+                <FilesIcon className="size-3.5" />
+                {artifacts.length} 个产物
+              </Button>
+            )}
           </div>
         )}
         {children}
