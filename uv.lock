@@ -729,7 +729,7 @@ wheels = [
 [[package]]
 name = "deerflow-harness"
 version = "0.1.0"
-source = { git = "https://github.com/hawkli-1994/deer-flow?subdirectory=backend%2Fpackages%2Fharness&rev=main#788927d9b904de6d75a30967c5b52f6984a1e459" }
+source = { git = "https://github.com/bytedance/deer-flow?subdirectory=backend%2Fpackages%2Fharness&rev=main#17447fccbe91aa685f5363d85ee2b5c0afa323ce" }
 dependencies = [
     { name = "agent-client-protocol" },
     { name = "agent-sandbox" },
@@ -4020,7 +4020,7 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.13.0" },
     { name = "anthropic", specifier = ">=0.40.0" },
-    { name = "deerflow-harness", git = "https://github.com/hawkli-1994/deer-flow?subdirectory=backend%2Fpackages%2Fharness&rev=main" },
+    { name = "deerflow-harness", git = "https://github.com/bytedance/deer-flow?subdirectory=backend%2Fpackages%2Fharness&rev=main" },
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "litellm", specifier = ">=1.82.6" },

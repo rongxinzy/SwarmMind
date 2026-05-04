@@ -3,6 +3,8 @@ name = "swarmmind"
 version = "0.1.1"
 description = "AI Agent Team Operating System"
 readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",
@@ -17,7 +19,7 @@ dependencies = [
     "sqlmodel>=0.0.21",
     "alembic>=1.13.0",
     "litellm>=1.82.6",
-    "deerflow-harness @ git+https://github.com/hawkli-1994/deer-flow@main#subdirectory=backend/packages/harness",
+    "deerflow-harness @ git+https://github.com/bytedance/deer-flow@main#subdirectory=backend/packages/harness",
     "psycopg2-binary>=2.9.11",
 ]
 

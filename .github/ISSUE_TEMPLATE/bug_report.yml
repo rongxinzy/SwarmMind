@@ -1,0 +1,80 @@
+name: 🐛 Bug 报告 / Bug Report
+description: 报告一个可复现的缺陷
+title: "[Bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢报告 bug！请尽量提供可复现步骤，便于排查。
+        Please provide reproducible steps so we can triage quickly.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题描述 / What happened?
+      description: 简述实际发生了什么，以及你期望的行为是什么。
+      placeholder: |
+        实际表现：...
+        期望表现：...
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      description: 越具体越好。包含命令、API 请求、UI 操作路径。
+      placeholder: |
+        1. 启动 `make dev`
+        2. 访问 ...
+        3. 点击 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志 / Logs & screenshots
+      description: 贴出错误堆栈、控制台输出或截图（如果有）。
+      render: shell
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / Version
+      description: 提交 SHA、tag 或 `VERSION` 文件中的值。
+      placeholder: e.g. 0.1.1 / commit abc1234
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: 影响模块 / Component
+      options:
+        - Backend (swarmmind/)
+        - Frontend (ui/)
+        - Database / Alembic
+        - CI / Build
+        - Docs
+        - 其他 / Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: 运行环境 / Environment
+      description: OS、Python 版本、Node 版本、是否 Docker 等。
+      placeholder: macOS 14.5 / Python 3.13 / Node 20.x
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 issue，没有找到重复报告
+          required: true
+        - label: 这不是安全漏洞（安全问题请走 Security Advisory）
+          required: true
