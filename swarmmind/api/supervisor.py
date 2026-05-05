@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 from swarmmind.api.conversation_routes import (
@@ -106,6 +106,12 @@ from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
 from swarmmind.repositories.run import RunRepository
 from swarmmind.repositories.strategy import StrategyRepository
 from swarmmind.repositories.task import TaskRepository
+from swarmmind.services.artifact_content import (
+    build_artifact_file_response,
+    is_virtual_user_data_path,
+    normalize_virtual_path,
+    resolve_virtual_artifact_path,
+)
 from swarmmind.services.conversation_execution import ConversationExecutionService
 from swarmmind.services.conversation_support import (
     ConversationSupportService,
@@ -915,6 +921,10 @@ def _db_to_artifact(art) -> Artifact:
         task_id=art.task_id,
         author_role=art.author_role,
         name=art.name,
+        path=art.path or (normalize_virtual_path(art.name) if is_virtual_user_data_path(art.name) else None),
+        storage_uri=art.storage_uri,
+        mime_type=art.mime_type,
+        size_bytes=art.size_bytes,
         artifact_type=art.artifact_type,
         created_at=art.created_at.isoformat() if art.created_at else "",
     )
@@ -930,6 +940,25 @@ def list_conversation_artifacts(conversation_id: str) -> ArtifactListResponse:
     conversation_repo.get_by_id(conversation_id)
     rows = artifact_repo.list_by_conversation(conversation_id)
     return ArtifactListResponse(items=[_db_to_artifact(r) for r in rows], total=len(rows))
+
+
+@app.get(
+    "/conversations/{conversation_id}/artifacts/{artifact_path:path}",
+    tags=["conversations"],
+    responses={
+        400: {"description": "Invalid artifact path"},
+        403: {"description": "Artifact path escapes the conversation sandbox"},
+        404: {"description": "Conversation or artifact not found"},
+    },
+)
+def get_conversation_artifact_file(conversation_id: str, artifact_path: str, download: bool = False) -> Response:
+    """Return the registered artifact file content for a conversation."""
+    conversation = conversation_repo.get_by_id(conversation_id)
+    artifact = artifact_repo.get_by_conversation_path(conversation_id, artifact_path)
+    virtual_path = artifact.path or artifact.name or artifact_path
+    thread_id = conversation.thread_id or runtime_support.conversation_thread_id(conversation_id)
+    actual_path = resolve_virtual_artifact_path(thread_id, virtual_path)
+    return build_artifact_file_response(actual_path, download=download)
 
 
 @app.post(

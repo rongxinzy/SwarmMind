@@ -177,6 +177,7 @@ class MessageTraceService:
                 project_id=project_id,
                 message_id=None,
                 name=name,
+                path=name,
                 artifact_type=event.get("artifact_type", "other"),
                 run_id=event.get("run_id") or run_id,
                 task_id=event.get("task_id") or task_id,
@@ -186,6 +187,7 @@ class MessageTraceService:
                 {
                     "artifact_id": artifact.artifact_id,
                     "name": artifact.name,
+                    "path": artifact.path,
                     "artifact_type": artifact.artifact_type,
                     "run_id": artifact.run_id,
                     "task_id": artifact.task_id,

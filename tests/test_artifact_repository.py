@@ -46,6 +46,25 @@ class TestArtifactRepository:
         fetched = artifact_repo.get_by_id(art.artifact_id)
         assert fetched.name == "report.md"
 
+    def test_create_with_file_fields(self, artifact_repo):
+        conv_repo = ConversationRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        art = artifact_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/outputs/report.md",
+            artifact_type="write_file",
+            mime_type="text/markdown",
+            size_bytes=12,
+        )
+
+        assert art.path == "/mnt/user-data/outputs/report.md"
+        assert art.mime_type == "text/markdown"
+        assert art.size_bytes == 12
+
+        fetched = artifact_repo.get_by_conversation_path(conv.id, "mnt/user-data/outputs/report.md")
+        assert fetched.artifact_id == art.artifact_id
+
     def test_list_by_conversation(self, artifact_repo):
         conv_repo = ConversationRepository()
         conv = conv_repo.create("Chat", "pending")

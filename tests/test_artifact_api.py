@@ -44,7 +44,7 @@ class TestArtifactEndpoints:
         conv_repo = ConversationRepository()
         art_repo = ArtifactRepository()
         conv = conv_repo.create("Chat", "pending")
-        art_repo.create(conv.id, None, "report.md", "write_file")
+        art_repo.create(conv.id, None, "/mnt/user-data/outputs/report.md", "write_file", mime_type="text/markdown", size_bytes=123)
         art_repo.create(conv.id, None, "plan.md", "present_files")
 
         response = client.get(f"/conversations/{conv.id}/artifacts")
@@ -52,7 +52,13 @@ class TestArtifactEndpoints:
         data = response.json()
         assert data["total"] == 2
         names = {a["name"] for a in data["items"]}
-        assert names == {"report.md", "plan.md"}
+        assert names == {"/mnt/user-data/outputs/report.md", "plan.md"}
+        report = next(a for a in data["items"] if a["name"] == "/mnt/user-data/outputs/report.md")
+        assert report["path"] == "/mnt/user-data/outputs/report.md"
+        assert report["mime_type"] == "text/markdown"
+        assert report["size_bytes"] == 123
+        plan = next(a for a in data["items"] if a["name"] == "plan.md")
+        assert plan["path"] is None
 
     def test_list_artifacts_conversation_not_found(self):
         response = client.get("/conversations/nonexistent/artifacts")
@@ -123,3 +129,76 @@ class TestArtifactEndpoints:
         assert item["run_id"] == run.run_id
         assert item["task_id"] == task.task_id
         assert item["author_role"] == "产品专家"
+
+    def test_get_artifact_file_text(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        output_dir = deer_home / "threads" / conv.id / "user-data" / "outputs"
+        output_dir.mkdir(parents=True)
+        artifact_file = output_dir / "report.md"
+        artifact_file.write_text("# Report\n\nDone.", encoding="utf-8")
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        art_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/outputs/report.md",
+            artifact_type="write_file",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/outputs/report.md")
+        assert response.status_code == 200
+        assert response.text == "# Report\n\nDone."
+        assert response.headers["content-type"].startswith("text/markdown")
+
+    def test_get_artifact_file_download_for_active_content(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        output_dir = deer_home / "threads" / conv.id / "user-data" / "outputs"
+        output_dir.mkdir(parents=True)
+        (output_dir / "chart.svg").write_text("<svg></svg>", encoding="utf-8")
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        art_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/outputs/chart.svg",
+            artifact_type="write_file",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/outputs/chart.svg")
+        assert response.status_code == 200
+        assert response.headers["content-disposition"].startswith("attachment;")
+
+    def test_get_artifact_file_requires_registered_artifact(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        output_dir = deer_home / "threads" / conv.id / "user-data" / "outputs"
+        output_dir.mkdir(parents=True)
+        (output_dir / "unregistered.md").write_text("hidden", encoding="utf-8")
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/outputs/unregistered.md")
+        assert response.status_code == 404
+
+    def test_get_artifact_file_rejects_path_traversal(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+        art_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/../secret.txt",
+            artifact_type="write_file",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/%2E%2E/secret.txt")
+        assert response.status_code == 403

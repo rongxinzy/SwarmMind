@@ -678,6 +678,10 @@ class Artifact(BaseModel):
     task_id: str | None = None
     author_role: str | None = None
     name: str | None = None
+    path: str | None = None
+    storage_uri: str | None = None
+    mime_type: str | None = None
+    size_bytes: int | None = None
     artifact_type: str | None = None
     created_at: str
 

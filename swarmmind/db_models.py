@@ -215,11 +215,16 @@ class ArtifactDB(SQLModel, table=True):
     task_id: str | None = Field(default=None, foreign_key="tasks.task_id")
     author_role: str | None = None  # e.g. "产品专家", "架构专家"
     name: str | None = None
+    path: str | None = None
+    storage_uri: str | None = None
+    mime_type: str | None = None
+    size_bytes: int | None = None
     artifact_type: str | None = None  # 'write_file' | 'edit_file' | 'present_files' | 'other'
     created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (
         Index("idx_artifacts_conversation", "conversation_id"),
+        Index("idx_artifacts_path", "path"),
         Index("idx_artifacts_project", "project_id"),
         Index("idx_artifacts_message", "message_id"),
         Index("idx_artifacts_run", "run_id"),

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useArtifacts } from "./context";
+import { resolveArtifactURL } from "@/core/artifacts/utils";
 import { getFileName, getFileExtensionDisplayName, getFileIcon } from "@/core/utils/files";
 
 // ============================================================================
@@ -77,6 +78,7 @@ function ArtifactFileCard({
 }: ArtifactFileCardProps) {
   const filename = getFileName(filepath);
   const fileIcon = getFileIcon(filepath);
+  const artifactURL = conversationId ? resolveArtifactURL(filepath, conversationId) : undefined;
 
   return (
     <Card
@@ -97,16 +99,18 @@ function ArtifactFileCard({
           {getFileExtensionDisplayName(filepath)} file
         </CardDescription>
         <div className="absolute top-2 right-2 flex gap-1">
-          <a
-            href={`/api/conversations/${conversationId}/artifacts${filepath}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { e.stopPropagation(); }}
-          >
-            <Button variant="ghost" size="icon-sm">
-              <DownloadIcon className="size-4" />
-            </Button>
-          </a>
+          {artifactURL ? (
+            <a
+              href={artifactURL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => { e.stopPropagation(); }}
+            >
+              <Button variant="ghost" size="icon-sm">
+                <DownloadIcon className="size-4" />
+              </Button>
+            </a>
+          ) : null}
         </div>
       </CardHeader>
     </Card>
@@ -141,8 +145,9 @@ export function ArtifactFileDetail({
     );
   }
 
-  const displayPath = filepath || artifact?.path || "";
+  const displayPath = filepath ?? artifact?.path ?? "";
   const filename = getFileName(displayPath);
+  const artifactURL = conversationId && displayPath ? resolveArtifactURL(displayPath, conversationId) : undefined;
 
   return (
     <div className={cn("flex h-full flex-col", className)}>
@@ -159,26 +164,30 @@ export function ArtifactFileDetail({
               返回列表
             </Button>
           ) : null}
-          <a
-            href={`/api/conversations/${conversationId}/artifacts${displayPath}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variant="ghost" size="icon-sm">
-              <DownloadIcon className="size-4" />
-            </Button>
-          </a>
+          {artifactURL ? (
+            <a
+              href={artifactURL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="ghost" size="icon-sm">
+                <DownloadIcon className="size-4" />
+              </Button>
+            </a>
+          ) : null}
           <Button variant="ghost" size="icon-sm" onClick={() => { setOpen(false); }}>
             ✕
           </Button>
         </div>
       </div>
       <div className="flex-1 p-4 overflow-auto">
-        <iframe
-          src={`/api/conversations/${conversationId}/artifacts${displayPath}`}
-          className="w-full h-full border-0"
-          title={filename}
-        />
+        {artifactURL ? (
+          <iframe
+            src={artifactURL}
+            className="w-full h-full border-0"
+            title={filename}
+          />
+        ) : null}
       </div>
     </div>
   );
