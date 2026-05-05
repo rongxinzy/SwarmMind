@@ -169,6 +169,7 @@ function V0ChatInner({
   const [artifacts, setArtifacts] = useState<string[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState<"artifacts" | "trace">("artifacts");
 
   const resetDraftState = useCallback(() => {
     setCurrentConversationId(undefined);
@@ -189,6 +190,7 @@ function V0ChatInner({
     setArtifacts([]);
     setArtifactsOpen(false);
     setSelectedArtifact(null);
+    setRightPanelTab("artifacts");
   }, [defaultModel]);
 
   const syncScrollState = useCallback(() => {
@@ -1196,6 +1198,8 @@ function V0ChatInner({
         onSelectArtifact={setSelectedArtifact}
         artifactsOpen={artifactsOpen}
         setArtifactsOpen={setArtifactsOpen}
+        rightPanelTab={rightPanelTab}
+        setRightPanelTab={setRightPanelTab}
         onExport={currentConversationId ? handleExport : undefined}
       >
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
