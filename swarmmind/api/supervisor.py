@@ -532,6 +532,60 @@ def _respond_to_clarification(conversation_id: str, tool_call_id: str, response:
     )
 
 
+def _search_conversations(q: str, limit: int = 20) -> ConversationListResponse:
+    rows = conversation_repo.search_by_query(q, limit=limit)
+    items = [_db_to_conversation(row) for row in rows]
+    return ConversationListResponse(items=items, total=len(items))
+
+
+def _export_conversation(conversation_id: str, fmt: str = "markdown") -> object:
+    import json as _json
+    from datetime import datetime as _dt
+
+    from fastapi.responses import Response as _Response
+
+    conv = conversation_repo.get_by_id(conversation_id)
+    rows = message_repo.list_by_conversation(conversation_id)
+    visible = [m for m in rows if m.role in ("user", "assistant")]
+
+    if fmt == "json":
+        data = {
+            "id": conv.id,
+            "title": conv.title,
+            "created_at": str(conv.created_at) if conv.created_at else "",
+            "updated_at": str(conv.updated_at) if conv.updated_at else "",
+            "messages": [
+                {
+                    "id": m.id,
+                    "role": m.role,
+                    "content": m.content,
+                    "created_at": str(m.created_at) if m.created_at else "",
+                }
+                for m in visible
+            ],
+        }
+        content = _json.dumps(data, ensure_ascii=False, indent=2)
+        filename = f"conversation-{conv.id[:8]}.json"
+        return _Response(
+            content=content,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    now = _dt.now().strftime("%Y-%m-%d %H:%M")
+    lines: list[str] = [f"# {conv.title}", "", f"*导出时间: {now}*", "", "---", ""]
+    for msg in visible:
+        label = "**用户**" if msg.role == "user" else "**SwarmMind**"
+        lines.extend([f"{label}\n\n{msg.content}", ""])
+    content = "\n".join(lines)
+    filename = f"conversation-{conv.id[:8]}.md"
+    return _Response(
+        content=content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 conversation_router, conversation_handlers = build_conversation_router(
     deps=ConversationRouteDeps(
         list_conversations=_list_conversations,
@@ -544,6 +598,8 @@ conversation_router, conversation_handlers = build_conversation_router(
         get_conversation_trace=_get_conversation_trace,
         stream_conversation_message=_stream_conversation_message,
         respond_to_clarification=_respond_to_clarification,
+        search_conversations=_search_conversations,
+        export_conversation=_export_conversation,
     ),
 )
 
@@ -559,6 +615,8 @@ get_conversation_trace = conversation_handlers.get_conversation_trace
 _stream_conversation_message = conversation_handlers.stream_conversation_message
 send_message_stream = conversation_handlers.send_message_stream
 respond_to_clarification = conversation_handlers.respond_to_clarification
+search_conversations = conversation_handlers.search_conversations
+export_conversation = conversation_handlers.export_conversation
 
 # ---- Project endpoints ----
 

@@ -1,7 +1,7 @@
 import type { ChangeEvent, KeyboardEvent, RefObject } from "react";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Check, Loader2, Paperclip, XIcon } from "lucide-react";
+import { ArrowUp, Check, Loader2, Paperclip, Square, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,7 @@ interface ChatComposerPanelProps {
   handleFileSelect: (event: ChangeEvent<HTMLInputElement>) => void;
   handleRemoveFile: (index: number) => void;
   handleSubmit: () => void;
+  onStop?: () => void;
   input: string;
   isComposerDisabled: boolean;
   isLoading: boolean;
@@ -52,6 +53,7 @@ export function ChatComposerPanel({
   handleFileSelect,
   handleRemoveFile,
   handleSubmit,
+  onStop,
   input,
   isComposerDisabled,
   isLoading,
@@ -70,8 +72,15 @@ export function ChatComposerPanel({
   onQuickPromptSelect,
 }: ChatComposerPanelProps) {
   const pickerPlacement = isEmpty ? "bottom" : "top";
-  const unifiedTextareaClassName =
-    "h-[118px] min-h-[118px] max-h-[118px] overflow-y-auto rounded-none [field-sizing:fixed]";
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const next = Math.min(Math.max(el.scrollHeight, 88), 220);
+    el.style.height = `${next}px`;
+  }, [input]);
 
   return (
     <div
@@ -159,6 +168,7 @@ export function ChatComposerPanel({
                 </div>
               ) : null}
               <Textarea
+                ref={textareaRef}
                 value={input}
                 onChange={(event) => {
                   onInputChange(event.target.value);
@@ -171,11 +181,9 @@ export function ChatComposerPanel({
                       ? "分配一个任务或提问任何问题"
                       : "当前没有可用模型，暂时无法开始会话"
                 }
-                className={cn(
-                  "resize-none border-none bg-transparent px-6 py-5 text-[14px] leading-[22px] focus-visible:ring-0 shadow-none",
-                  unifiedTextareaClassName,
-                )}
+                className="min-h-[88px] resize-none overflow-y-hidden rounded-none border-none bg-transparent px-6 py-5 text-[14px] leading-[22px] shadow-none focus-visible:ring-0"
                 disabled={isComposerDisabled}
+                style={{ height: "88px" }}
               />
               <div className="flex flex-col gap-2 bg-transparent px-5 pb-3 pt-0 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap items-center gap-2">
@@ -210,14 +218,28 @@ export function ChatComposerPanel({
                     onRetry={fetchModels}
                     placement={pickerPlacement}
                   />
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!input.trim() || isComposerDisabled}
-                    size="icon-sm"
-                    className="size-9 rounded-full bg-accent text-accent-foreground shadow-none hover:bg-accent-hover"
-                  >
-                    {isLoading ? <Loader2 className="size-3.5 animate-spin" /> : <ArrowUp className="size-3.5" />}
-                  </Button>
+                  {isLoading ? (
+                    <Button
+                      onClick={onStop}
+                      size="icon-sm"
+                      className="size-9 rounded-full bg-accent text-accent-foreground shadow-none hover:bg-accent-hover"
+                      title="停止生成 (Esc)"
+                      aria-label="停止生成"
+                    >
+                      <Square className="size-3.5 fill-current" />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={!input.trim() || isComposerDisabled}
+                      size="icon-sm"
+                      className="size-9 rounded-full bg-accent text-accent-foreground shadow-none hover:bg-accent-hover"
+                      title="发送 (Enter)"
+                      aria-label="发送"
+                    >
+                      <ArrowUp className="size-3.5" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>

@@ -169,6 +169,7 @@ function V0ChatInner({
   const [artifacts, setArtifacts] = useState<string[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
   const [artifactsOpen, setArtifactsOpen] = useState(false);
+  const [rightPanelTab, setRightPanelTab] = useState<"artifacts" | "trace">("artifacts");
 
   const resetDraftState = useCallback(() => {
     setCurrentConversationId(undefined);
@@ -189,6 +190,7 @@ function V0ChatInner({
     setArtifacts([]);
     setArtifactsOpen(false);
     setSelectedArtifact(null);
+    setRightPanelTab("artifacts");
   }, [defaultModel]);
 
   const syncScrollState = useCallback(() => {
@@ -1046,11 +1048,73 @@ function V0ChatInner({
     await handleSubmit(lastUserMessage);
   }, [lastUserMessage, isLoading, chatError?.retryCount, handleSubmit]);
 
+  const handleStop = useCallback(() => {
+    streamAbortRef.current?.abort();
+    setIsLoading(false);
+    clearStreamIndicators();
+    setMessages((previous) =>
+      previous.map((message) =>
+        message.role === "assistant"
+          ? { ...message, isStreaming: false, isReasoningStreaming: false }
+          : message,
+      ),
+    );
+    setRuntime((prev) => ({ ...prev, phase: "idle", label: "已停止生成" }));
+  }, [clearStreamIndicators]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!lastUserMessage || isLoading || !currentConversationId) return;
+    // Remove last assistant message from display and re-stream
+    setMessages((previous) => {
+      const lastAssistantIdx = [...previous].reverse().findIndex(
+        (m) => m.role === "assistant"
+      );
+      if (lastAssistantIdx === -1) return previous;
+      const actualIdx = previous.length - 1 - lastAssistantIdx;
+      return previous.slice(0, actualIdx);
+    });
+    await handleSubmit(lastUserMessage);
+  }, [lastUserMessage, isLoading, currentConversationId, handleSubmit]);
+
   const handleCopyQuestion = useCallback(() => {
     if (lastUserMessage) {
       void navigator.clipboard.writeText(lastUserMessage);
     }
   }, [lastUserMessage]);
+
+  const handleExport = useCallback(async (format: "markdown" | "json" = "markdown") => {
+    if (!currentConversationId) return;
+    try {
+      const response = await fetch(
+        `/conversations/${currentConversationId}/export?format=${format}`,
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const ext = format === "json" ? "json" : "md";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `conversation-${currentConversationId.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+    }
+  }, [currentConversationId]);
+
+  // Esc key → stop generation
+  useEffect(() => {
+    const handler = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape" && isLoading) {
+        e.preventDefault();
+        handleStop();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => { window.removeEventListener("keydown", handler); };
+  }, [isLoading, handleStop]);
 
   const isEmpty = messages.length === 0 && !isLoading && !isConversationLoading;
   const isComposerDisabled = isLoading || isModelsLoading || !selectedModel;
@@ -1134,6 +1198,9 @@ function V0ChatInner({
         onSelectArtifact={setSelectedArtifact}
         artifactsOpen={artifactsOpen}
         setArtifactsOpen={setArtifactsOpen}
+        rightPanelTab={rightPanelTab}
+        setRightPanelTab={setRightPanelTab}
+        onExport={currentConversationId ? handleExport : undefined}
       >
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
       {/* Scrollable area: messages OR empty-state */}
@@ -1164,6 +1231,7 @@ function V0ChatInner({
                 handleSubmit={() => {
                   void handleSubmit();
                 }}
+                onStop={handleStop}
                 input={input}
                 isComposerDisabled={isComposerDisabled}
                 isLoading={isLoading}
@@ -1209,6 +1277,7 @@ function V0ChatInner({
               onSuggestionSelect={(value) => {
                 setInput(value);
               }}
+              onRegenerate={handleRegenerate}
             />
           )}
         </div>
@@ -1252,6 +1321,7 @@ function V0ChatInner({
           handleSubmit={() => {
             void handleSubmit();
           }}
+          onStop={handleStop}
           input={input}
           isComposerDisabled={isComposerDisabled}
           isLoading={isLoading}

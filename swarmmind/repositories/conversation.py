@@ -125,3 +125,31 @@ class ConversationRepository:
             conv = session.get(ConversationDB, conversation_id)
             if conv is not None:
                 session.delete(conv)
+
+    def search_by_query(self, q: str, limit: int = 20) -> list[ConversationDB]:
+        """Search conversations by title or message content (case-insensitive)."""
+        from sqlalchemy import func, or_
+
+        from swarmmind.db_models import MessageDB
+
+        q_lower = q.lower()
+        pattern = f"%{q_lower}%"
+
+        with session_scope() as session:
+            msg_subquery = (
+                select(MessageDB.conversation_id).where(func.lower(MessageDB.content).like(pattern)).distinct()
+            )
+            results = session.exec(
+                select(ConversationDB)
+                .where(
+                    or_(
+                        func.lower(ConversationDB.title).like(pattern),
+                        ConversationDB.id.in_(msg_subquery),
+                    )
+                )
+                .order_by(ConversationDB.updated_at.desc())
+                .limit(limit)
+            ).all()
+            for r in results:
+                session.expunge(r)
+            return list(results)

@@ -18,6 +18,7 @@ import {
   PenSquare,
   PanelLeftClose,
   PanelLeftOpen,
+  Search,
   Sparkles,
   Trash2,
   X,
@@ -25,6 +26,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Input } from "@/components/ui/input"
 import type { ConversationRecord } from "@/components/ui/v0-ai-chat"
 import { cn } from "@/lib/utils"
 
@@ -223,6 +225,7 @@ interface SidebarProps {
   onDeleteConversation?: (id: string) => Promise<void>
   pageTitle?: string
   searchQuery?: string
+  onSearchQueryChange?: (query: string) => void
   isRecentLoading?: boolean
   activeConversationId?: string
 }
@@ -237,6 +240,7 @@ export function Sidebar({
   onDeleteConversation,
   pageTitle,
   searchQuery = "",
+  onSearchQueryChange,
   isRecentLoading = false,
   activeConversationId,
 }: SidebarProps) {
@@ -376,6 +380,17 @@ export function Sidebar({
               <SectionHeaderButton open={conversationsOpen}>最近会话</SectionHeaderButton>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1.5">
+              {onSearchQueryChange ? (
+                <div className="relative px-1 pb-1">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => { onSearchQueryChange(e.target.value); }}
+                    placeholder="搜索会话..."
+                    className="h-8 pl-8 text-[12px]"
+                  />
+                </div>
+              ) : null}
               {isRecentLoading ? (
                 <div className="space-y-2 px-3 py-2">
                   <div className="h-8 w-full animate-pulse rounded-md bg-sidebar-accent/60" />

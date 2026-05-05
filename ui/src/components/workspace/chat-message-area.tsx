@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 
 import { MessageBubble, SuggestedFollowUps } from "@/components/workspace/chat-message-ui";
 import { ClarificationCard } from "@/components/workspace/messages/clarification-card";
@@ -29,6 +29,7 @@ interface ChatMessageAreaProps {
   onCopy?: () => void;
   isRetrying?: boolean;
   onSuggestionSelect?: (value: string) => void;
+  onRegenerate?: () => void;
 }
 
 function buildSuggestedFollowUps(content: string) {
@@ -152,6 +153,7 @@ export function ChatMessageArea({
   onCopy,
   isRetrying,
   onSuggestionSelect,
+  onRegenerate,
 }: ChatMessageAreaProps) {
   const taskList = Object.values(tasks);
   const lastAssistantMessage = [...messages]
@@ -244,6 +246,20 @@ export function ChatMessageArea({
           {taskList.map((task) => (
             <SubtaskCard key={task.id} taskId={task.id} isLoading={isLoading} />
           ))}
+        </div>
+      ) : null}
+
+      {!isLoading && !error && !pendingClarification && shouldShowSuggestedFollowUps && onRegenerate ? (
+        <div className="flex items-center gap-2 pl-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRegenerate}
+            className="h-8 gap-1.5 rounded-full border border-border/70 px-3 text-[12px] text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+          >
+            <RefreshCw className="size-3" />
+            重新生成
+          </Button>
         </div>
       ) : null}
 
