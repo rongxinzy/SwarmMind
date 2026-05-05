@@ -22,6 +22,6 @@ export function extractArtifactsFromThread(thread: AgentThread) {
   return thread.values.artifacts ?? [];
 }
 
-export function resolveArtifactURL(absolutePath: string, threadId: string) {
-  return `${getBackendBaseURL()}/api/threads/${threadId}/artifacts${absolutePath}`;
+export function resolveArtifactURL(absolutePath: string, conversationId: string) {
+  return `${getBackendBaseURL()}/api/conversations/${conversationId}/artifacts${absolutePath}`;
 }

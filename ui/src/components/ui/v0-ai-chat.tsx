@@ -124,14 +124,6 @@ function V0ChatInner({
   const updateSubtask = useUpdateSubtask();
   const { tasks } = useSubtaskContext();
 
-  // Debug: monitor tasks changes
-  useEffect(() => {
-    const taskCount = Object.values(tasks).length;
-    if (taskCount > 0) {
-      console.log("[DEBUG] Tasks updated:", tasks);
-    }
-  }, [tasks]);
-
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [runtime, setRuntime] = useState<RuntimeState>(createEmptyRuntime());
@@ -432,7 +424,6 @@ function V0ChatInner({
   }, []);
 
   const handleStreamEvent = useCallback((event: StreamEvent) => {
-    console.log("[DEBUG] Stream event received:", event.type, event);
     switch (event.type) {
       case "status":
         setRuntime((previous) => ({
@@ -679,7 +670,6 @@ function V0ChatInner({
 
       // New task events for SubtaskCard
       case "task_started":
-        console.log("[DEBUG] task_started event received:", event.task);
         setStreamStatus("running");
         updateSubtask({
           id: event.task.id,
@@ -688,7 +678,6 @@ function V0ChatInner({
           subagent_type: "general-purpose",
           prompt: "",
         });
-        console.log("[DEBUG] updateSubtask called for task_started");
         return;
 
       case "task_running":

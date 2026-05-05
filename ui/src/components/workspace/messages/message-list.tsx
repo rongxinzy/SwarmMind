@@ -15,6 +15,7 @@ import {
 import { parseClarificationContent } from "@/core/messages/clarification";
 import { cn } from "@/lib/utils";
 
+import { ArtifactFileList } from "../artifacts/artifact-file-list";
 import { SubtaskCard } from "./subtask-card";
 import { MessageListItem } from "./message-list-item";
 import { ClarificationCard } from "./clarification-card";
@@ -47,6 +48,7 @@ export function MessageList({
                 key={`${group.id}/${msg.id}`}
                 message={msg}
                 isLoading={isLoading}
+                conversationId={_conversationId}
               />
             );
           });
@@ -68,10 +70,10 @@ export function MessageList({
                   {extractContentFromMessage(group.messages[0])}
                 </div>
               )}
-              {/* TODO: Add ArtifactFileList component */}
-              <div className="text-muted-foreground text-sm">
-                文件: {files.join(", ")}
-              </div>
+              <ArtifactFileList
+                files={files}
+                conversationId={_conversationId}
+              />
             </div>
           );
         }
@@ -143,6 +145,7 @@ export function MessageList({
                   key={"thinking-group-" + message.id}
                   message={message}
                   isLoading={isLoading}
+                  conversationId={_conversationId}
                 />,
               );
             }
@@ -222,6 +225,7 @@ export function MessageList({
                 key={group.id}
                 message={message}
                 isLoading={isLoading}
+                conversationId={_conversationId}
               />
             );
           }
@@ -235,6 +239,7 @@ export function MessageList({
               key={"group-" + group.id}
               message={group.messages[group.messages.length - 1]}
               isLoading={isLoading}
+              conversationId={_conversationId}
             />
           );
         }

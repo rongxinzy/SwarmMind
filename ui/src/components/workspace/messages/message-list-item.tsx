@@ -38,10 +38,12 @@ export function MessageListItem({
   className,
   message,
   isLoading,
+  conversationId,
 }: {
   className?: string;
   message: Message;
   isLoading?: boolean;
+  conversationId?: string;
 }) {
   const isHuman = message.type === "human";
   return (
@@ -53,6 +55,7 @@ export function MessageListItem({
         className={isHuman ? "w-fit" : "w-full"}
         message={message}
         isLoading={isLoading}
+        conversationId={conversationId}
       />
       {!isLoading && (
         <MessageToolbar
@@ -82,11 +85,11 @@ export function MessageListItem({
 function MessageImage({
   src,
   alt,
-  threadId,
+  conversationId,
   maxWidth = "90%",
   ...props
 }: React.ImgHTMLAttributes<HTMLImageElement> & {
-  threadId: string;
+  conversationId?: string;
   maxWidth?: string;
 }) {
   if (!src) return null;
@@ -97,7 +100,10 @@ function MessageImage({
     return <img className={imgClassName} src={src} alt={alt} {...props} />;
   }
 
-  const url = src.startsWith("/mnt/") ? resolveArtifactURL(src, threadId) : src;
+  const url =
+    src.startsWith("/mnt/") && conversationId
+      ? resolveArtifactURL(src, conversationId)
+      : src;
 
   return (
     <a href={url} target="_blank" rel="noopener noreferrer">
@@ -110,21 +116,22 @@ function MessageContent_({
   className,
   message,
   isLoading = false,
+  conversationId,
 }: {
   className?: string;
   message: Message;
   isLoading?: boolean;
+  conversationId?: string;
 }) {
   const rehypePlugins = useRehypeSplitWordsIntoSpans(isLoading);
   const isHuman = message.type === "human";
-  const threadId = "default-thread";
   const components = useMemo(
     () => ({
       img: (props: ImgHTMLAttributes<HTMLImageElement>) => (
-        <MessageImage {...props} threadId={threadId} maxWidth="90%" />
+        <MessageImage {...props} conversationId={conversationId} maxWidth="90%" />
       ),
     }),
-    [threadId],
+    [conversationId],
   );
 
   const rawContent = extractContentFromMessage(message);
@@ -150,8 +157,8 @@ function MessageContent_({
   }, [rawContent, isHuman]);
 
   const filesList =
-    files && files.length > 0 && threadId ? (
-      <RichFilesList files={files} threadId={threadId} />
+    files && files.length > 0 ? (
+      <RichFilesList files={files} conversationId={conversationId} />
     ) : null;
 
   // Uploading state: mock AI message shown while files upload
@@ -276,10 +283,10 @@ function formatBytes(bytes: number): string {
  */
 function RichFilesList({
   files,
-  threadId,
+  conversationId,
 }: {
   files: FileInMessage[];
-  threadId: string;
+  conversationId?: string;
 }) {
   if (files.length === 0) return null;
   return (
@@ -288,7 +295,7 @@ function RichFilesList({
         <RichFileCard
           key={`${file.filename}-${index}`}
           file={file}
-          threadId={threadId}
+          conversationId={conversationId}
         />
       ))}
     </div>
@@ -300,10 +307,10 @@ function RichFilesList({
  */
 function RichFileCard({
   file,
-  threadId,
+  conversationId,
 }: {
   file: FileInMessage;
-  threadId: string;
+  conversationId?: string;
 }) {
   const { t } = useI18n();
   const isUploading = file.status === "uploading";
@@ -338,9 +345,11 @@ function RichFileCard({
 
   if (!file.path) return null;
 
-  const fileUrl = resolveArtifactURL(file.path, threadId);
+  const fileUrl = conversationId
+    ? resolveArtifactURL(file.path, conversationId)
+    : undefined;
 
-  if (isImage) {
+  if (isImage && fileUrl) {
     return (
       <a
         href={fileUrl}
@@ -358,7 +367,17 @@ function RichFileCard({
   }
 
   return (
-    <div className="bg-background border-border/40 flex max-w-50 min-w-30 flex-col gap-1 rounded-lg border p-3 shadow-sm">
+    <a
+      href={fileUrl}
+      target={fileUrl ? "_blank" : undefined}
+      rel={fileUrl ? "noopener noreferrer" : undefined}
+      className="bg-background border-border/40 flex max-w-50 min-w-30 flex-col gap-1 rounded-lg border p-3 shadow-sm transition-colors hover:bg-surface-hover"
+      onClick={(event) => {
+        if (!fileUrl) {
+          event.preventDefault();
+        }
+      }}
+    >
       <div className="flex items-start gap-2">
         <FileIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
         <span
@@ -379,7 +398,7 @@ function RichFileCard({
           {formatBytes(file.size)}
         </span>
       </div>
-    </div>
+    </a>
   );
 }
 

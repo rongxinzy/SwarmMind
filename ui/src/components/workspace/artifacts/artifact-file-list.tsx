@@ -20,16 +20,21 @@ interface ArtifactFileListProps {
   className?: string;
   files: string[];
   conversationId?: string;
+  selectedPath?: string | null;
+  onSelectPath?: (path: string) => void;
 }
 
 export function ArtifactFileList({
   className,
   files,
   conversationId,
+  selectedPath,
+  onSelectPath,
 }: ArtifactFileListProps) {
   const { selectArtifact, selectedArtifact } = useArtifacts();
 
   const handleClick = (filepath: string) => {
+    onSelectPath?.(filepath);
     const artifact = {
       id: filepath,
       path: filepath,
@@ -44,7 +49,7 @@ export function ArtifactFileList({
         <ArtifactFileCard
           key={file}
           filepath={file}
-          isSelected={selectedArtifact?.path === file}
+          isSelected={selectedPath === file || selectedArtifact?.path === file}
           onClick={() => { handleClick(file); }}
           conversationId={conversationId}
         />
@@ -116,12 +121,14 @@ interface ArtifactFileDetailProps {
   className?: string;
   filepath?: string;
   conversationId?: string;
+  onBack?: () => void;
 }
 
 export function ArtifactFileDetail({
   className,
   filepath,
   conversationId,
+  onBack,
 }: ArtifactFileDetailProps) {
   const { selectedArtifact, setOpen } = useArtifacts();
 
@@ -147,6 +154,11 @@ export function ArtifactFileDetail({
           </span>
         </div>
         <div className="flex gap-1">
+          {onBack ? (
+            <Button variant="ghost" size="sm" onClick={onBack}>
+              返回列表
+            </Button>
+          ) : null}
           <a
             href={`/api/conversations/${conversationId}/artifacts${displayPath}`}
             target="_blank"

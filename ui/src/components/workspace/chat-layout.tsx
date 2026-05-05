@@ -4,6 +4,15 @@ import type { ReactNode } from "react";
 import { Download, FilesIcon, GitBranch, XIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import {
+  ArtifactFileDetail,
+  ArtifactFileList,
+} from "@/components/workspace/artifacts/artifact-file-list";
 import { TracePanel } from "@/components/workspace/trace-panel";
 import { cn } from "@/lib/utils";
 
@@ -37,12 +46,17 @@ export function ChatLayout({
   const showHeaderButtons = (artifacts.length > 0 || onExport || conversationId) && !artifactsOpen;
 
   return (
-    <div className="flex h-full w-full">
-      <div
-        className={cn(
-          "relative flex h-full flex-col transition-all duration-300",
-          artifactsOpen ? "w-[60%]" : "w-full",
-        )}
+    <ResizablePanelGroup
+      id="swarmmind-chat-panels"
+      orientation="horizontal"
+      defaultLayout={artifactsOpen ? { chat: 62, side: 38 } : { chat: 100 }}
+      className="h-full w-full"
+    >
+      <ResizablePanel
+        id="chat"
+        defaultSize={artifactsOpen ? "62%" : "100%"}
+        minSize="42%"
+        className="relative flex h-full min-h-0 flex-col"
       >
         {showHeaderButtons && (
           <div className="absolute right-3 top-3 z-10 flex items-center gap-2">
@@ -90,14 +104,26 @@ export function ChatLayout({
           </div>
         )}
         {children}
-      </div>
+      </ResizablePanel>
 
-      {artifactsOpen && <div className="w-px cursor-col-resize bg-border hover:bg-border/80" />}
+      {artifactsOpen ? (
+        <ResizableHandle
+          id="swarmmind-chat-side-resizer"
+          withHandle
+          className="opacity-60 transition-opacity hover:opacity-100"
+        />
+      ) : null}
 
-      {artifactsOpen && (
-        <div className="flex h-full w-[40%] min-w-[300px] max-w-[600px] flex-col border-l bg-background">
+      {artifactsOpen ? (
+        <ResizablePanel
+          id="side"
+          defaultSize="38%"
+          minSize="28%"
+          maxSize="56%"
+          className="min-w-[300px]"
+        >
+        <div className="flex h-full min-h-0 flex-col border-l bg-background">
           <div className="flex items-center justify-between border-b px-4 py-3">
-            {/* Tab switcher */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => { setRightPanelTab?.("artifacts"); }}
@@ -154,60 +180,29 @@ export function ChatLayout({
                   <p className="max-w-[200px] text-xs text-muted-foreground">当 AI 生成文件时，它们将显示在这里</p>
                 </div>
               ) : selectedArtifact ? (
-                <div className="flex h-full flex-col">
-                  <div className="flex items-center justify-between border-b bg-muted/50 px-4 py-2">
-                    <span className="max-w-[200px] truncate text-sm font-medium">{selectedArtifact.split("/").pop()}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => { onSelectArtifact(null); }}
-                    >
-                      返回列表
-                    </Button>
-                  </div>
-                  <div className="flex-1 overflow-auto p-4">
-                    <iframe
-                      src={`/api/conversations/${conversationId}/artifacts${selectedArtifact}`}
-                      className="h-full w-full rounded-lg border"
-                      title={selectedArtifact}
-                    />
-                  </div>
+                <div className="flex h-full min-h-0 flex-col">
+                  <ArtifactFileDetail
+                    filepath={selectedArtifact}
+                    conversationId={conversationId}
+                    onBack={() => { onSelectArtifact(null); }}
+                    className="min-h-0 flex-1"
+                  />
                 </div>
               ) : (
-                <div className="p-4">
-                  <ArtifactFileListSimple files={artifacts} onSelect={onSelectArtifact} />
+                <div className="h-full overflow-auto p-4">
+                  <ArtifactFileList
+                    files={artifacts}
+                    selectedPath={selectedArtifact}
+                    onSelectPath={onSelectArtifact}
+                    conversationId={conversationId}
+                  />
                 </div>
               )
             ) : null}
           </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function ArtifactFileListSimple({
-  files,
-  onSelect,
-}: {
-  files: string[];
-  onSelect: (path: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      {files.map((file) => (
-        <button
-          key={file}
-          onClick={() => { onSelect(file); }}
-          className="flex items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted"
-        >
-          <FilesIcon className="size-5 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{file.split("/").pop()}</p>
-            <p className="truncate text-xs text-muted-foreground">{file}</p>
-          </div>
-        </button>
-      ))}
-    </div>
+        </ResizablePanel>
+      ) : null}
+    </ResizablePanelGroup>
   );
 }
