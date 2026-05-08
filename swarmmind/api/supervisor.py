@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
 from swarmmind.api.conversation_routes import (
     ClarificationResponseRequest as ConversationClarificationResponseRequest,
 )
@@ -16,9 +17,11 @@ from swarmmind.api.routers.audit_logs import AuditLogsRouterDeps, build_audit_lo
 from swarmmind.api.routers.legacy_supervisor import LegacySupervisorRouterDeps, build_legacy_supervisor_router
 from swarmmind.api.routers.projects import ProjectsRouterDeps, build_projects_router
 from swarmmind.api.routers.promotions import PromotionsRouterDeps, build_promotions_router
-from swarmmind.api.routers.runtime_models import build_runtime_models_router
-from swarmmind.api.routers.runtime_models import list_runtime_models  # noqa: F401  (re-export for tests)
 from swarmmind.api.routers.runs import RunsRouterDeps, build_runs_router
+from swarmmind.api.routers.runtime_models import (
+    build_runtime_models_router,
+    list_runtime_models,  # noqa: F401  (re-export for tests)
+)
 from swarmmind.api.routers.system import SystemRouterDeps, build_system_router
 from swarmmind.config import ACTION_TIMEOUT_SECONDS, API_HOST, API_PORT
 from swarmmind.context_broker import derive_situation_tag, dispatch, record_supervisor_decision
@@ -49,7 +52,6 @@ from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
 from swarmmind.repositories.run import RunRepository
 from swarmmind.repositories.strategy import StrategyRepository
 from swarmmind.repositories.task import TaskRepository
-from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
 from swarmmind.runtime import ensure_default_runtime_instance
 from swarmmind.runtime.catalog import sync_env_runtime_model
 from swarmmind.services.conversation_execution import ConversationExecutionService
@@ -63,7 +65,11 @@ from swarmmind.services.message_trace_service import _default_message_trace_serv
 from swarmmind.services.runtime_support import RuntimeSupportService
 from swarmmind.services.stream_events import (
     general_agent_status_labels as _svc_general_agent_status_labels,
+)
+from swarmmind.services.stream_events import (
     serialize_stream_event as _svc_serialize_stream_event,
+)
+from swarmmind.services.stream_events import (
     translate_general_agent_event as _svc_translate_general_agent_event,
 )
 
@@ -103,6 +109,7 @@ def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[st
 
 # ---- Cleanup scanner ----
 
+
 def _cleanup_scanner():
     run_cleanup_scanner(
         action_proposal_repo=action_proposal_repo,
@@ -115,6 +122,7 @@ def _cleanup_scanner():
 
 
 # ---- FastAPI app ----
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -148,6 +156,7 @@ app.add_middleware(
 )
 
 # ---- Conversation handler helpers ----
+
 
 def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOptions:
     return runtime_support.resolve_runtime_options(body)
@@ -262,6 +271,7 @@ def _search_conversations(q: str, limit: int = 20) -> ConversationListResponse:
 def _export_conversation(conversation_id: str, fmt: str = "markdown") -> object:
     import json as _json
     from datetime import datetime as _dt
+
     from fastapi.responses import Response as _Response
 
     conv = conversation_repo.get_by_id(conversation_id)
@@ -270,19 +280,27 @@ def _export_conversation(conversation_id: str, fmt: str = "markdown") -> object:
 
     if fmt == "json":
         data = {
-            "id": conv.id, "title": conv.title,
+            "id": conv.id,
+            "title": conv.title,
             "created_at": str(conv.created_at) if conv.created_at else "",
             "updated_at": str(conv.updated_at) if conv.updated_at else "",
             "messages": [
-                {"id": m.id, "role": m.role, "content": m.content,
-                 "created_at": str(m.created_at) if m.created_at else ""}
+                {
+                    "id": m.id,
+                    "role": m.role,
+                    "content": m.content,
+                    "created_at": str(m.created_at) if m.created_at else "",
+                }
                 for m in visible
             ],
         }
         content = _json.dumps(data, ensure_ascii=False, indent=2)
         filename = f"conversation-{conv.id[:8]}.json"
-        return _Response(content=content, media_type="application/json",
-                         headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+        return _Response(
+            content=content,
+            media_type="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     now = _dt.now().strftime("%Y-%m-%d %H:%M")
     lines: list[str] = [f"# {conv.title}", "", f"*导出时间: {now}*", "", "---", ""]
@@ -291,8 +309,11 @@ def _export_conversation(conversation_id: str, fmt: str = "markdown") -> object:
         lines.extend([f"{label}\n\n{msg.content}", ""])
     content = "\n".join(lines)
     filename = f"conversation-{conv.id[:8]}.md"
-    return _Response(content=content, media_type="text/markdown; charset=utf-8",
-                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+    return _Response(
+        content=content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ---- Register conversation router ----
@@ -333,71 +354,103 @@ export_conversation = conversation_handlers.export_conversation
 
 app.include_router(conversation_router)
 
-app.include_router(build_system_router(SystemRouterDeps(
-    ensure_default_runtime_instance=ensure_default_runtime_instance,
-    render_status=render_status,
-)))
+app.include_router(
+    build_system_router(
+        SystemRouterDeps(
+            ensure_default_runtime_instance=ensure_default_runtime_instance,
+            render_status=render_status,
+        )
+    )
+)
 
-app.include_router(build_legacy_supervisor_router(LegacySupervisorRouterDeps(
-    action_proposal_repo=action_proposal_repo,
-    strategy_repo=strategy_repo,
-    record_supervisor_decision=record_supervisor_decision,
-    dispatch=dispatch,
-)))
+app.include_router(
+    build_legacy_supervisor_router(
+        LegacySupervisorRouterDeps(
+            action_proposal_repo=action_proposal_repo,
+            strategy_repo=strategy_repo,
+            record_supervisor_decision=record_supervisor_decision,
+            dispatch=dispatch,
+        )
+    )
+)
 
 app.include_router(build_runtime_models_router())
 
-app.include_router(build_projects_router(ProjectsRouterDeps(
-    project_repo=project_repo,
-    task_repo=task_repo,
-    run_repo=run_repo,
-    artifact_repo=artifact_repo,
-    approval_request_repo=approval_request_repo,
-    audit_log_repo=audit_log_repo,
-    agent_team_repo=agent_team_repo,
-    project_team_repo=project_team_repo,
-    conversation_repo=conversation_repo,
-    stream_conversation_message=_stream_conversation_message,
-)))
+app.include_router(
+    build_projects_router(
+        ProjectsRouterDeps(
+            project_repo=project_repo,
+            task_repo=task_repo,
+            run_repo=run_repo,
+            artifact_repo=artifact_repo,
+            approval_request_repo=approval_request_repo,
+            audit_log_repo=audit_log_repo,
+            agent_team_repo=agent_team_repo,
+            project_team_repo=project_team_repo,
+            conversation_repo=conversation_repo,
+            stream_conversation_message=_stream_conversation_message,
+        )
+    )
+)
 
-app.include_router(build_runs_router(RunsRouterDeps(
-    run_repo=run_repo,
-    project_repo=project_repo,
-    conversation_repo=conversation_repo,
-)))
+app.include_router(
+    build_runs_router(
+        RunsRouterDeps(
+            run_repo=run_repo,
+            project_repo=project_repo,
+            conversation_repo=conversation_repo,
+        )
+    )
+)
 
-app.include_router(build_approvals_router(ApprovalsRouterDeps(
-    approval_request_repo=approval_request_repo,
-    project_repo=project_repo,
-    run_repo=run_repo,
-)))
+app.include_router(
+    build_approvals_router(
+        ApprovalsRouterDeps(
+            approval_request_repo=approval_request_repo,
+            project_repo=project_repo,
+            run_repo=run_repo,
+        )
+    )
+)
 
-app.include_router(build_audit_logs_router(AuditLogsRouterDeps(
-    audit_log_repo=audit_log_repo,
-    project_repo=project_repo,
-    run_repo=run_repo,
-    approval_request_repo=approval_request_repo,
-)))
+app.include_router(
+    build_audit_logs_router(
+        AuditLogsRouterDeps(
+            audit_log_repo=audit_log_repo,
+            project_repo=project_repo,
+            run_repo=run_repo,
+            approval_request_repo=approval_request_repo,
+        )
+    )
+)
 
-app.include_router(build_agent_teams_router(AgentTeamsRouterDeps(
-    agent_team_repo=agent_team_repo,
-)))
+app.include_router(
+    build_agent_teams_router(
+        AgentTeamsRouterDeps(
+            agent_team_repo=agent_team_repo,
+        )
+    )
+)
 
-app.include_router(build_promotions_router(PromotionsRouterDeps(
-    conversation_repo=conversation_repo,
-    message_repo=message_repo,
-    project_repo=project_repo,
-    project_team_repo=project_team_repo,
-    agent_team_repo=agent_team_repo,
-    artifact_repo=artifact_repo,
-    message_trace_service_fn=lambda: message_trace_service,
-    runtime_support=runtime_support,
-)))
+app.include_router(
+    build_promotions_router(
+        PromotionsRouterDeps(
+            conversation_repo=conversation_repo,
+            message_repo=message_repo,
+            project_repo=project_repo,
+            project_team_repo=project_team_repo,
+            agent_team_repo=agent_team_repo,
+            artifact_repo=artifact_repo,
+            message_trace_service_fn=lambda: message_trace_service,
+            runtime_support=runtime_support,
+        )
+    )
+)
 
 # ---- LLM gateway & provider routes ----
 
-from swarmmind.api.llm_gateway_routes import router as _gateway_router  # noqa: E402
-from swarmmind.api.llm_provider_routes import router as _provider_router  # noqa: E402
+from swarmmind.api.llm_gateway_routes import router as _gateway_router
+from swarmmind.api.llm_provider_routes import router as _provider_router
 
 app.include_router(_gateway_router)
 app.include_router(_provider_router)

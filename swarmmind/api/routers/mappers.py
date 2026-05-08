@@ -24,6 +24,7 @@ from swarmmind.services.artifact_content import (
 
 
 def db_to_run(run) -> Run:
+    """Map a RunDB row to a Run Pydantic model."""
     return Run(
         run_id=run.run_id,
         project_id=run.project_id,
@@ -37,6 +38,7 @@ def db_to_run(run) -> Run:
 
 
 def db_to_task(task) -> Task:
+    """Map a TaskDB row to a Task Pydantic model."""
     return Task(
         task_id=task.task_id,
         project_id=task.project_id,
@@ -54,6 +56,7 @@ def db_to_task(task) -> Task:
 
 
 def db_to_artifact(art) -> Artifact:
+    """Map an ArtifactDB row to an Artifact Pydantic model."""
     return Artifact(
         artifact_id=art.artifact_id,
         conversation_id=art.conversation_id,
@@ -73,6 +76,7 @@ def db_to_artifact(art) -> Artifact:
 
 
 def db_to_approval_request(ar) -> ApprovalRequest:
+    """Map an ApprovalRequestDB row to an ApprovalRequest Pydantic model."""
     return ApprovalRequest(
         approval_id=ar.approval_id,
         project_id=ar.project_id,
@@ -94,6 +98,7 @@ def db_to_approval_request(ar) -> ApprovalRequest:
 
 
 def db_to_audit_log_entry(entry) -> AuditLogEntry:
+    """Map an AuditLogDB row to an AuditLogEntry Pydantic model."""
     return AuditLogEntry(
         audit_id=entry.audit_id,
         audit_type=entry.audit_type,
@@ -110,6 +115,7 @@ def db_to_audit_log_entry(entry) -> AuditLogEntry:
 
 
 def db_to_team_template(team) -> AgentTeamTemplate:
+    """Map an AgentTeamDB row to an AgentTeamTemplate Pydantic model."""
     return AgentTeamTemplate(
         team_id=team.team_id,
         name=team.name,
@@ -126,6 +132,7 @@ def db_to_team_template(team) -> AgentTeamTemplate:
 
 
 def db_to_team_instance(instance, agent_team_repo) -> ProjectAgentTeamInstance:
+    """Map a ProjectTeamInstanceDB row to a ProjectAgentTeamInstance Pydantic model."""
     template = agent_team_repo.get_by_id(instance.team_template_id)
     return ProjectAgentTeamInstance(
         instance_id=instance.instance_id,
@@ -142,6 +149,7 @@ def db_to_team_instance(instance, agent_team_repo) -> ProjectAgentTeamInstance:
 
 
 def db_to_project(proj, project_team_repo, agent_team_repo) -> Project:
+    """Map a ProjectDB row to a Project Pydantic model."""
     team_instance = project_team_repo.get_by_project(proj.project_id)
     agent_team = db_to_team_instance(team_instance, agent_team_repo) if team_instance else None
     return Project(

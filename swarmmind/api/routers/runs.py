@@ -17,15 +17,22 @@ from swarmmind.models import (
 
 @dataclass(frozen=True)
 class RunsRouterDeps:
+    """Dependencies for the runs router."""
+
     run_repo: object
     project_repo: object
     conversation_repo: object
 
 
 def build_runs_router(deps: RunsRouterDeps) -> APIRouter:
+    """Return an APIRouter with all run CRUD endpoints."""
     router = APIRouter()
 
-    @router.get("/conversations/{conversation_id}/runs", tags=["runs"], responses={404: {"description": "Conversation not found"}})
+    @router.get(
+        "/conversations/{conversation_id}/runs",
+        tags=["runs"],
+        responses={404: {"description": "Conversation not found"}},
+    )
     def list_conversation_runs(conversation_id: str) -> RunListResponse:
         """List runs for a conversation."""
         deps.conversation_repo.get_by_id(conversation_id)

@@ -19,12 +19,15 @@ from swarmmind.models import (
 
 @dataclass(frozen=True)
 class ApprovalsRouterDeps:
+    """Dependencies for the approvals router."""
+
     approval_request_repo: object
     project_repo: object
     run_repo: object
 
 
 def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
+    """Return an APIRouter with all approval-request CRUD endpoints."""
     router = APIRouter()
 
     @router.get("/approvals", tags=["approvals"])
@@ -64,7 +67,9 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
         )
         return db_to_approval_request(ar)
 
-    @router.get("/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}})
+    @router.get(
+        "/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}}
+    )
     def get_approval(approval_id: str) -> ApprovalRequest:
         """Get a single approval request by ID."""
         return db_to_approval_request(deps.approval_request_repo.get(approval_id))
@@ -72,7 +77,10 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
     @router.patch(
         "/approvals/{approval_id}",
         tags=["approvals"],
-        responses={404: {"description": "Approval request not found"}, 409: {"description": "Invalid status transition"}},
+        responses={
+            404: {"description": "Approval request not found"},
+            409: {"description": "Invalid status transition"},
+        },
     )
     def update_approval(approval_id: str, body: UpdateApprovalRequest) -> ApprovalRequest:
         """Update an approval request. Only provided fields are changed."""
@@ -98,7 +106,9 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
             return db_to_approval_request(ar)
         return db_to_approval_request(deps.approval_request_repo.update(approval_id, **fields))
 
-    @router.delete("/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}})
+    @router.delete(
+        "/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}}
+    )
     def delete_approval(approval_id: str) -> DeleteApprovalResponse:
         """Delete an approval request."""
         deps.approval_request_repo.get(approval_id)

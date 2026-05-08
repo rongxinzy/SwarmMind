@@ -28,6 +28,8 @@ NEW_CONVERSATION_TITLE = "New Conversation"
 
 @dataclass(frozen=True)
 class PromotionsRouterDeps:
+    """Dependencies for the promotions router."""
+
     conversation_repo: object
     message_repo: object
     project_repo: object
@@ -41,6 +43,7 @@ class PromotionsRouterDeps:
 
 
 def build_promotions_router(deps: PromotionsRouterDeps) -> APIRouter:
+    """Return an APIRouter for conversation promotion, trace, and artifact endpoints."""
     router = APIRouter()
 
     def _db_to_project(proj) -> Project:
@@ -194,9 +197,7 @@ def build_promotions_router(deps: PromotionsRouterDeps) -> APIRouter:
             404: {"description": "Conversation or artifact not found"},
         },
     )
-    def get_conversation_artifact_file(
-        conversation_id: str, artifact_path: str, download: bool = False
-    ) -> Response:
+    def get_conversation_artifact_file(conversation_id: str, artifact_path: str, download: bool = False) -> Response:
         """Return the registered artifact file content for a conversation."""
         conversation = deps.conversation_repo.get_by_id(conversation_id)
         artifact = deps.artifact_repo.get_by_conversation_path(conversation_id, artifact_path)

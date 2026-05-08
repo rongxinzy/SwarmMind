@@ -17,10 +17,13 @@ from swarmmind.models import (
 
 @dataclass(frozen=True)
 class AgentTeamsRouterDeps:
+    """Dependencies for the agent-teams router."""
+
     agent_team_repo: object
 
 
 def build_agent_teams_router(deps: AgentTeamsRouterDeps) -> APIRouter:
+    """Return an APIRouter with all agent-team template CRUD endpoints."""
     router = APIRouter()
 
     @router.get("/agent-teams", tags=["agent-teams"])
@@ -29,7 +32,9 @@ def build_agent_teams_router(deps: AgentTeamsRouterDeps) -> APIRouter:
         rows = deps.agent_team_repo.list_all(include_disabled=False)
         return AgentTeamTemplateListResponse(items=[db_to_team_template(r) for r in rows], total=len(rows))
 
-    @router.get("/agent-teams/{team_id}", tags=["agent-teams"], responses={404: {"description": "Team template not found"}})
+    @router.get(
+        "/agent-teams/{team_id}", tags=["agent-teams"], responses={404: {"description": "Team template not found"}}
+    )
     def get_agent_team(team_id: str) -> AgentTeamTemplate:
         """Get a single agent team template by ID."""
         return db_to_team_template(deps.agent_team_repo.get_by_id(team_id))
@@ -48,7 +53,9 @@ def build_agent_teams_router(deps: AgentTeamsRouterDeps) -> APIRouter:
         )
         return db_to_team_template(team)
 
-    @router.patch("/agent-teams/{team_id}", tags=["agent-teams"], responses={404: {"description": "Team template not found"}})
+    @router.patch(
+        "/agent-teams/{team_id}", tags=["agent-teams"], responses={404: {"description": "Team template not found"}}
+    )
     def update_agent_team(team_id: str, body: AgentTeamTemplateUpdateRequest) -> AgentTeamTemplate:
         """Update an agent team template."""
         roles = [r.model_dump() for r in body.roles] if body.roles is not None else None

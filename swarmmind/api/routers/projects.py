@@ -18,8 +18,8 @@ from swarmmind.api.routers.mappers import (
 )
 from swarmmind.models import (
     ArtifactListResponse,
-    AuditLogListResponse,
     AttachTeamRequest,
+    AuditLogListResponse,
     CreateTaskRequest,
     DeleteProjectResponse,
     DeleteTaskResponse,
@@ -40,6 +40,8 @@ from swarmmind.models import (
 
 @dataclass(frozen=True)
 class ProjectsRouterDeps:
+    """Dependencies for the projects router."""
+
     project_repo: object
     task_repo: object
     run_repo: object
@@ -53,6 +55,7 @@ class ProjectsRouterDeps:
 
 
 def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
+    """Return an APIRouter with all project domain endpoints."""
     router = APIRouter()
 
     def _db_to_project(proj) -> Project:
@@ -78,6 +81,7 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
 
     def _attach_team(project_id: str, team_template_id: str | None) -> None:
         import logging
+
         _logger = logging.getLogger(__name__)
         if team_template_id:
             try:
@@ -153,7 +157,9 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
 
     # ---- Project overview / audit / artifacts ----
 
-    @router.get("/projects/{project_id}/overview", tags=["projects"], responses={404: {"description": "Project not found"}})
+    @router.get(
+        "/projects/{project_id}/overview", tags=["projects"], responses={404: {"description": "Project not found"}}
+    )
     def get_project_overview(project_id: str) -> ProjectOverviewResponse:
         """Get aggregated project overview with stats and recent items."""
         proj = deps.project_repo.get_by_id(project_id)
@@ -181,7 +187,9 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
             recent_approvals=[db_to_approval_request(a) for a in approvals[:recent_limit]],
         )
 
-    @router.get("/projects/{project_id}/audit", tags=["projects"], responses={404: {"description": "Project not found"}})
+    @router.get(
+        "/projects/{project_id}/audit", tags=["projects"], responses={404: {"description": "Project not found"}}
+    )
     def list_project_audit_logs(project_id: str) -> AuditLogListResponse:
         """List audit log entries for a specific project."""
         deps.project_repo.get_by_id(project_id)
@@ -191,7 +199,9 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
             total=len(rows),
         )
 
-    @router.get("/projects/{project_id}/artifacts", tags=["projects"], responses={404: {"description": "Project not found"}})
+    @router.get(
+        "/projects/{project_id}/artifacts", tags=["projects"], responses={404: {"description": "Project not found"}}
+    )
     def list_project_artifacts(project_id: str) -> ArtifactListResponse:
         """List artifacts for a project."""
         deps.project_repo.get_by_id(project_id)
@@ -207,14 +217,18 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
 
     # ---- Task routes ----
 
-    @router.get("/projects/{project_id}/tasks", tags=["projects"], responses={404: {"description": "Project not found"}})
+    @router.get(
+        "/projects/{project_id}/tasks", tags=["projects"], responses={404: {"description": "Project not found"}}
+    )
     def list_project_tasks(project_id: str) -> TaskListResponse:
         """List tasks for a project."""
         deps.project_repo.get_by_id(project_id)
         rows = deps.task_repo.list_by_project(project_id)
         return TaskListResponse(items=[db_to_task(r) for r in rows], total=len(rows))
 
-    @router.post("/projects/{project_id}/tasks", tags=["projects"], responses={404: {"description": "Project not found"}})
+    @router.post(
+        "/projects/{project_id}/tasks", tags=["projects"], responses={404: {"description": "Project not found"}}
+    )
     def create_task(project_id: str, body: CreateTaskRequest) -> Task:
         """Create a new task for a project."""
         deps.project_repo.get_by_id(project_id)
@@ -308,7 +322,9 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
         )
         return _db_to_team_instance(instance)
 
-    @router.get("/projects/{project_id}/agent-team", tags=["projects"], responses={404: {"description": "Project not found"}})
+    @router.get(
+        "/projects/{project_id}/agent-team", tags=["projects"], responses={404: {"description": "Project not found"}}
+    )
     def get_project_team(project_id: str) -> ProjectAgentTeamInstance:
         """Get the agent team instance attached to a project."""
         deps.project_repo.get_by_id(project_id)

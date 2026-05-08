@@ -13,11 +13,14 @@ from swarmmind.models import HealthResponse, ReadyResponse, StatusResponse
 
 @dataclass(frozen=True)
 class SystemRouterDeps:
+    """Dependencies for the system router."""
+
     ensure_default_runtime_instance: Callable
     render_status: Callable
 
 
 def build_system_router(deps: SystemRouterDeps) -> APIRouter:
+    """Return an APIRouter for health, readiness, and status endpoints."""
     router = APIRouter()
 
     @router.get("/health", tags=["system"])

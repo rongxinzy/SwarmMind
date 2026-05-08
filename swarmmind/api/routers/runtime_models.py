@@ -13,6 +13,7 @@ from swarmmind.runtime.catalog import (
 
 
 def build_runtime_models_router() -> APIRouter:
+    """Return an APIRouter for the runtime model catalog endpoints."""
     router = APIRouter()
 
     @router.get("/models", tags=["runtime"])

@@ -17,6 +17,8 @@ from swarmmind.models import (
 
 @dataclass(frozen=True)
 class AuditLogsRouterDeps:
+    """Dependencies for the audit-logs router."""
+
     audit_log_repo: object
     project_repo: object
     run_repo: object
@@ -24,6 +26,7 @@ class AuditLogsRouterDeps:
 
 
 def build_audit_logs_router(deps: AuditLogsRouterDeps) -> APIRouter:
+    """Return an APIRouter with all audit-log CRUD endpoints."""
     router = APIRouter()
 
     @router.get("/audit-logs", tags=["audit-logs"])
@@ -64,12 +67,16 @@ def build_audit_logs_router(deps: AuditLogsRouterDeps) -> APIRouter:
         )
         return db_to_audit_log_entry(entry)
 
-    @router.get("/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}})
+    @router.get(
+        "/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}}
+    )
     def get_audit_log(audit_id: str) -> AuditLogEntry:
         """Get a single audit log entry by ID."""
         return db_to_audit_log_entry(deps.audit_log_repo.get(audit_id))
 
-    @router.delete("/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}})
+    @router.delete(
+        "/audit-logs/{audit_id}", tags=["audit-logs"], responses={404: {"description": "Audit log entry not found"}}
+    )
     def delete_audit_log(audit_id: str) -> DeleteAuditLogResponse:
         """Delete an audit log entry."""
         deps.audit_log_repo.get(audit_id)

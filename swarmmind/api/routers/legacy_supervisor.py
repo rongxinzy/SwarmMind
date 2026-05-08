@@ -24,6 +24,8 @@ from swarmmind.repositories.action_proposal import _db_to_action_proposal
 
 @dataclass(frozen=True)
 class LegacySupervisorRouterDeps:
+    """Dependencies for the legacy supervisor router."""
+
     action_proposal_repo: object
     strategy_repo: object
     record_supervisor_decision: Callable
@@ -31,6 +33,7 @@ class LegacySupervisorRouterDeps:
 
 
 def build_legacy_supervisor_router(deps: LegacySupervisorRouterDeps) -> APIRouter:
+    """Return an APIRouter for legacy supervisor routes (pending, approve, reject, dispatch, strategy)."""
     router = APIRouter()
 
     @router.get("/pending", tags=["supervisor"])
