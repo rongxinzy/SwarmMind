@@ -3,7 +3,6 @@ import {
   BookOpenText,
   Bot,
   Clock3,
-  FolderKanban,
   History,
   Library,
   Loader2,
