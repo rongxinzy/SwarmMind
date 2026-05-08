@@ -6,12 +6,17 @@ import {
   FolderKanban,
   History,
   Library,
+  Loader2,
   Search,
   Sparkles,
+  TrendingUp,
 } from "lucide-react";
 
 import { Workbench } from "@/components/workbench";
 import { Button } from "@/components/ui/button";
+import { ProjectPage } from "@/components/workspace/project/project-page";
+import { ProjectEmptyState } from "@/components/workspace/project/project-empty-state";
+import { promoteConversation } from "@/core/projects/api";
 import {
   Card,
   CardContent,
@@ -157,12 +162,14 @@ export default function App() {
   const [activeConversationId, setActiveConversationId] = useState<
     string | undefined
   >(undefined);
+  const [activeProjectId, setActiveProjectId] = useState<string | undefined>(undefined);
   const [recentConversations, setRecentConversations] = useState<
     ConversationRecord[]
   >([]);
   const [draftResetToken, setDraftResetToken] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isRecentLoading, setIsRecentLoading] = useState(true);
+  const [isPromoting, setIsPromoting] = useState(false);
 
   const fetchRecentConversations = useCallback(async () => {
     try {
@@ -224,7 +231,13 @@ export default function App() {
     // Check URL first
     const params = new URLSearchParams(window.location.search);
     const urlConversationId = params.get("conversation");
-    if (urlConversationId) {
+    const urlProjectId = params.get("project");
+    if (urlProjectId) {
+      setActiveProjectId(urlProjectId);
+      setActiveView("projects");
+      void fetchRecentConversations();
+      setIsRecentLoading(false);
+    } else if (urlConversationId) {
       setActiveConversationId(urlConversationId);
       setActiveView("chat");
       void fetchRecentConversations();
@@ -259,12 +272,29 @@ export default function App() {
     }
   }, [activeConversationId, activeView]);
 
+  // Sync URL when active project changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const currentProjectId = params.get("project");
+    if (activeProjectId && activeView === "projects") {
+      if (currentProjectId !== activeProjectId) {
+        window.history.replaceState(null, "", `/?project=${activeProjectId}`);
+      }
+    } else if (activeView !== "projects" && currentProjectId) {
+      window.history.replaceState(null, "", "/");
+    }
+  }, [activeProjectId, activeView]);
+
   // Handle browser back/forward
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const urlConversationId = params.get("conversation");
-      if (urlConversationId) {
+      const urlProjectId = params.get("project");
+      if (urlProjectId) {
+        setActiveProjectId(urlProjectId);
+        setActiveView("projects");
+      } else if (urlConversationId) {
         setActiveConversationId(urlConversationId);
         setActiveView("chat");
       } else {
@@ -371,6 +401,21 @@ export default function App() {
     );
   }, [recentConversations, searchQuery]);
 
+  const handlePromote = async () => {
+    if (!activeConversationId || isPromoting) return;
+    setIsPromoting(true);
+    try {
+      const project = await promoteConversation(activeConversationId);
+      setActiveProjectId(project.project_id);
+      setActiveView("projects");
+      window.history.replaceState(null, "", `/?project=${project.project_id}`);
+    } catch (err) {
+      console.error("Promote failed:", err);
+    } finally {
+      setIsPromoting(false);
+    }
+  };
+
   const renderContent = () => {
     switch (activeView) {
       case "workbench":
@@ -383,13 +428,33 @@ export default function App() {
         );
       case "chat":
         return (
-          <V0Chat
-            conversationId={activeConversationId}
-            draftResetToken={draftResetToken}
-            onConversationCreated={handleConversationCreated}
-            onConversationsChange={setRecentConversations}
-            initialLoading={isRecentLoading}
-          />
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {activeConversationId && (
+              <div className="absolute right-4 top-4 z-10">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={isPromoting}
+                  onClick={() => void handlePromote()}
+                  className="gap-1.5 text-xs"
+                >
+                  {isPromoting ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <TrendingUp className="size-3" />
+                  )}
+                  升级为项目
+                </Button>
+              </div>
+            )}
+            <V0Chat
+              conversationId={activeConversationId}
+              draftResetToken={draftResetToken}
+              onConversationCreated={handleConversationCreated}
+              onConversationsChange={setRecentConversations}
+              initialLoading={isRecentLoading}
+            />
+          </div>
         );
       case "teams":
         return (
@@ -428,13 +493,10 @@ export default function App() {
           />
         );
       case "projects":
-        return (
-          <PlaceholderView
-            icon={<FolderKanban className="size-5" />}
-            title="项目"
-            description="项目空间用于承接结构化执行、审批、结果沉淀与复用。"
-            action="新建项目"
-          />
+        return activeProjectId ? (
+          <ProjectPage projectId={activeProjectId} />
+        ) : (
+          <ProjectEmptyState />
         );
       case "recent":
         return (

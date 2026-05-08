@@ -297,6 +297,7 @@ function V0ChatInner({
           role: message.role,
           content: message.content,
           created_at: message.created_at,
+          run_id: message.run_id,
         })),
       );
     } catch (requestError) {
@@ -1253,6 +1254,7 @@ function V0ChatInner({
             <ChatMessageArea
               isLoading={isLoading}
               messages={messages}
+              conversationId={currentConversationId ?? undefined}
               pendingClarification={pendingClarification}
               tasks={tasks}
               onClarificationRespond={handleClarificationRespond}
