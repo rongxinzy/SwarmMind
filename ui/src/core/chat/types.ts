@@ -3,6 +3,7 @@ export interface StoredMessage {
   role: "user" | "assistant";
   content: string;
   created_at?: string;
+  run_id?: string | null;
 }
 
 export interface RuntimeModelOption {

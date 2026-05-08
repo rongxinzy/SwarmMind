@@ -44,7 +44,9 @@ class TestArtifactEndpoints:
         conv_repo = ConversationRepository()
         art_repo = ArtifactRepository()
         conv = conv_repo.create("Chat", "pending")
-        art_repo.create(conv.id, None, "/mnt/user-data/outputs/report.md", "write_file", mime_type="text/markdown", size_bytes=123)
+        art_repo.create(
+            conv.id, None, "/mnt/user-data/outputs/report.md", "write_file", mime_type="text/markdown", size_bytes=123
+        )
         art_repo.create(conv.id, None, "plan.md", "present_files")
 
         response = client.get(f"/conversations/{conv.id}/artifacts")

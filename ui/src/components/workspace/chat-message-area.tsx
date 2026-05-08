@@ -5,6 +5,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { MessageBubble, SuggestedFollowUps } from "@/components/workspace/chat-message-ui";
 import { ClarificationCard } from "@/components/workspace/messages/clarification-card";
 import { SubtaskCard } from "@/components/workspace/messages/subtask-card";
+import { TraceSummary } from "@/components/workspace/messages/trace-summary";
 import { parseClarificationContent } from "@/core/messages/clarification";
 import type { ChatMessage, ChatError } from "@/core/chat/types";
 import type { Subtask } from "@/core/tasks/types";
@@ -20,6 +21,7 @@ interface PendingClarification {
 interface ChatMessageAreaProps {
   isLoading: boolean;
   messages: ChatMessage[];
+  conversationId?: string;
   pendingClarification: PendingClarification | null;
   tasks: Record<string, Subtask>;
   onClarificationRespond: (response: string, toolCallId: string) => void;
@@ -144,6 +146,7 @@ function ErrorCard({
 export function ChatMessageArea({
   isLoading,
   messages,
+  conversationId,
   pendingClarification,
   tasks,
   onClarificationRespond,
@@ -194,6 +197,13 @@ export function ChatMessageArea({
                 message.content.trim().length > 0,
               )}
             />
+            {message.role === "assistant" &&
+              !message.isStreaming &&
+              !message.isReasoningStreaming &&
+              message.run_id &&
+              conversationId ? (
+              <TraceSummary conversationId={conversationId} messageId={message.id} />
+            ) : null}
             {isLastAssistant && shouldShowSuggestedFollowUps ? (
               <SuggestedFollowUps
                 items={followUps}
