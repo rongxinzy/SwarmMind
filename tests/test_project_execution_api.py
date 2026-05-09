@@ -11,7 +11,7 @@ import json
 import pytest
 
 from swarmmind.db import dispose_engines, init_db
-from swarmmind.models import ConversationRuntimeOptions, Message, SendMessageRequest
+from swarmmind.models import ConversationRuntimeOptions, SendMessageRequest
 from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.project import ProjectRepository
@@ -158,7 +158,7 @@ def execution_service(support, lifecycle):
             cid, content, run_id=run_id
         ),
         persist_assistant_message_fn=support.persist_assistant_message,
-        maybe_generate_conversation_title_fn=lambda cid: support.maybe_generate_conversation_title(cid),
+        maybe_generate_conversation_title_fn=support.maybe_generate_conversation_title,
         bind_conversation_runtime_fn=_fake_bind_runtime,
         format_runtime_error_fn=_fake_format_error,
         resolve_runtime_options_fn=_fake_resolve_options,
