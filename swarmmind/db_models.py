@@ -115,6 +115,7 @@ class ConversationDB(SQLModel, table=True):
     runtime_instance_id: str | None = None
     thread_id: str | None = None
     promoted_project_id: str | None = None
+    is_project_bound: int = Field(default=0)  # 1 when bound to a project via ProjectDB.conversation_id
     created_at: datetime | None = Field(default_factory=utc_now)
     updated_at: datetime | None = Field(default_factory=utc_now)
 
@@ -435,6 +436,7 @@ class ProjectAgentTeamInstanceDB(SQLModel, table=True):
     instance_id: str = Field(primary_key=True)
     project_id: str = Field(foreign_key="projects.project_id", unique=True)
     team_template_id: str = Field(foreign_key="agent_team_templates.team_id")
+    runtime_profile_id: str | None = None  # overrides default runtime profile when set
     instance_config: str = "{}"  # JSON dict
     status: str = Field(default="active")  # 'active' | 'paused' | 'detached'
     created_at: datetime | None = Field(default_factory=utc_now)
