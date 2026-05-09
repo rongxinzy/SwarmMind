@@ -17,7 +17,8 @@ jobs:
     name: Enable auto-merge for owner
     runs-on: ubuntu-latest
     if: >-
-      github.event.pull_request.user.login == 'hawkli-1994'
+      (github.event.pull_request.user.login == 'hawkli-1994'
+       || startsWith(github.head_ref, 'claude/'))
       && github.event.pull_request.draft == false
     steps:
       - name: Enable auto-merge
