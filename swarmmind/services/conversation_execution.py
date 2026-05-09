@@ -204,9 +204,7 @@ class ConversationExecutionService:
             summary = ai_response[:500] if ai_response else None
             self._run_lifecycle.finish(run_context, summary)
 
-        assistant_message = self._persist_assistant_message(
-            conversation_id, ai_response, run_id=run_id
-        )
+        assistant_message = self._persist_assistant_message(conversation_id, ai_response, run_id=run_id)
         self._maybe_generate_conversation_title(conversation_id)
         conversation = self._conversation_repo.get_by_id(conversation_id)
         serialized_conversation = {

@@ -118,9 +118,7 @@ class ConversationSupportService:
         self._conversation_repo.touch(conversation_id)
         return self.db_to_message(msg)
 
-    def persist_assistant_message(
-        self, conversation_id: str, content: str, run_id: str | None = None
-    ) -> Message:
+    def persist_assistant_message(self, conversation_id: str, content: str, run_id: str | None = None) -> Message:
         """Persist an assistant message and update the conversation timestamp."""
         msg = self._message_repo.create(conversation_id, "assistant", content, run_id=run_id)
         self._conversation_repo.touch(conversation_id)

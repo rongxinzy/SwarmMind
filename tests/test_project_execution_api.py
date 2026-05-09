@@ -175,11 +175,11 @@ def execution_service(support, lifecycle):
 
 
 class TestProjectExecutionLifecycle:
-    def test_stream_creates_run_row_with_project_id(
-        self, execution_service, project, conversation, run_repo
-    ):
+    def test_stream_creates_run_row_with_project_id(self, execution_service, project, conversation, run_repo):
         run_ctx = RunContext.for_project(project.project_id, conversation.id)
-        events = list(execution_service.stream_message(conversation.id, SendMessageRequest(content="go"), run_context=run_ctx))
+        events = list(
+            execution_service.stream_message(conversation.id, SendMessageRequest(content="go"), run_context=run_ctx)
+        )
 
         assert len(events) > 0
 
@@ -188,40 +188,36 @@ class TestProjectExecutionLifecycle:
         assert run.conversation_id == conversation.id
         assert run.status == "completed"
 
-    def test_stream_populates_run_id_on_user_message(
-        self, execution_service, project, conversation, message_repo
-    ):
+    def test_stream_populates_run_id_on_user_message(self, execution_service, project, conversation, message_repo):
         run_ctx = RunContext.for_project(project.project_id, conversation.id)
-        list(execution_service.stream_message(conversation.id, SendMessageRequest(content="hello"), run_context=run_ctx))
+        list(
+            execution_service.stream_message(conversation.id, SendMessageRequest(content="hello"), run_context=run_ctx)
+        )
 
         messages = message_repo.list_by_conversation(conversation.id)
         user_msgs = [m for m in messages if m.role == "user"]
         assert len(user_msgs) == 1
         assert user_msgs[0].run_id == run_ctx.run_id
 
-    def test_stream_populates_run_id_on_assistant_message(
-        self, execution_service, project, conversation, message_repo
-    ):
+    def test_stream_populates_run_id_on_assistant_message(self, execution_service, project, conversation, message_repo):
         run_ctx = RunContext.for_project(project.project_id, conversation.id)
-        list(execution_service.stream_message(conversation.id, SendMessageRequest(content="hello"), run_context=run_ctx))
+        list(
+            execution_service.stream_message(conversation.id, SendMessageRequest(content="hello"), run_context=run_ctx)
+        )
 
         messages = message_repo.list_by_conversation(conversation.id)
         assistant_msgs = [m for m in messages if m.role == "assistant"]
         assert len(assistant_msgs) == 1
         assert assistant_msgs[0].run_id == run_ctx.run_id
 
-    def test_exactly_one_run_row_per_stream(
-        self, execution_service, project, conversation, run_repo
-    ):
+    def test_exactly_one_run_row_per_stream(self, execution_service, project, conversation, run_repo):
         run_ctx = RunContext.for_project(project.project_id, conversation.id)
         list(execution_service.stream_message(conversation.id, SendMessageRequest(content="task"), run_context=run_ctx))
 
         runs = run_repo.list_by_project(project.project_id)
         assert len(runs) == 1
 
-    def test_chat_session_stream_creates_no_run_row(
-        self, execution_service, conversation, run_repo
-    ):
+    def test_chat_session_stream_creates_no_run_row(self, execution_service, conversation, run_repo):
         list(execution_service.stream_message(conversation.id, SendMessageRequest(content="hi")))
         runs = run_repo.list_by_conversation(conversation.id)
         assert len(runs) == 0
@@ -229,9 +225,7 @@ class TestProjectExecutionLifecycle:
     def test_stream_events_include_status_and_final(self, execution_service, project, conversation):
         run_ctx = RunContext.for_project(project.project_id, conversation.id)
         raw_events = list(
-            execution_service.stream_message(
-                conversation.id, SendMessageRequest(content="work"), run_context=run_ctx
-            )
+            execution_service.stream_message(conversation.id, SendMessageRequest(content="work"), run_context=run_ctx)
         )
         parsed = [json.loads(e) for e in raw_events]
         event_types = [e["type"] for e in parsed]
@@ -240,19 +234,17 @@ class TestProjectExecutionLifecycle:
         assert "assistant_final" in event_types
         assert "done" in event_types
 
-    def test_run_summary_is_truncated_to_500_chars(
-        self, execution_service, project, conversation, run_repo
-    ):
+    def test_run_summary_is_truncated_to_500_chars(self, execution_service, project, conversation, run_repo):
         run_ctx = RunContext.for_project(project.project_id, conversation.id)
-        list(execution_service.stream_message(conversation.id, SendMessageRequest(content="short"), run_context=run_ctx))
+        list(
+            execution_service.stream_message(conversation.id, SendMessageRequest(content="short"), run_context=run_ctx)
+        )
 
         run = run_repo.get_by_id(run_ctx.run_id)
         if run.summary:
             assert len(run.summary) <= 500
 
-    def test_multiple_project_runs_are_independent(
-        self, execution_service, project, conversation, run_repo
-    ):
+    def test_multiple_project_runs_are_independent(self, execution_service, project, conversation, run_repo):
         ctx1 = RunContext.for_project(project.project_id, conversation.id)
         ctx2 = RunContext.for_project(project.project_id, conversation.id)
         assert ctx1.run_id != ctx2.run_id

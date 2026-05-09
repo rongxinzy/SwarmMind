@@ -41,9 +41,7 @@ def resolve_project_runtime_profile(
         # runtime_profile_id is treated as a model name in the current catalog.
         # Full per-profile catalog lookup is a Phase D concern.
         try:
-            selected_model = resolve_model_for_subject(
-                requested_model_name=instance.runtime_profile_id
-            )
+            selected_model = resolve_model_for_subject(requested_model_name=instance.runtime_profile_id)
             return RuntimeProfile(
                 runtime_profile_id=instance.runtime_profile_id,
                 provider=selected_model.provider,
