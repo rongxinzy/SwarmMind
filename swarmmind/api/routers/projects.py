@@ -71,8 +71,10 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
 
         proj = deps.project_repo.get_by_id(project_id)
         if proj.conversation_id:
+            deps.conversation_repo.mark_project_bound(proj.conversation_id)
             return proj.conversation_id
         conv = deps.conversation_repo.create(title=proj.title, title_status="pending")
+        deps.conversation_repo.mark_project_bound(conv.id)
         with session_scope() as session:
             proj_db = session.get(ProjectDB, project_id)
             if proj_db is not None:
@@ -215,6 +217,23 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
         deps.project_repo.get_by_id(project_id)
         rows = deps.run_repo.list_by_project(project_id)
         return RunListResponse(items=[db_to_run(r) for r in rows], total=len(rows))
+
+    @router.get(
+        "/projects/{project_id}/runs/{run_id}/events",
+        tags=["runs"],
+        responses={
+            404: {"description": "Project or run not found"},
+        },
+    )
+    def list_run_events(project_id: str, run_id: str) -> AuditLogListResponse:
+        """List audit/lifecycle events for a specific run within a project."""
+        deps.project_repo.get_by_id(project_id)
+        deps.run_repo.get_by_id(run_id)
+        rows = deps.audit_log_repo.list_by_run(run_id)
+        return AuditLogListResponse(
+            items=[db_to_audit_log_entry(r) for r in rows],
+            total=len(rows),
+        )
 
     # ---- Task routes ----
 

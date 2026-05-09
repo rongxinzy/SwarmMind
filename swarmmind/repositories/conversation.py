@@ -87,8 +87,16 @@ class ConversationRepository:
             if conv is not None:
                 conv.updated_at = utc_now()
 
+    def mark_project_bound(self, conversation_id: str) -> None:
+        """Mark a conversation as bound to a project (hidden from recent chat list)."""
+        with session_scope() as session:
+            conv = session.get(ConversationDB, conversation_id)
+            if conv is not None:
+                conv.is_project_bound = 1
+                session.commit()
+
     def get_recent_active(self, since_days: int = 7) -> ConversationDB | None:
-        """Get the most recent conversation that has messages within the given days."""
+        """Get the most recent non-project-bound conversation with messages in the given days."""
         from swarmmind.db_models import MessageDB
 
         with session_scope() as session:
@@ -97,6 +105,7 @@ class ConversationRepository:
                 select(ConversationDB)
                 .join(MessageDB, ConversationDB.id == MessageDB.conversation_id)
                 .where(MessageDB.created_at >= since)
+                .where(ConversationDB.is_project_bound == 0)
                 .order_by(ConversationDB.updated_at.desc())
             ).first()
             if result is None:

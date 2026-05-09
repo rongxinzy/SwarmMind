@@ -54,7 +54,7 @@ class ConversationExecutionService:
         record_supervisor_decision_fn: Callable[[str, Any], None],
         approved_decision: Any,
         persist_user_message_fn: Callable[[str, str, str | None], Message],
-        persist_assistant_message_fn: Callable[[str, str], Message],
+        persist_assistant_message_fn: Callable[..., Message],
         maybe_generate_conversation_title_fn: Callable[[str], None],
         bind_conversation_runtime_fn: Callable[[str], tuple[object, str]],
         format_runtime_error_fn: Callable[[Exception], str],
@@ -204,7 +204,9 @@ class ConversationExecutionService:
             summary = ai_response[:500] if ai_response else None
             self._run_lifecycle.finish(run_context, summary)
 
-        assistant_message = self._persist_assistant_message(conversation_id, ai_response)
+        assistant_message = self._persist_assistant_message(
+            conversation_id, ai_response, run_id=run_id
+        )
         self._maybe_generate_conversation_title(conversation_id)
         conversation = self._conversation_repo.get_by_id(conversation_id)
         serialized_conversation = {
