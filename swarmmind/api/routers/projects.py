@@ -52,6 +52,7 @@ class ProjectsRouterDeps:
     project_team_repo: object
     conversation_repo: object
     stream_conversation_message: object
+    stream_project_message: object
 
 
 def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
@@ -361,11 +362,11 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
         responses={404: {"description": "Project not found"}},
     )
     def send_project_message_stream(project_id: str, body: SendMessageRequest) -> StreamingResponse:
-        """Stream a project execution turn with SwarmMind runtime semantics."""
+        """Stream a project execution turn, creating a RunDB row anchored on project_id."""
         deps.project_repo.get_by_id(project_id)
         conversation_id = _ensure_project_conversation(project_id)
         return StreamingResponse(
-            deps.stream_conversation_message(conversation_id, body),
+            deps.stream_project_message(project_id, conversation_id, body),
             media_type="application/x-ndjson",
         )
 

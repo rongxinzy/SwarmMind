@@ -18,15 +18,16 @@ class RunRepository:
     def create(
         self,
         *,
+        run_id: str | None = None,
         conversation_id: str | None = None,
         project_id: str | None = None,
         goal: str | None = None,
         status: str = "running",
     ) -> RunDB:
-        """Create a new run record."""
+        """Create a new run record. Caller may supply run_id for deterministic identity."""
         with session_scope() as session:
             run = RunDB(
-                run_id=str(uuid.uuid4()),
+                run_id=run_id or str(uuid.uuid4()),
                 conversation_id=conversation_id,
                 project_id=project_id,
                 goal=goal,
@@ -120,3 +121,46 @@ class RunRepository:
             if run is None:
                 raise HTTPException(status_code=404, detail="Run not found")
             run.project_id = project_id
+
+    # ---- Lifecycle helpers ----
+
+    def mark_completed(self, run_id: str, summary: str | None = None) -> None:
+        """Transition run to completed status."""
+        with session_scope() as session:
+            run = session.get(RunDB, run_id)
+            if run is None:
+                raise HTTPException(status_code=404, detail="Run not found")
+            run.status = "completed"
+            run.completed_at = utc_now()
+            if summary is not None:
+                run.summary = summary
+            session.commit()
+
+    def mark_failed(self, run_id: str, error_class: str, message: str) -> None:
+        """Transition run to failed status, recording the error."""
+        with session_scope() as session:
+            run = session.get(RunDB, run_id)
+            if run is None:
+                raise HTTPException(status_code=404, detail="Run not found")
+            run.status = "failed"
+            run.completed_at = utc_now()
+            run.summary = f"{error_class}: {message}"[:500]
+            session.commit()
+
+    def mark_waiting_approval(self, run_id: str, approval_id: str) -> None:
+        """Transition run to waiting_approval status."""
+        with session_scope() as session:
+            run = session.get(RunDB, run_id)
+            if run is None:
+                raise HTTPException(status_code=404, detail="Run not found")
+            run.status = "waiting_approval"
+            session.commit()
+
+    def mark_running(self, run_id: str) -> None:
+        """Transition run back to running (e.g. after approval resume)."""
+        with session_scope() as session:
+            run = session.get(RunDB, run_id)
+            if run is None:
+                raise HTTPException(status_code=404, detail="Run not found")
+            run.status = "running"
+            session.commit()

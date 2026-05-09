@@ -62,6 +62,8 @@ from swarmmind.services.conversation_support import (
 from swarmmind.services.conversation_trace_service import ConversationTraceService
 from swarmmind.services.lifecycle import run_cleanup_scanner, startup_lifecycle
 from swarmmind.services.message_trace_service import _default_message_trace_service
+from swarmmind.services.run_context import RunContext
+from swarmmind.services.run_lifecycle import RunLifecycleService
 from swarmmind.services.runtime_support import RuntimeSupportService
 from swarmmind.services.stream_events import (
     general_agent_status_labels as _svc_general_agent_status_labels,
@@ -98,6 +100,7 @@ conversation_support = ConversationSupportService(
     message_repo=message_repo,
     title_generator=generate_title_with_deerflow,
 )
+run_lifecycle_service = RunLifecycleService(run_repo=run_repo)
 runtime_support = RuntimeSupportService(conversation_repo=conversation_repo)
 conversation_trace_service = ConversationTraceService(conversation_repo=conversation_repo)
 message_trace_service = _default_message_trace_service()
@@ -187,11 +190,17 @@ def _conversation_execution_service() -> ConversationExecutionService:
         serialize_stream_event_fn=_svc_serialize_stream_event,
         db_to_message_fn=conversation_support.db_to_message,
         execution_logger=logger,
+        run_lifecycle_service=run_lifecycle_service,
     )
 
 
 def _stream_conversation_message(conversation_id: str, body: SendMessageRequest):
     yield from _conversation_execution_service().stream_message(conversation_id, body)
+
+
+def _stream_project_message(project_id: str, conversation_id: str, body: SendMessageRequest):
+    run_context = RunContext.for_project(project_id, conversation_id)
+    yield from _conversation_execution_service().stream_message(conversation_id, body, run_context=run_context)
 
 
 def _respond_to_clarification(conversation_id: str, tool_call_id: str, response: str) -> Message:
@@ -389,6 +398,7 @@ app.include_router(
             project_team_repo=project_team_repo,
             conversation_repo=conversation_repo,
             stream_conversation_message=_stream_conversation_message,
+            stream_project_message=_stream_project_message,
         )
     )
 )
