@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable, Generator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import HTTPException
 
@@ -16,6 +16,10 @@ from swarmmind.models import (
     SendMessageRequest,
     SendMessageResponse,
 )
+
+if TYPE_CHECKING:
+    from swarmmind.services.run_context import RunContext
+    from swarmmind.services.run_lifecycle import RunLifecycleService
 
 
 def _is_client_disconnect_error(exc: BaseException) -> bool:
@@ -60,6 +64,7 @@ class ConversationExecutionService:
         serialize_stream_event_fn: Callable[..., str],
         db_to_message_fn: Callable[[Any], Message],
         execution_logger: logging.Logger,
+        run_lifecycle_service: RunLifecycleService | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._message_repo = message_repo
@@ -80,6 +85,7 @@ class ConversationExecutionService:
         self._serialize_stream_event = serialize_stream_event_fn
         self._db_to_message = db_to_message_fn
         self._logger = execution_logger
+        self._run_lifecycle = run_lifecycle_service
 
     def send_message(self, conversation_id: str, body: SendMessageRequest) -> SendMessageResponse:
         """Run a non-streaming conversation turn."""
@@ -107,9 +113,24 @@ class ConversationExecutionService:
         self._maybe_generate_conversation_title(conversation_id)
         return SendMessageResponse(user_message=user_msg, assistant_message=assistant_msg)
 
-    def stream_message(self, conversation_id: str, body: SendMessageRequest) -> Generator[str, None, None]:
-        """Stream a conversation turn with runtime-status events."""
-        run_id = str(uuid.uuid4())
+    def stream_message(
+        self,
+        conversation_id: str,
+        body: SendMessageRequest,
+        *,
+        run_context: RunContext | None = None,
+    ) -> Generator[str, None, None]:
+        """Stream a conversation turn with runtime-status events.
+
+        When run_context is provided and has a project_id, lifecycle events are
+        persisted via RunLifecycleService. ChatSession-only calls pass no
+        run_context and are unaffected.
+        """
+        run_id = run_context.run_id if run_context is not None else str(uuid.uuid4())
+
+        if self._run_lifecycle is not None and run_context is not None:
+            self._run_lifecycle.start(run_context)
+
         user_message = self._persist_user_message(conversation_id, body.content, run_id)
         yield self._serialize_stream_event("status", phase="accepted", label="消息已加入当前会话")
         yield self._serialize_stream_event(
@@ -172,9 +193,16 @@ class ConversationExecutionService:
                 self._logger.info("Client disconnected from stream: %s", exc)
                 return
             self._logger.error("Conversation stream error: %s", exc, exc_info=True)
+            if self._run_lifecycle is not None and run_context is not None:
+                error_class = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
+                self._run_lifecycle.fail(run_context, error_class, str(exc))
             ai_response = self._format_runtime_error(exc)
             error_code = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
             yield self._serialize_stream_event("error", code=error_code, message=ai_response)
+
+        if self._run_lifecycle is not None and run_context is not None:
+            summary = ai_response[:500] if ai_response else None
+            self._run_lifecycle.finish(run_context, summary)
 
         assistant_message = self._persist_assistant_message(conversation_id, ai_response)
         self._maybe_generate_conversation_title(conversation_id)
