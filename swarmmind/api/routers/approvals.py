@@ -118,8 +118,9 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
         if not fields:
             return db_to_approval_request(ar)
 
-        updated = deps.approval_request_repo.update(approval_id, **fields)
-
+        # Apply run-state transition BEFORE persisting the approval status so
+        # that if the run update fails the approval stays PENDING and can be
+        # retried. Raising here keeps the approval_repo update un-executed.
         if is_decision and ar.run_id:
             _apply_decision_to_run(
                 run_id=ar.run_id,
@@ -129,6 +130,8 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
                 reason=body.decision_reason,
                 deps=deps,
             )
+
+        updated = deps.approval_request_repo.update(approval_id, **fields)
 
         return db_to_approval_request(updated)
 
@@ -153,16 +156,17 @@ def _apply_decision_to_run(
     reason: str | None,
     deps: ApprovalsRouterDeps,
 ) -> None:
-    """Update run status and signal suspension based on an approval decision."""
+    """Update run status and signal suspension based on an approval decision.
+
+    Raises on run-repo failures so the caller can return an error response and
+    the approval stays PENDING (retryable).
+    """
     from swarmmind.services import run_suspension
 
-    try:
-        if decision == ApprovalStatus.APPROVED.value:
-            deps.run_repo.mark_completed(run_id, f"Approved — run completed after approval {approval_id}")
-        else:
-            deps.run_repo.mark_failed(run_id, "approval_rejected", reason or "Approval rejected by operator")
-    except Exception:
-        logger.exception("Failed to update run status after approval decision: run_id=%s", run_id)
+    if decision == ApprovalStatus.APPROVED.value:
+        deps.run_repo.mark_completed(run_id, f"Approved — run completed after approval {approval_id}")
+    else:
+        deps.run_repo.mark_failed(run_id, "approval_rejected", reason or "Approval rejected by operator")
 
     # Signal any in-process suspension (no-op if run is not suspended in this process).
     run_suspension.resolve(run_id, decision, reason)
