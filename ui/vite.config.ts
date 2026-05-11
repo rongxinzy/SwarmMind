@@ -23,6 +23,11 @@ export default defineConfig({
       "/chat/stream": "http://localhost:8000",
       "/chat": "http://localhost:8000",
       "/conversations": "http://localhost:8000",
+      "/approvals": "http://localhost:8000",
+      "/projects": "http://localhost:8000",
+      "/audit-logs": "http://localhost:8000",
+      "/runs": "http://localhost:8000",
+      "/agent-teams": "http://localhost:8000",
     },
   },
 })

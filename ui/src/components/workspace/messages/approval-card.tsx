@@ -51,7 +51,7 @@ async function patchApproval(
   status: "approved" | "rejected",
   reason?: string,
 ): Promise<void> {
-  const res = await fetch(`/api/approvals/${approvalId}`, {
+  const res = await fetch(`/approvals/${approvalId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, decision_reason: reason ?? null }),
