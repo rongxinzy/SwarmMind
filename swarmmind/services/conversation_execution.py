@@ -247,9 +247,7 @@ class ConversationExecutionService:
         yield self._serialize_stream_event("status", phase="completed", label="本轮会话已完成")
         yield self._serialize_stream_event("done")
 
-    def _handle_capability_guard(
-        self, run_context: RunContext, guard_event: dict
-    ) -> Generator[str, None, None]:
+    def _handle_capability_guard(self, run_context: RunContext, guard_event: dict) -> Generator[str, None, None]:
         """Create an ApprovalRequest, pause the run, and emit a waiting_approval event."""
         capability = guard_event.get("capability", "unknown")
         risk_tier = guard_event.get("risk_tier", "high")

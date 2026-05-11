@@ -66,6 +66,7 @@ class TestAuditWriter:
 
     def test_write_logs_on_exception(self, caplog):
         import logging
+
         self.repo.create.side_effect = ValueError("bad data")
         with caplog.at_level(logging.ERROR, logger="swarmmind.services.audit_writer"):
             self.writer.write(event_type="run.started", project_id="proj-1")

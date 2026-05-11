@@ -1,13 +1,13 @@
 """Tests for CapabilityGuardMiddleware."""
 
 import json
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from swarmmind.agents.middlewares.capability_guard_middleware import (
-    CapabilityGuardMiddleware,
     GUARD_MARKER,
+    CapabilityGuardMiddleware,
 )
 from swarmmind.services.risk_policy import RiskTier
 from swarmmind.services.run_context import RiskPolicy
@@ -80,9 +80,7 @@ class TestCapabilityGuardMiddleware:
 
     def test_on_guard_callback_not_called_for_safe_tool(self):
         captured = []
-        mw = CapabilityGuardMiddleware(
-            risk_policy=RiskPolicy.MODERATE, on_guard=lambda *a: captured.append(a)
-        )
+        mw = CapabilityGuardMiddleware(risk_policy=RiskPolicy.MODERATE, on_guard=lambda *a: captured.append(a))
         handler = MagicMock(return_value="ok")
         mw.wrap_tool_call(_make_request("web_search"), handler)
         assert captured == []
