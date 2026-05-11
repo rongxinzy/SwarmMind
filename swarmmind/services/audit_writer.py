@@ -19,7 +19,7 @@ class AuditWriter:
     def __init__(self, audit_log_repo: Any) -> None:
         self._repo = audit_log_repo
 
-    def write(
+    def write(  # noqa: PLR0913
         self,
         *,
         event_type: str,

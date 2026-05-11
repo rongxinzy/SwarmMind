@@ -6,6 +6,8 @@ import enum
 
 
 class RiskTier(str, enum.Enum):
+    """Risk tier for capability classification."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"

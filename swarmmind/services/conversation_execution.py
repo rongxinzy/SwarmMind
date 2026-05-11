@@ -18,7 +18,7 @@ from swarmmind.models import (
 )
 
 if TYPE_CHECKING:
-    from swarmmind.services.run_context import RunContext, RiskPolicy
+    from swarmmind.services.run_context import RunContext
     from swarmmind.services.run_lifecycle import RunLifecycleService
 
 
@@ -335,13 +335,13 @@ class ConversationExecutionService:
             if run_context.risk_policy != RiskPolicy.PERMISSIVE:
                 middlewares = [CapabilityGuardMiddleware(risk_policy=run_context.risk_policy, on_guard=on_guard)]
 
-        kwargs: dict = dict(
-            runtime_instance=runtime_instance,
-            default_model=runtime_options.model_name,
-            thinking_enabled=runtime_options.thinking_enabled,
-            subagent_enabled=runtime_options.subagent_enabled,
-            plan_mode=runtime_options.plan_mode,
-        )
+        kwargs: dict = {
+            "runtime_instance": runtime_instance,
+            "default_model": runtime_options.model_name,
+            "thinking_enabled": runtime_options.thinking_enabled,
+            "subagent_enabled": runtime_options.subagent_enabled,
+            "plan_mode": runtime_options.plan_mode,
+        }
         if middlewares is not None:
             kwargs["middlewares"] = middlewares
         return self._runtime_adapter_cls(**kwargs)

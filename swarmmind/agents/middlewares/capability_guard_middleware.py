@@ -48,14 +48,13 @@ class CapabilityGuardMiddleware(AgentMiddleware):
         risk_policy: RiskPolicy,
         on_guard: Callable[[str, str, dict], None] | None = None,
     ) -> None:
-        """
-        Args:
-            risk_policy: Determines which tiers trigger the guard.
-                MODERATE → block HIGH only.
-                STRICT   → block MEDIUM and HIGH.
-                PERMISSIVE → block nothing (middleware is a no-op).
-            on_guard: Optional callback invoked (synchronously) when a guard
-                fires. Signature: on_guard(capability, risk_tier_value, evidence).
+        """Args:
+        risk_policy: Determines which tiers trigger the guard.
+            MODERATE → block HIGH only.
+            STRICT   → block MEDIUM and HIGH.
+            PERMISSIVE → block nothing (middleware is a no-op).
+        on_guard: Optional callback invoked (synchronously) when a guard
+            fires. Signature: on_guard(capability, risk_tier_value, evidence).
         """
         self._risk_policy = risk_policy
         self._on_guard = on_guard
