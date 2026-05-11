@@ -35,8 +35,6 @@ class TestRegisterAndResolve:
     def test_wait_before_resolve(self):
         run_suspension.register("run-2")
 
-        resolved_decision = []
-
         def _resolver():
             time.sleep(0.05)
             run_suspension.resolve("run-2", "rejected", "too risky")

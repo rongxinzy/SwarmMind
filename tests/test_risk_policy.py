@@ -1,8 +1,6 @@
 """Tests for swarmmind.services.risk_policy."""
 
-import pytest
-
-from swarmmind.services.risk_policy import RiskTier, classify, CAPABILITY_RISK
+from swarmmind.services.risk_policy import CAPABILITY_RISK, RiskTier, classify
 
 
 class TestClassify:

@@ -1,8 +1,6 @@
 """Tests for swarmmind.services.audit_writer."""
 
-from unittest.mock import MagicMock, call
-
-import pytest
+from unittest.mock import MagicMock
 
 from swarmmind.services.audit_writer import AuditWriter
 
