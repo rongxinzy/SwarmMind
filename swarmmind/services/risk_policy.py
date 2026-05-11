@@ -30,9 +30,11 @@ CAPABILITY_RISK: dict[str, RiskTier] = {
     # File writes
     "write_file": RiskTier.MEDIUM,
     "create_file": RiskTier.MEDIUM,
+    "edit_file": RiskTier.MEDIUM,
     "delete_file": RiskTier.HIGH,
     "tools.write_file": RiskTier.MEDIUM,
     "tools.create_file": RiskTier.MEDIUM,
+    "tools.edit_file": RiskTier.MEDIUM,
     "tools.delete_file": RiskTier.HIGH,
     # External HTTP writes
     "http_post": RiskTier.MEDIUM,

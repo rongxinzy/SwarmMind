@@ -1,6 +1,6 @@
 """Tests for swarmmind.services.audit_writer."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from swarmmind.services.audit_writer import AuditWriter
 
@@ -64,10 +64,9 @@ class TestAuditWriter:
         result = self.writer.write(event_type="run.started", project_id="proj-1")
         assert result is None
 
-    def test_write_logs_on_exception(self, caplog):
-        import logging
-
+    def test_write_logs_on_exception(self):
         self.repo.create.side_effect = ValueError("bad data")
-        with caplog.at_level(logging.ERROR, logger="swarmmind.services.audit_writer"):
+        with patch("swarmmind.services.audit_writer.logger") as mock_logger:
             self.writer.write(event_type="run.started", project_id="proj-1")
-        assert any("AuditWriter.write failed" in r.message for r in caplog.records)
+        mock_logger.exception.assert_called_once()
+        assert "AuditWriter.write failed" in mock_logger.exception.call_args[0][0]

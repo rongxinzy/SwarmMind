@@ -277,7 +277,25 @@ class ConversationExecutionService:
             except Exception:
                 self._logger.exception("Failed to create ApprovalRequest for capability guard")
 
-        if self._run_lifecycle is not None and approval_id is not None:
+        if approval_id is None:
+            # ApprovalRequest creation failed — fail the run deterministically
+            # rather than leaving it in a non-resumable waiting_approval state.
+            self._logger.error(
+                "Cannot pause run for approval: no approval_id. run_id=%s capability=%s",
+                run_context.run_id,
+                capability,
+            )
+            if self._run_lifecycle is not None:
+                self._run_lifecycle.fail(run_context, "RUNTIME_ERROR", "Failed to create ApprovalRequest")
+            yield self._serialize_stream_event(
+                "error",
+                code="RUNTIME_ERROR",
+                message=f"capability guard triggered for {capability} but approval could not be created",
+            )
+            yield self._serialize_stream_event("done")
+            return
+
+        if self._run_lifecycle is not None:
             self._run_lifecycle.pause_for_approval(run_context, approval_id)
 
         yield self._serialize_stream_event(
