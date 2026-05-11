@@ -226,6 +226,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
         thinking_enabled: bool = True,
         subagent_enabled: bool = False,
         plan_mode: bool = False,
+        middlewares: list | None = None,
     ) -> None:
         # Initialize BaseAgent (sets self.memory, loads system_prompt from DB)
         super().__init__(agent_id="general", domain="general")
@@ -244,6 +245,7 @@ class DeerFlowRuntimeAdapter(BaseAgent):
             subagent_enabled=subagent_enabled,
             plan_mode=plan_mode,
             system_prompt=self._system_prompt,
+            middlewares=middlewares or [],
         )
 
     @property

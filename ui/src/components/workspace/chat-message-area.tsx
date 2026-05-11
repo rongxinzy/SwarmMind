@@ -4,6 +4,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 
 import { MessageBubble, SuggestedFollowUps } from "@/components/workspace/chat-message-ui";
 import { ClarificationCard } from "@/components/workspace/messages/clarification-card";
+import { ApprovalCard } from "@/components/workspace/messages/approval-card";
 import { SubtaskCard } from "@/components/workspace/messages/subtask-card";
 import { TraceSummary } from "@/components/workspace/messages/trace-summary";
 import { parseClarificationContent } from "@/core/messages/clarification";
@@ -18,11 +19,20 @@ interface PendingClarification {
   content: string;
 }
 
+interface PendingApproval {
+  approvalId: string;
+  capability: string;
+  riskTier: "low" | "medium" | "high";
+  runId?: string;
+  projectId?: string;
+}
+
 interface ChatMessageAreaProps {
   isLoading: boolean;
   messages: ChatMessage[];
   conversationId?: string;
   pendingClarification: PendingClarification | null;
+  pendingApproval?: PendingApproval | null;
   tasks: Record<string, Subtask>;
   onClarificationRespond: (response: string, toolCallId: string) => void;
   onPendingClarificationHandled: () => void;
@@ -148,6 +158,7 @@ export function ChatMessageArea({
   messages,
   conversationId,
   pendingClarification,
+  pendingApproval,
   tasks,
   onClarificationRespond,
   onPendingClarificationHandled,
@@ -245,6 +256,23 @@ export function ChatMessageArea({
               return null;
             }
           })()}
+        </motion.div>
+      ) : null}
+
+      {pendingApproval ? (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-4"
+        >
+          <ApprovalCard
+            approvalId={pendingApproval.approvalId}
+            capability={pendingApproval.capability}
+            riskTier={pendingApproval.riskTier}
+            runId={pendingApproval.runId}
+            projectId={pendingApproval.projectId}
+          />
         </motion.div>
       ) : null}
 

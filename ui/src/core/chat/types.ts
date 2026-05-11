@@ -87,6 +87,14 @@ export type StreamEvent =
   | { type: "status.thinking"; mode?: string; text?: string }
   | { type: "status.running"; step?: number; total_steps?: number }
   | { type: "status.clarification"; question: string }
+  | {
+      type: "status.waiting_approval";
+      approval_id?: string;
+      capability?: string;
+      risk_tier?: string;
+      run_id?: string;
+      project_id?: string;
+    }
   | { type: "status.artifact"; name?: string; artifact_type?: string }
   | { type: "content.accumulated"; text: string }
   | {

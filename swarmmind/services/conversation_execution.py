@@ -18,7 +18,7 @@ from swarmmind.models import (
 )
 
 if TYPE_CHECKING:
-    from swarmmind.services.run_context import RunContext
+    from swarmmind.services.run_context import RunContext, RiskPolicy
     from swarmmind.services.run_lifecycle import RunLifecycleService
 
 
@@ -65,6 +65,7 @@ class ConversationExecutionService:
         db_to_message_fn: Callable[[Any], Message],
         execution_logger: logging.Logger,
         run_lifecycle_service: RunLifecycleService | None = None,
+        approval_request_repo: Any | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
         self._message_repo = message_repo
@@ -86,6 +87,7 @@ class ConversationExecutionService:
         self._db_to_message = db_to_message_fn
         self._logger = execution_logger
         self._run_lifecycle = run_lifecycle_service
+        self._approval_request_repo = approval_request_repo
 
     def send_message(self, conversation_id: str, body: SendMessageRequest) -> SendMessageResponse:
         """Run a non-streaming conversation turn."""
@@ -147,13 +149,22 @@ class ConversationExecutionService:
         runtime_options = self._resolve_runtime_options(body)
         routing_label, running_label = self._general_agent_status_labels(runtime_options)
 
+        # Capability guard tracking — populated by the middleware callback.
+        guard_event: dict | None = None
+
+        def _on_guard(capability: str, risk_tier: str, evidence: dict) -> None:
+            nonlocal guard_event
+            guard_event = {"capability": capability, "risk_tier": risk_tier, "evidence": evidence}
+
         ai_response = ""
         try:
             yield self._serialize_stream_event("status", phase="routing", label=routing_label)
 
             self._dispatch_and_approve(conversation_id, body.content)
             runtime_instance, _thread_id = self._bind_conversation_runtime(conversation_id)
-            runtime_adapter = self._build_runtime_adapter(runtime_instance, runtime_options)
+            runtime_adapter = self._build_runtime_adapter(
+                runtime_instance, runtime_options, run_context=run_context, on_guard=_on_guard
+            )
 
             yield self._serialize_stream_event("status", phase="running", label=running_label)
 
@@ -200,6 +211,11 @@ class ConversationExecutionService:
             error_code = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
             yield self._serialize_stream_event("error", code=error_code, message=ai_response)
 
+        # Capability guard: create ApprovalRequest and pause the run.
+        if guard_event is not None and run_context is not None and run_context.project_id is not None:
+            yield from self._handle_capability_guard(run_context, guard_event)
+            return  # do NOT call finish() — run stays in waiting_approval
+
         if self._run_lifecycle is not None and run_context is not None:
             summary = ai_response[:500] if ai_response else None
             self._run_lifecycle.finish(run_context, summary)
@@ -231,6 +247,52 @@ class ConversationExecutionService:
         yield self._serialize_stream_event("status", phase="completed", label="本轮会话已完成")
         yield self._serialize_stream_event("done")
 
+    def _handle_capability_guard(
+        self, run_context: RunContext, guard_event: dict
+    ) -> Generator[str, None, None]:
+        """Create an ApprovalRequest, pause the run, and emit a waiting_approval event."""
+        capability = guard_event.get("capability", "unknown")
+        risk_tier = guard_event.get("risk_tier", "high")
+        evidence = guard_event.get("evidence", {})
+
+        approval_id: str | None = None
+        if self._approval_request_repo is not None:
+            try:
+                approval = self._approval_request_repo.create(
+                    project_id=run_context.project_id,
+                    run_id=run_context.run_id,
+                    title=f"需要审批：{capability}",
+                    description=f"运行请求执行风险等级为 {risk_tier} 的能力：{capability}",
+                    risk_tier=risk_tier,
+                    requested_capability=capability,
+                    evidence=str(evidence),
+                    approver_role=run_context.approver_role,
+                    recovery_behavior="re_execute",
+                )
+                approval_id = approval.approval_id
+                self._logger.info(
+                    "ApprovalRequest created: approval_id=%s run_id=%s capability=%s",
+                    approval_id,
+                    run_context.run_id,
+                    capability,
+                )
+            except Exception:
+                self._logger.exception("Failed to create ApprovalRequest for capability guard")
+
+        if self._run_lifecycle is not None and approval_id is not None:
+            self._run_lifecycle.pause_for_approval(run_context, approval_id)
+
+        yield self._serialize_stream_event(
+            "status.waiting_approval",
+            approval_id=approval_id,
+            capability=capability,
+            risk_tier=risk_tier,
+            run_id=run_context.run_id,
+            project_id=run_context.project_id,
+        )
+        yield self._serialize_stream_event("status", phase="waiting_approval", label="等待审批中")
+        yield self._serialize_stream_event("done")
+
     def respond_to_clarification(self, conversation_id: str, tool_call_id: str, response: str) -> Message:
         """Persist a clarification response through the normal message path."""
         self._conversation_repo.get_by_id(conversation_id)
@@ -257,11 +319,29 @@ class ConversationExecutionService:
         self._record_supervisor_decision(proposal_id, self._approved_decision)
         return proposal_id
 
-    def _build_runtime_adapter(self, runtime_instance: object, runtime_options: ConversationRuntimeOptions):
-        return self._runtime_adapter_cls(
+    def _build_runtime_adapter(
+        self,
+        runtime_instance: object,
+        runtime_options: ConversationRuntimeOptions,
+        *,
+        run_context: RunContext | None = None,
+        on_guard=None,
+    ):
+        middlewares = None
+        if run_context is not None and run_context.project_id is not None and on_guard is not None:
+            from swarmmind.agents.middlewares.capability_guard_middleware import CapabilityGuardMiddleware
+            from swarmmind.services.run_context import RiskPolicy
+
+            if run_context.risk_policy != RiskPolicy.PERMISSIVE:
+                middlewares = [CapabilityGuardMiddleware(risk_policy=run_context.risk_policy, on_guard=on_guard)]
+
+        kwargs: dict = dict(
             runtime_instance=runtime_instance,
             default_model=runtime_options.model_name,
             thinking_enabled=runtime_options.thinking_enabled,
             subagent_enabled=runtime_options.subagent_enabled,
             plan_mode=runtime_options.plan_mode,
         )
+        if middlewares is not None:
+            kwargs["middlewares"] = middlewares
+        return self._runtime_adapter_cls(**kwargs)
