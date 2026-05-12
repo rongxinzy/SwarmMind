@@ -100,7 +100,10 @@ conversation_support = ConversationSupportService(
     message_repo=message_repo,
     title_generator=generate_title_with_deerflow,
 )
-run_lifecycle_service = RunLifecycleService(run_repo=run_repo)
+from swarmmind.services.audit_writer import AuditWriter
+
+audit_writer = AuditWriter(audit_log_repo=audit_log_repo)
+run_lifecycle_service = RunLifecycleService(run_repo=run_repo, audit_writer=audit_writer)
 runtime_support = RuntimeSupportService(conversation_repo=conversation_repo)
 conversation_trace_service = ConversationTraceService(conversation_repo=conversation_repo)
 message_trace_service = _default_message_trace_service()
@@ -191,6 +194,7 @@ def _conversation_execution_service() -> ConversationExecutionService:
         db_to_message_fn=conversation_support.db_to_message,
         execution_logger=logger,
         run_lifecycle_service=run_lifecycle_service,
+        approval_request_repo=approval_request_repo,
     )
 
 
@@ -419,6 +423,7 @@ app.include_router(
             approval_request_repo=approval_request_repo,
             project_repo=project_repo,
             run_repo=run_repo,
+            audit_writer=audit_writer,
         )
     )
 )

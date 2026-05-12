@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
@@ -16,6 +18,8 @@ from swarmmind.models import (
     UpdateApprovalRequest,
 )
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class ApprovalsRouterDeps:
@@ -24,6 +28,7 @@ class ApprovalsRouterDeps:
     approval_request_repo: object
     project_repo: object
     run_repo: object
+    audit_writer: Any | None = field(default=None)
 
 
 def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
@@ -83,9 +88,16 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
         },
     )
     def update_approval(approval_id: str, body: UpdateApprovalRequest) -> ApprovalRequest:
-        """Update an approval request. Only provided fields are changed."""
+        """Update an approval request. Only provided fields are changed.
+
+        When status transitions to approved or rejected, the associated run's
+        status is updated and an audit entry is written. True mid-stream resume
+        is not implemented in this phase — the run is marked completed/failed
+        and the user may re-send the original message to continue.
+        """
         ar = deps.approval_request_repo.get(approval_id)
         fields: dict[str, object] = {}
+        is_decision = False
         if body.status is not None:
             if body.status in (ApprovalStatus.APPROVED, ApprovalStatus.REJECTED):
                 if ar.status != ApprovalStatus.PENDING.value:
@@ -93,6 +105,7 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
                         status_code=409,
                         detail=f"Only pending requests can be approved or rejected. Current status: {ar.status}",
                     )
+                is_decision = True
             fields["status"] = body.status.value
         if body.decision_reason is not None:
             fields["decision_reason"] = body.decision_reason
@@ -104,7 +117,23 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
             fields["risk_tier"] = body.risk_tier.value
         if not fields:
             return db_to_approval_request(ar)
-        return db_to_approval_request(deps.approval_request_repo.update(approval_id, **fields))
+
+        # Apply run-state transition BEFORE persisting the approval status so
+        # that if the run update fails the approval stays PENDING and can be
+        # retried. Raising here keeps the approval_repo update un-executed.
+        if is_decision and ar.run_id:
+            _apply_decision_to_run(
+                run_id=ar.run_id,
+                project_id=ar.project_id,
+                approval_id=approval_id,
+                decision=body.status.value,  # type: ignore[union-attr]
+                reason=body.decision_reason,
+                deps=deps,
+            )
+
+        updated = deps.approval_request_repo.update(approval_id, **fields)
+
+        return db_to_approval_request(updated)
 
     @router.delete(
         "/approvals/{approval_id}", tags=["approvals"], responses={404: {"description": "Approval request not found"}}
@@ -116,3 +145,43 @@ def build_approvals_router(deps: ApprovalsRouterDeps) -> APIRouter:
         return DeleteApprovalResponse(approval_id=approval_id)
 
     return router
+
+
+def _apply_decision_to_run(
+    *,
+    run_id: str,
+    project_id: str,
+    approval_id: str,
+    decision: str,
+    reason: str | None,
+    deps: ApprovalsRouterDeps,
+) -> None:
+    """Update run status and signal suspension based on an approval decision.
+
+    Raises on run-repo failures so the caller can return an error response and
+    the approval stays PENDING (retryable).
+    """
+    from swarmmind.services import run_suspension
+
+    if decision == ApprovalStatus.APPROVED.value:
+        deps.run_repo.mark_completed(run_id, f"Approved — run completed after approval {approval_id}")
+    else:
+        deps.run_repo.mark_failed(run_id, "approval_rejected", reason or "Approval rejected by operator")
+
+    # Signal any in-process suspension (no-op if run is not suspended in this process).
+    run_suspension.resolve(run_id, decision, reason)
+
+    if deps.audit_writer is not None:
+        try:
+            deps.audit_writer.write(
+                event_type="approval.decided",
+                project_id=project_id,
+                run_id=run_id,
+                approval_id=approval_id,
+                actor="user",
+                actor_type="user",
+                decision=decision,
+                reason=reason,
+            )
+        except Exception:
+            logger.exception("Failed to write audit for approval decision: approval_id=%s", approval_id)

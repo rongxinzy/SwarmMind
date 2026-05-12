@@ -157,6 +157,15 @@ function V0ChatInner({
     { id: string; content: string } | null
   >(null);
 
+  // Approval gate state
+  const [pendingApproval, setPendingApproval] = useState<{
+    approvalId: string;
+    capability: string;
+    riskTier: "low" | "medium" | "high";
+    runId?: string;
+    projectId?: string;
+  } | null>(null);
+
   // Artifacts state (simplified from DeerFlow)
   const [artifacts, setArtifacts] = useState<string[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
@@ -176,6 +185,7 @@ function V0ChatInner({
     setInput("");
     setSelectedMode(DEFAULT_MODE);
     setPendingClarification(null);
+    setPendingApproval(null);
     setSelectedModel(defaultModel);
     shouldStickToBottomRef.current = true;
     setShowScrollToLatest(false);
@@ -282,6 +292,7 @@ function V0ChatInner({
     shouldStickToBottomRef.current = true;
     setShowScrollToLatest(false);
     setPendingClarification(null);
+    setPendingApproval(null);
 
     try {
       const response = await fetch(
@@ -772,6 +783,17 @@ function V0ChatInner({
         });
         return;
 
+      case "status.waiting_approval":
+        setStreamStatus("waiting_approval" as never);
+        setPendingApproval({
+          approvalId: event.approval_id ?? "",
+          capability: event.capability ?? "unknown",
+          riskTier: (event.risk_tier as "low" | "medium" | "high") ?? "high",
+          runId: event.run_id,
+          projectId: event.project_id,
+        });
+        return;
+
       case "status.artifact":
         setStreamStatus("artifact");
         if (event.name) {
@@ -935,7 +957,8 @@ function V0ChatInner({
 
       setChatError(null);
       setIsLoading(true);
-      setPendingClarification(null); // Clear any pending clarification when sending new message
+      setPendingClarification(null);
+      setPendingApproval(null);
       setArtifacts([]);
       setArtifactsOpen(false);
       setSelectedArtifact(null);
@@ -1256,6 +1279,7 @@ function V0ChatInner({
               messages={messages}
               conversationId={currentConversationId ?? undefined}
               pendingClarification={pendingClarification}
+              pendingApproval={pendingApproval}
               tasks={tasks}
               onClarificationRespond={handleClarificationRespond}
               onPendingClarificationHandled={() => {

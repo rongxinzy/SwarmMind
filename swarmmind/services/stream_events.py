@@ -215,6 +215,12 @@ def translate_general_agent_event(
         if tool_name == "ask_clarification":
             return [serialize_stream_event("status.clarification", question=content)]
 
+        # Capability guard marker: intercepted by CapabilityGuardMiddleware.
+        # The actual status.waiting_approval event is emitted by ConversationExecutionService
+        # after the stream completes, so we skip the raw marker here.
+        if content.startswith('{"__capability_guard__"'):
+            return []
+
         if not runtime_options.subagent_enabled:
             return []
 
