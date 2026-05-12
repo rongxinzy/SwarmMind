@@ -19,6 +19,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Search,
+  ShieldCheck,
   Sparkles,
   Trash2,
   X,
@@ -40,6 +41,7 @@ export type SidebarView =
   | "projects"
   | "recent"
   | "schedules"
+  | "approvals"
 
 export const VIEW_LABELS: Record<SidebarView, string> = {
   workbench: "工作台",
@@ -51,6 +53,7 @@ export const VIEW_LABELS: Record<SidebarView, string> = {
   projects: "项目",
   recent: "最近记录",
   schedules: "定时任务",
+  approvals: "审批中心",
 }
 
 const projectItems = [
@@ -75,6 +78,7 @@ const capabilityItems: { value: SidebarView; label: string; icon: React.ReactNod
 const utilityItems: { value: SidebarView; label: string; icon: React.ReactNode }[] = [
   { value: "recent", label: "最近记录", icon: <History className="size-4" /> },
   { value: "schedules", label: "定时任务", icon: <Clock3 className="size-4" /> },
+  { value: "approvals", label: "审批中心", icon: <ShieldCheck className="size-4" /> },
 ]
 
 function projectMetaClassName(meta: string) {
@@ -266,6 +270,7 @@ export function Sidebar({
   const railBottomItems: { value: SidebarView; icon: React.ReactNode; label: string }[] = [
     { value: "projects", icon: <FolderKanban className="size-[18px]" />, label: "项目" },
     { value: "schedules", icon: <Clock3 className="size-[18px]" />, label: "定时任务" },
+    { value: "approvals", icon: <ShieldCheck className="size-[18px]" />, label: "审批中心" },
   ]
 
   const handleSelectConversation = (conversationId: string) => {

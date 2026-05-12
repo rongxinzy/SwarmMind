@@ -1,8 +1,11 @@
 import { consumeNdjsonStream } from "../chat/stream";
 import type {
+  ApprovalListResponse,
+  AuditLogListResponse,
   Project,
   ProjectListResponse,
   ProjectOverviewResponse,
+  RunEvent,
 } from "./types";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -75,4 +78,25 @@ export async function consumeProjectStream<T>(
 ): Promise<void> {
   const res = await streamProjectMessage(projectId, request);
   await consumeNdjsonStream<T>(res.body!, onEvent, onParseError);
+}
+
+export async function getRunEvents(projectId: string, runId: string): Promise<RunEvent[]> {
+  const data = await fetchJson<AuditLogListResponse>(`/audit-logs?project_id=${projectId}&run_id=${runId}`);
+  return data.items;
+}
+
+export async function listApprovals(params?: { project_id?: string; status?: string }): Promise<ApprovalListResponse> {
+  const qs = new URLSearchParams();
+  if (params?.project_id) qs.set("project_id", params.project_id);
+  if (params?.status) qs.set("status", params.status);
+  const query = qs.toString() ? `?${qs}` : "";
+  return fetchJson<ApprovalListResponse>(`/approvals${query}`);
+}
+
+export async function patchApproval(approvalId: string, body: { status: string; decision_reason?: string | null }): Promise<void> {
+  await fetch(`/approvals/${approvalId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }

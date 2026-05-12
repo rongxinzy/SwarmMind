@@ -72,8 +72,33 @@ export interface ApprovalRequest {
   title: string;
   status: string;
   risk_tier: string;
+  run_id?: string | null;
+  requested_capability?: string | null;
+  description?: string | null;
+  decision_reason?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ApprovalListResponse {
+  items: ApprovalRequest[];
+  total: number;
+}
+
+export interface RunEvent {
+  audit_id: string;
+  audit_type: string;
+  project_id?: string | null;
+  run_id?: string | null;
+  actor_id?: string | null;
+  decision?: string | null;
+  reason?: string | null;
+  created_at: string;
+}
+
+export interface AuditLogListResponse {
+  items: RunEvent[];
+  total: number;
 }
 
 export interface ProjectOverviewStats {
