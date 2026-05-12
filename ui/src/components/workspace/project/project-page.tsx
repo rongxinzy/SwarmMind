@@ -13,17 +13,31 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { getProjectOverview } from "@/core/projects/api";
-import type { ProjectOverviewResponse } from "@/core/projects/types";
+import type { ProjectOverviewResponse, Run } from "@/core/projects/types";
 import { cn } from "@/lib/utils";
+import { ApprovalCard } from "@/components/workspace/messages/approval-card";
+import { ProjectComposer } from "./project-composer";
+import { ProjectActiveRun } from "./project-active-run";
+import { ProjectRunDetail } from "./project-run-detail";
 
 interface ProjectPageProps {
   projectId: string;
 }
 
+type PageMode = "idle" | "running" | "waiting_approval";
+
 export function ProjectPage({ projectId }: ProjectPageProps) {
   const [overview, setOverview] = useState<ProjectOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [mode, setMode] = useState<PageMode>("idle");
+  const [activePrompt, setActivePrompt] = useState<string>("");
+  const [selectedRun, setSelectedRun] = useState<Run | null>(null);
+  const [pendingApproval, setPendingApproval] = useState<{
+    approvalId: string;
+    capability: string;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +62,22 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
       cancelled = true;
     };
   }, [projectId]);
+
+  function handleSubmit(content: string) {
+    setActivePrompt(content);
+    setMode("running");
+  }
+
+  function handleTerminal(status: "completed" | "failed") {
+    void status; // acknowledge the parameter
+    setMode("idle");
+    getProjectOverview(projectId).then(setOverview).catch(() => {});
+  }
+
+  function handleWaitingApproval(approvalId: string, capability: string) {
+    setMode("waiting_approval");
+    setPendingApproval({ approvalId, capability });
+  }
 
   if (loading) {
     return (
@@ -121,6 +151,31 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
         />
       </div>
 
+      {/* Composer */}
+      <ProjectComposer
+        disabled={mode !== "idle"}
+        onSubmit={handleSubmit}
+      />
+
+      {/* Active run panel */}
+      {mode === "running" && (
+        <ProjectActiveRun
+          projectId={projectId}
+          prompt={activePrompt}
+          onTerminal={handleTerminal}
+          onWaitingApproval={handleWaitingApproval}
+        />
+      )}
+
+      {/* Waiting for approval */}
+      {mode === "waiting_approval" && pendingApproval && (
+        <ApprovalCard
+          approvalId={pendingApproval.approvalId}
+          capability={pendingApproval.capability}
+          riskTier="high"
+        />
+      )}
+
       {/* Recent tasks */}
       {recent_tasks.length > 0 && (
         <Section title="近期任务">
@@ -141,7 +196,11 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
         <Section title="近期执行">
           <ul className="space-y-1.5">
             {recent_runs.map((run) => (
-              <li key={run.run_id} className="flex items-center gap-2 text-sm">
+              <li
+                key={run.run_id}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-0.5 text-sm transition-colors hover:bg-muted/60"
+                onClick={() => { setSelectedRun(run); }}
+              >
                 <StatusDot status={run.status} />
                 <span className="flex-1 truncate text-muted-foreground">
                   {run.goal ?? run.run_id.slice(0, 8)}
@@ -170,6 +229,15 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
             ))}
           </ul>
         </Section>
+      )}
+
+      {/* Run detail drawer */}
+      {selectedRun && (
+        <ProjectRunDetail
+          projectId={projectId}
+          run={selectedRun}
+          onClose={() => { setSelectedRun(null); }}
+        />
       )}
     </div>
   );

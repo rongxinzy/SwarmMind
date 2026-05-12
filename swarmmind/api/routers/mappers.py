@@ -43,6 +43,7 @@ def db_to_task(task) -> Task:
         task_id=task.task_id,
         project_id=task.project_id,
         run_id=task.run_id,
+        step_key=getattr(task, "step_key", None),
         title=task.title,
         description=task.description,
         status=task.status,

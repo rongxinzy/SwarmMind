@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from fastapi import HTTPException
 from sqlmodel import select
@@ -113,3 +114,71 @@ class TaskRepository:
             task = session.get(TaskDB, task_id)
             if task is not None:
                 session.delete(task)
+
+    def upsert_step(
+        self,
+        *,
+        run_id: str,
+        project_id: str,
+        step_key: str,
+        title: str,
+        description: str | None = None,
+        status: str = "todo",
+        source_event_at: datetime | None = None,
+    ) -> TaskDB:
+        """Create or update a task row keyed by (run_id, step_key)."""
+        with session_scope() as session:
+            existing = session.exec(select(TaskDB).where(TaskDB.run_id == run_id, TaskDB.step_key == step_key)).first()
+            if existing is not None:
+                existing.title = title
+                if description is not None:
+                    existing.description = description
+                existing.updated_at = utc_now()
+                session.add(existing)
+                session.commit()
+                session.refresh(existing)
+                session.expunge(existing)
+                return existing
+            task = TaskDB(
+                task_id=str(uuid.uuid4()),
+                project_id=project_id,
+                run_id=run_id,
+                step_key=step_key,
+                title=title,
+                description=description,
+                status=status,
+                source_event_at=source_event_at,
+                created_at=utc_now(),
+                updated_at=utc_now(),
+            )
+            session.add(task)
+            session.commit()
+            session.refresh(task)
+            session.expunge(task)
+            return task
+
+    def update_status_by_step(
+        self,
+        *,
+        run_id: str,
+        step_key: str,
+        status: str,
+    ) -> TaskDB | None:
+        """Update status for a task identified by (run_id, step_key).
+
+        Applies status precedence: done > blocked > in_progress > todo.
+        Returns None if no matching row found.
+        """
+        _PRECEDENCE = {"done": 4, "blocked": 3, "in_progress": 2, "todo": 1}  # noqa: N806
+        with session_scope() as session:
+            existing = session.exec(select(TaskDB).where(TaskDB.run_id == run_id, TaskDB.step_key == step_key)).first()
+            if existing is None:
+                return None
+            if _PRECEDENCE.get(status, 0) > _PRECEDENCE.get(existing.status, 0):
+                existing.status = status
+                existing.updated_at = utc_now()
+                session.add(existing)
+                session.commit()
+                session.refresh(existing)
+            session.expunge(existing)
+            return existing

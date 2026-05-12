@@ -420,6 +420,7 @@ class Task(BaseModel):
     task_id: str
     project_id: str
     run_id: str | None = None
+    step_key: str | None = None
     title: str
     description: str | None = None
     status: TaskStatus = TaskStatus.TODO

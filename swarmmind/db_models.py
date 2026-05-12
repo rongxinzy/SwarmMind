@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+import sqlalchemy as sa
 from sqlalchemy import JSON, Column, Index, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
@@ -384,6 +385,8 @@ class TaskDB(SQLModel, table=True):
     task_id: str = Field(primary_key=True)
     project_id: str = Field(foreign_key="projects.project_id")
     run_id: str | None = Field(default=None, foreign_key="runs.run_id")
+    step_key: str | None = Field(default=None, index=True)
+    source_event_at: datetime | None = Field(default=None)
     title: str
     description: str | None = None
     status: str = Field(default="todo")  # 'todo' | 'in_progress' | 'blocked' | 'done'
@@ -398,6 +401,7 @@ class TaskDB(SQLModel, table=True):
         Index("idx_tasks_project", "project_id"),
         Index("idx_tasks_status", "status"),
         Index("idx_tasks_run", "run_id"),
+        sa.Index("idx_tasks_run_step", "run_id", "step_key", unique=True),
     )
 
 
