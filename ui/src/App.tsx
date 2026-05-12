@@ -13,6 +13,7 @@ import {
 
 import { Workbench } from "@/components/workbench";
 import { Button } from "@/components/ui/button";
+import { ApprovalsPage } from "@/components/workspace/approvals/approvals-page";
 import { ProjectPage } from "@/components/workspace/project/project-page";
 import { ProjectEmptyState } from "@/components/workspace/project/project-empty-state";
 import { promoteConversation } from "@/core/projects/api";
@@ -39,6 +40,7 @@ const viewDescriptions: Record<SidebarView, string> = {
   projects: "项目空间承接执行边界、审批节奏和交付结果。",
   recent: "快速回到最近任务、结果和生成上下文。",
   schedules: "周期性生成、汇总和提醒统一纳入工作流调度。",
+  approvals: "查看和处理待审批的运行请求。",
 };
 
 const viewActions: Record<SidebarView, { primary: string; secondary: string }> =
@@ -52,6 +54,7 @@ const viewActions: Record<SidebarView, { primary: string; secondary: string }> =
     projects: { primary: "新建项目", secondary: "查看模板" },
     recent: { primary: "继续任务", secondary: "查看全部" },
     schedules: { primary: "新建任务", secondary: "查看日志" },
+    approvals: { primary: "刷新", secondary: "筛选" },
   };
 
 function PlaceholderView({
@@ -422,7 +425,7 @@ export default function App() {
           <Workbench
             onStartChat={handleStartChat}
             onOpenProjects={() => { handleViewChange("projects"); }}
-            onOpenApprovals={() => { handleViewChange("recent"); }}
+            onOpenApprovals={() => { handleViewChange("approvals"); }}
           />
         );
       case "chat":
@@ -515,6 +518,8 @@ export default function App() {
             action="新建任务"
           />
         );
+      case "approvals":
+        return <ApprovalsPage />;
       default:
         return null;
     }
