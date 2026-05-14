@@ -100,3 +100,11 @@ export async function patchApproval(approvalId: string, body: { status: string; 
     body: JSON.stringify(body),
   });
 }
+
+export async function getProjectTasks(projectId: string): Promise<{ items: import("./types").Task[]; total: number }> {
+  return fetchJson(`/projects/${projectId}/tasks`);
+}
+
+export async function getProjectAuditLogs(projectId: string): Promise<AuditLogListResponse> {
+  return fetchJson<AuditLogListResponse>(`/audit-logs?project_id=${projectId}`);
+}

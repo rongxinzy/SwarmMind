@@ -19,6 +19,8 @@ import { ApprovalCard } from "@/components/workspace/messages/approval-card";
 import { ProjectComposer } from "./project-composer";
 import { ProjectActiveRun } from "./project-active-run";
 import { ProjectRunDetail } from "./project-run-detail";
+import { TasksPanel } from "./tasks-panel";
+import { AuditTimeline } from "./audit-timeline";
 
 interface ProjectPageProps {
   projectId: string;
@@ -38,6 +40,7 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
     approvalId: string;
     capability: string;
   } | null>(null);
+  const [taskRefreshTick, setTaskRefreshTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,8 +72,9 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
   }
 
   function handleTerminal(status: "completed" | "failed") {
-    void status; // acknowledge the parameter
+    void status;
     setMode("idle");
+    setTaskRefreshTick((t) => t + 1);
     getProjectOverview(projectId).then(setOverview).catch(() => {});
   }
 
@@ -96,7 +100,7 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
     );
   }
 
-  const { project, stats, recent_tasks, recent_artifacts, recent_runs } = overview;
+  const { project, stats, recent_artifacts, recent_runs } = overview;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
@@ -176,20 +180,10 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
         />
       )}
 
-      {/* Recent tasks */}
-      {recent_tasks.length > 0 && (
-        <Section title="近期任务">
-          <ul className="space-y-1.5">
-            {recent_tasks.map((task) => (
-              <li key={task.task_id} className="flex items-center gap-2 text-sm">
-                <StatusDot status={task.status} />
-                <span className="flex-1 truncate">{task.title}</span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">{task.status}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+      {/* Task Kanban */}
+      <Section title="任务看板">
+        <TasksPanel projectId={projectId} refreshTick={taskRefreshTick} />
+      </Section>
 
       {/* Recent runs */}
       {recent_runs.length > 0 && (
@@ -230,6 +224,11 @@ export function ProjectPage({ projectId }: ProjectPageProps) {
           </ul>
         </Section>
       )}
+
+      {/* Audit timeline */}
+      <Section title="审计时间线">
+        <AuditTimeline projectId={projectId} />
+      </Section>
 
       {/* Run detail drawer */}
       {selectedRun && (

@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ApprovalsPage } from "@/components/workspace/approvals/approvals-page";
 import { ProjectPage } from "@/components/workspace/project/project-page";
 import { ProjectEmptyState } from "@/components/workspace/project/project-empty-state";
-import { promoteConversation } from "@/core/projects/api";
+import { listApprovals, promoteConversation } from "@/core/projects/api";
 import {
   Card,
   CardContent,
@@ -172,6 +172,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isRecentLoading, setIsRecentLoading] = useState(true);
   const [isPromoting, setIsPromoting] = useState(false);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
 
   const fetchRecentConversations = useCallback(async () => {
     try {
@@ -309,6 +310,17 @@ export default function App() {
     return () => {
       window.removeEventListener("popstate", handlePopState);
     };
+  }, []);
+
+  useEffect(() => {
+    function fetchPendingCount() {
+      listApprovals({ status: "pending" })
+        .then((res) => { setPendingApprovalsCount(res.total); })
+        .catch(() => { /* non-critical; keep stale count */ });
+    }
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 30000);
+    return () => { clearInterval(interval); };
   }, []);
 
   const handleViewChange = (view: SidebarView) => {
@@ -545,6 +557,7 @@ export default function App() {
         onSearchQueryChange={setSearchQuery}
         isRecentLoading={isRecentLoading}
         activeConversationId={activeConversationId}
+        pendingApprovalsCount={pendingApprovalsCount}
       />
 
       <main
