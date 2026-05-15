@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CheckCircle2, Circle, Clock, Loader2, OctagonX } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ type KanbanColumn = {
   key: string;
   label: string;
   statuses: string[];
-  icon: React.ReactNode;
+  icon: ReactNode;
   className: string;
 };
 
