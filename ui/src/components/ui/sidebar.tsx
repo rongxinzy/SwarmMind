@@ -232,6 +232,7 @@ interface SidebarProps {
   onSearchQueryChange?: (query: string) => void
   isRecentLoading?: boolean
   activeConversationId?: string
+  pendingApprovalsCount?: number
 }
 
 export function Sidebar({
@@ -247,6 +248,7 @@ export function Sidebar({
   onSearchQueryChange,
   isRecentLoading = false,
   activeConversationId,
+  pendingApprovalsCount = 0,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [deletingConversationId, setDeletingConversationId] = React.useState<string | null>(null)
@@ -374,6 +376,9 @@ export function Sidebar({
                   active={activeView === item.value}
                   icon={item.icon}
                   label={item.label}
+                  badge={item.value === "approvals" && pendingApprovalsCount > 0
+                    ? String(pendingApprovalsCount)
+                    : undefined}
                   onClick={() => { handleSelect(item.value); }}
                 />
               ))}
@@ -510,19 +515,25 @@ export function Sidebar({
 
       <div className="mt-auto flex flex-col items-center gap-3">
         {railBottomItems.map((item) => (
-          <Button
-            key={item.value}
-            variant="ghost"
-            size="icon"
-            onClick={() => { handleSelect(item.value); }}
-            title={item.label}
-            className={cn(
-              "size-11 rounded-2xl border border-transparent text-muted-foreground hover:bg-sidebar-accent/75 hover:text-foreground",
-              activeView === item.value && "bg-sidebar-accent text-foreground",
+          <div key={item.value} className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => { handleSelect(item.value); }}
+              title={item.label}
+              className={cn(
+                "size-11 rounded-2xl border border-transparent text-muted-foreground hover:bg-sidebar-accent/75 hover:text-foreground",
+                activeView === item.value && "bg-sidebar-accent text-foreground",
+              )}
+            >
+              {item.icon}
+            </Button>
+            {item.value === "approvals" && pendingApprovalsCount > 0 && (
+              <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-amber-500 text-[9px] font-bold text-white">
+                {pendingApprovalsCount > 9 ? "9+" : pendingApprovalsCount}
+              </span>
             )}
-          >
-            {item.icon}
-          </Button>
+          </div>
         ))}
       </div>
     </div>

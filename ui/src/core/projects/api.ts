@@ -6,6 +6,7 @@ import type {
   ProjectListResponse,
   ProjectOverviewResponse,
   RunEvent,
+  Task,
 } from "./types";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -99,4 +100,12 @@ export async function patchApproval(approvalId: string, body: { status: string; 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+export async function getProjectTasks(projectId: string): Promise<{ items: Task[]; total: number }> {
+  return fetchJson<{ items: Task[]; total: number }>(`/projects/${projectId}/tasks`);
+}
+
+export async function getProjectAuditLogs(projectId: string): Promise<AuditLogListResponse> {
+  return fetchJson<AuditLogListResponse>(`/audit-logs?project_id=${projectId}`);
 }
