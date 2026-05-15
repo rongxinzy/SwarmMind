@@ -123,7 +123,7 @@ export function AuditTimeline({ projectId }: AuditTimelineProps) {
     <ol className="relative space-y-0 border-l border-border pl-5">
       {events.map((evt, idx) => {
         const showDayLabel =
-          idx === 0 || !isSameDay(evt.created_at, events[idx - 1]!.created_at);
+          idx === 0 || !isSameDay(evt.created_at, events[idx - 1].created_at);
 
         return (
           <li key={evt.audit_id} className="relative pb-4 last:pb-0">
