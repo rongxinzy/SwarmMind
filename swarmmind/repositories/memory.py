@@ -52,6 +52,30 @@ class MemoryRepository:
                 session.expunge(r)
             return list(results)
 
+    def list_by_filters(
+        self,
+        *,
+        layer: str | None = None,
+        scope_id: str | None = None,
+        tags: list[str] | None = None,
+        limit: int = 100,
+    ) -> list[MemoryEntryDB]:
+        """Read memory entries by optional layer, scope, and tag filters."""
+        with session_scope() as session:
+            query = select(MemoryEntryDB)
+            if layer:
+                query = query.where(MemoryEntryDB.layer == layer)
+            if scope_id:
+                query = query.where(MemoryEntryDB.scope_id == scope_id)
+            if tags:
+                for tag in tags:
+                    query = query.where(MemoryEntryDB.tags.contains(tag))
+            query = query.order_by(MemoryEntryDB.updated_at.desc()).limit(limit)
+            results = session.exec(query).all()
+            for r in results:
+                session.expunge(r)
+            return list(results)
+
     def write(
         self,
         scope: MemoryScope,

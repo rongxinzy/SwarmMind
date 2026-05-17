@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlmodel import select
 
 from swarmmind.db import session_scope
@@ -15,15 +16,21 @@ from swarmmind.time_utils import utc_now
 class ProjectRepository:
     """Repository for project operations."""
 
-    def list_all(self) -> list[ProjectDB]:
+    def list_all(self, *, limit: int | None = None, offset: int = 0) -> list[ProjectDB]:
         """List all projects ordered by updated_at descending."""
         with session_scope() as session:
-            results = session.exec(
-                select(ProjectDB).order_by(ProjectDB.updated_at.desc()),
-            ).all()
+            statement = select(ProjectDB).order_by(ProjectDB.updated_at.desc()).offset(offset)
+            if limit is not None:
+                statement = statement.limit(limit)
+            results = session.exec(statement).all()
             for r in results:
                 session.expunge(r)
             return list(results)
+
+    def count_all(self) -> int:
+        """Return total project count."""
+        with session_scope() as session:
+            return session.exec(select(func.count(ProjectDB.project_id))).one()
 
     def get_by_id(self, project_id: str) -> ProjectDB:
         """Get a project by ID or raise 404."""

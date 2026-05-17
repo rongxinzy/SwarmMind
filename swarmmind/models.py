@@ -133,6 +133,13 @@ class MemoryEntry(BaseModel):
     last_writer_agent_id: str | None = None
 
 
+class MemoryListResponse(BaseModel):
+    """Response containing layered-memory entries."""
+
+    items: list[MemoryEntry]
+    total: int
+
+
 class MemoryContext(BaseModel):
     """Carries scope information through a request lifecycle."""
 

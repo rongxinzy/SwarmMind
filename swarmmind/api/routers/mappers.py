@@ -10,6 +10,9 @@ from swarmmind.models import (
     ApprovalStatus,
     Artifact,
     AuditLogEntry,
+    MemoryEntry,
+    MemoryLayer,
+    MemoryScope,
     Project,
     ProjectAgentTeamInstance,
     RiskTier,
@@ -112,6 +115,28 @@ def db_to_audit_log_entry(entry) -> AuditLogEntry:
         reason=entry.reason,
         metadata=entry.extra_data or {},
         timestamp=entry.timestamp.isoformat() if entry.timestamp else "",
+    )
+
+
+def db_to_memory_entry(entry) -> MemoryEntry:
+    """Map a MemoryEntryDB row to a MemoryEntry Pydantic model."""
+    tags = entry.tags or []
+    if isinstance(tags, str):
+        try:
+            tags = json.loads(tags)
+        except json.JSONDecodeError:
+            tags = []
+    return MemoryEntry(
+        id=entry.id,
+        scope=MemoryScope(layer=MemoryLayer(entry.layer), scope_id=entry.scope_id),
+        key=entry.key,
+        value=entry.value,
+        tags=tags,
+        created_at=entry.created_at,
+        updated_at=entry.updated_at,
+        ttl=entry.ttl,
+        version=entry.version,
+        last_writer_agent_id=entry.last_writer_agent_id,
     )
 
 

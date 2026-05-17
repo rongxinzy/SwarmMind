@@ -9,8 +9,9 @@ import os
 
 from dotenv import load_dotenv
 
-# Load .env file if present (override system env vars so .env takes precedence)
-load_dotenv(override=True)
+# Load .env file if present. Explicit process env vars take precedence so CLI/API
+# smoke tests and deployment overrides can select isolated databases and runtimes.
+load_dotenv(override=False)
 
 # Database
 # Preferred: a full SQLAlchemy URL so deployments can switch dialects by config only.

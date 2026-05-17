@@ -15,6 +15,7 @@ from swarmmind.api.routers.agent_teams import AgentTeamsRouterDeps, build_agent_
 from swarmmind.api.routers.approvals import ApprovalsRouterDeps, build_approvals_router
 from swarmmind.api.routers.audit_logs import AuditLogsRouterDeps, build_audit_logs_router
 from swarmmind.api.routers.legacy_supervisor import LegacySupervisorRouterDeps, build_legacy_supervisor_router
+from swarmmind.api.routers.memory import MemoryRouterDeps, build_memory_router
 from swarmmind.api.routers.projects import ProjectsRouterDeps, build_projects_router
 from swarmmind.api.routers.promotions import PromotionsRouterDeps, build_promotions_router
 from swarmmind.api.routers.runs import RunsRouterDeps, build_runs_router
@@ -438,6 +439,8 @@ app.include_router(
         )
     )
 )
+
+app.include_router(build_memory_router(MemoryRouterDeps(memory_repo=memory_repo)))
 
 app.include_router(
     build_agent_teams_router(
