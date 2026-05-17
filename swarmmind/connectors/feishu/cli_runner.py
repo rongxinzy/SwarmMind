@@ -49,7 +49,7 @@ def run_lark_cli(
         output_format: Output format flag passed to lark-cli (``"json"`` or ``"ndjson"``).
 
     Returns:
-        Parsed JSON output (dict or list), or the raw string if unparseable.
+        Parsed JSON output (dict or list), or the raw string if unparsable.
 
     Raises:
         LarkCLINotFoundError: lark-cli is not installed.
@@ -59,11 +59,12 @@ def run_lark_cli(
     cmd = [cli_path, *args, "--format", output_format]
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired as exc:
         raise LarkCLIError(
@@ -98,11 +99,12 @@ def run_lark_cli_ndjson(
     cmd = [cli_path, *args, "--format", "ndjson"]
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             cmd,
             capture_output=True,
             text=True,
             timeout=timeout,
+            check=False,
         )
     except subprocess.TimeoutExpired as exc:
         raise LarkCLIError(
@@ -119,12 +121,12 @@ def run_lark_cli_ndjson(
         )
 
     lines = []
-    for line in result.stdout.splitlines():
-        line = line.strip()
-        if not line:
+    for raw_line in result.stdout.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
             continue
         try:
-            lines.append(json.loads(line))
+            lines.append(json.loads(stripped))
         except json.JSONDecodeError:
-            lines.append({"raw": line})
+            lines.append({"raw": stripped})
     return lines

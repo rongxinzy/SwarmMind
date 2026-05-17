@@ -40,7 +40,7 @@ class FeishuCLIConnector(BaseConnector):
 
         mcp = build_feishu_mcp_server(port=port)
         # FastMCP.run_async with streamable-http transport
-        await mcp.run_async(transport="streamable-http", host="0.0.0.0", port=port)
+        await mcp.run_async(transport="streamable-http", host="0.0.0.0", port=port)  # noqa: S104
 
     async def start_event_listener(
         self,

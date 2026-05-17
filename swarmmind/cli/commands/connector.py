@@ -144,7 +144,7 @@ def feishu_serve_tools(
 
         try:
             with SwarmMindClient(api_url=state.api_url, api_token=state.api_token) as client:
-                resp = client._request("GET", f"/connectors/{connector_id}")  # noqa: SLF001
+                resp = client._request("GET", f"/connectors/{connector_id}")
                 config = resp.get("config", {}) if isinstance(resp, dict) else {}
         except Exception as exc:
             typer.echo(f"Warning: could not load connector config: {exc}", err=True)
@@ -185,7 +185,7 @@ def feishu_listen_events(
 
         try:
             with SwarmMindClient(api_url=state.api_url, api_token=state.api_token) as client:
-                resp = client._request("GET", f"/connectors/{connector_id}")  # noqa: SLF001
+                resp = client._request("GET", f"/connectors/{connector_id}")
                 config = resp.get("config", {}) if isinstance(resp, dict) else {}
         except Exception as exc:
             typer.echo(f"Warning: could not load connector config: {exc}", err=True)

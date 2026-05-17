@@ -60,7 +60,7 @@ class FeishuEventListener:
             stderr=asyncio.subprocess.PIPE,
         )
 
-        assert self._process.stdout is not None  # noqa: S101
+        assert self._process.stdout is not None
         async for line_bytes in self._process.stdout:
             line = line_bytes.decode("utf-8", errors="replace").strip()
             if not line:
@@ -70,7 +70,7 @@ class FeishuEventListener:
                 if isinstance(event, dict):
                     yield event
             except json.JSONDecodeError:
-                logger.debug("Unparseable event line: %s", line)
+                logger.debug("Unparsable event line: %s", line)
 
     async def _dispatch_to_swarmmind(self, event: dict[str, Any]) -> None:
         """Translate a Feishu event into a SwarmMind API call."""
@@ -170,7 +170,7 @@ class FeishuEventListener:
             self._process.terminate()
             try:
                 await asyncio.wait_for(self._process.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self._process.kill()
 
 
