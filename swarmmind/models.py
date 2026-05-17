@@ -1138,3 +1138,58 @@ class GatewayStatusResponse(BaseModel):
     model_count: int
     providers: list[dict]
     config: dict
+
+
+# ── Connector models ──────────────────────────────────────────────────────────
+
+
+class ConnectorCreateRequest(BaseModel):
+    """Request to register a new connector."""
+
+    connector_id: str | None = None
+    name: str
+    connector_type: str
+    config: dict = Field(default_factory=dict)
+
+
+class ConnectorUpdateRequest(BaseModel):
+    """Request to update connector configuration."""
+
+    name: str | None = None
+    config: dict | None = None
+
+
+class ConnectorHeartbeatRequest(BaseModel):
+    """Connector reports its runtime status to the control plane."""
+
+    status: str
+    mcp_url: str | None = None
+
+
+class ConnectorResponse(BaseModel):
+    """Connector metadata response (secrets masked)."""
+
+    connector_id: str
+    name: str
+    connector_type: str
+    version: str
+    status: str
+    config: dict
+    mcp_url: str | None
+    last_heartbeat: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ConnectorListResponse(BaseModel):
+    """List of connectors."""
+
+    items: list[ConnectorResponse]
+    total: int
+
+
+class DeleteConnectorResponse(BaseModel):
+    """Response after deleting a connector."""
+
+    connector_id: str
+    deleted: bool

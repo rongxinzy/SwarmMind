@@ -517,6 +517,25 @@ class ProjectMembershipDB(SQLModel, table=True):
     )
 
 
+class ConnectorDB(SQLModel, table=True):
+    """Registered external system connectors."""
+
+    __tablename__ = "connectors"
+
+    connector_id: str = Field(primary_key=True)
+    name: str
+    connector_type: str  # e.g. "feishu-cli", "slack-mcp"
+    version: str = Field(default="1.0.0")
+    status: str = Field(default="inactive")  # "inactive" | "running" | "error"
+    config_json: str = Field(default="{}")  # JSON; secret fields Fernet-encrypted
+    mcp_url: str | None = None  # http://host:port/mcp when running
+    last_heartbeat: datetime | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+    __table_args__ = (Index("idx_connectors_type", "connector_type"),)
+
+
 class ApprovalRequestDB(SQLModel, table=True):
     """Product-layer approval request for high-risk run governance."""
 
