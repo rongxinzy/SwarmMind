@@ -16,6 +16,10 @@ from swarmmind.api.routers.approvals import ApprovalsRouterDeps, build_approvals
 from swarmmind.api.routers.audit_logs import AuditLogsRouterDeps, build_audit_logs_router
 from swarmmind.api.routers.legacy_supervisor import LegacySupervisorRouterDeps, build_legacy_supervisor_router
 from swarmmind.api.routers.memory import MemoryRouterDeps, build_memory_router
+from swarmmind.api.routers.project_memberships import (
+    ProjectMembershipRouterDeps,
+    build_project_membership_router,
+)
 from swarmmind.api.routers.projects import ProjectsRouterDeps, build_projects_router
 from swarmmind.api.routers.promotions import PromotionsRouterDeps, build_promotions_router
 from swarmmind.api.routers.runs import RunsRouterDeps, build_runs_router
@@ -49,6 +53,7 @@ from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.project import ProjectRepository
+from swarmmind.repositories.project_membership import ProjectMembershipRepository
 from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
 from swarmmind.repositories.run import RunRepository
 from swarmmind.repositories.strategy import StrategyRepository
@@ -89,6 +94,7 @@ approval_request_repo = ApprovalRequestRepository()
 strategy_repo = StrategyRepository()
 memory_repo = MemoryRepository()
 project_repo = ProjectRepository()
+project_membership_repo = ProjectMembershipRepository()
 artifact_repo = ArtifactRepository()
 run_repo = RunRepository()
 agent_team_repo = AgentTeamRepository()
@@ -441,6 +447,16 @@ app.include_router(
 )
 
 app.include_router(build_memory_router(MemoryRouterDeps(memory_repo=memory_repo)))
+
+app.include_router(
+    build_project_membership_router(
+        ProjectMembershipRouterDeps(
+            project_repo=project_repo,
+            membership_repo=project_membership_repo,
+            audit_writer=audit_writer,
+        )
+    )
+)
 
 app.include_router(
     build_agent_teams_router(

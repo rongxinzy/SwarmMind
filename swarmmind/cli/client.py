@@ -33,9 +33,16 @@ from swarmmind.models import (
     MemoryEntry,
     MemoryListResponse,
     Project,
+    ProjectCapability,
     ProjectCreateRequest,
     ProjectListResponse,
+    ProjectMembership,
+    ProjectMembershipCreateRequest,
+    ProjectMembershipDeleteResponse,
+    ProjectMembershipListResponse,
+    ProjectMembershipUpdateRequest,
     ProjectOverviewResponse,
+    ProjectPermissionCheckResponse,
     ProjectUpdateRequest,
     ReadyResponse,
     Run,
@@ -261,6 +268,38 @@ class SwarmMindClient:
     ) -> Iterator[dict[str, Any]]:
         body = _message_body(content, mode=mode, model_name=model_name, reasoning=reasoning)
         yield from self._stream("POST", f"/projects/{project_id}/messages/stream", json_body=body)
+
+    # ---- project members ----
+
+    def list_project_members(self, project_id: str) -> ProjectMembershipListResponse:
+        return self._list(ProjectMembershipListResponse, "GET", f"/projects/{project_id}/members")
+
+    def create_project_member(self, project_id: str, **fields) -> ProjectMembership:
+        body = ProjectMembershipCreateRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
+        return self._list(ProjectMembership, "POST", f"/projects/{project_id}/members", json_body=body)
+
+    def get_project_member(self, project_id: str, member_id: str) -> ProjectMembership:
+        return self._list(ProjectMembership, "GET", f"/projects/{project_id}/members/{member_id}")
+
+    def update_project_member(self, project_id: str, member_id: str, **fields) -> ProjectMembership:
+        body = ProjectMembershipUpdateRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
+        return self._list(ProjectMembership, "PATCH", f"/projects/{project_id}/members/{member_id}", json_body=body)
+
+    def delete_project_member(self, project_id: str, member_id: str) -> ProjectMembershipDeleteResponse:
+        return self._list(ProjectMembershipDeleteResponse, "DELETE", f"/projects/{project_id}/members/{member_id}")
+
+    def check_project_permission(
+        self,
+        project_id: str,
+        member_id: str,
+        capability: str,
+    ) -> ProjectPermissionCheckResponse:
+        checked = ProjectCapability(capability)
+        return self._list(
+            ProjectPermissionCheckResponse,
+            "GET",
+            f"/projects/{project_id}/members/{member_id}/permissions/{checked.value}",
+        )
 
     # ---- runs ----
 

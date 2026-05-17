@@ -15,6 +15,8 @@ from swarmmind.models import (
     MemoryScope,
     Project,
     ProjectAgentTeamInstance,
+    ProjectCapability,
+    ProjectMembership,
     RiskTier,
     Run,
     Task,
@@ -171,6 +173,49 @@ def db_to_team_instance(instance, agent_team_repo) -> ProjectAgentTeamInstance:
         status=instance.status,
         created_at=instance.created_at.isoformat() if instance.created_at else "",
         updated_at=instance.updated_at.isoformat() if instance.updated_at else "",
+    )
+
+
+_ROLE_CAPABILITIES: dict[str, list[ProjectCapability]] = {
+    "owner": [
+        ProjectCapability.VIEW_PROJECT,
+        ProjectCapability.RUN_PROJECT,
+        ProjectCapability.MANAGE_PROJECT,
+        ProjectCapability.APPROVE_HIGH_RISK,
+        ProjectCapability.MANAGE_MEMBERS,
+    ],
+    "editor": [
+        ProjectCapability.VIEW_PROJECT,
+        ProjectCapability.RUN_PROJECT,
+        ProjectCapability.MANAGE_PROJECT,
+    ],
+    "approver": [
+        ProjectCapability.VIEW_PROJECT,
+        ProjectCapability.APPROVE_HIGH_RISK,
+    ],
+    "viewer": [
+        ProjectCapability.VIEW_PROJECT,
+    ],
+}
+
+
+def project_role_capabilities(role: str) -> list[ProjectCapability]:
+    """Return capabilities granted to a project role."""
+    return _ROLE_CAPABILITIES.get(role, [])
+
+
+def db_to_project_membership(member) -> ProjectMembership:
+    """Map a ProjectMembershipDB row to a ProjectMembership model."""
+    return ProjectMembership(
+        membership_id=member.membership_id,
+        project_id=member.project_id,
+        member_id=member.member_id,
+        display_name=member.display_name,
+        role=member.role,
+        status=member.status,
+        capabilities=project_role_capabilities(member.role) if member.status == "active" else [],
+        created_at=member.created_at.isoformat() if member.created_at else "",
+        updated_at=member.updated_at.isoformat() if member.updated_at else "",
     )
 
 

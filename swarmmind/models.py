@@ -550,6 +550,89 @@ class ProjectAgentTeamInstance(BaseModel):
     updated_at: str
 
 
+class ProjectMemberRole(str, Enum):
+    """Minimal project member roles."""
+
+    OWNER = "owner"
+    EDITOR = "editor"
+    APPROVER = "approver"
+    VIEWER = "viewer"
+
+
+class ProjectMemberStatus(str, Enum):
+    """Project membership status."""
+
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+
+
+class ProjectCapability(str, Enum):
+    """Capabilities evaluated by minimal project RBAC."""
+
+    VIEW_PROJECT = "view_project"
+    RUN_PROJECT = "run_project"
+    MANAGE_PROJECT = "manage_project"
+    APPROVE_HIGH_RISK = "approve_high_risk"
+    MANAGE_MEMBERS = "manage_members"
+
+
+class ProjectMembership(BaseModel):
+    """A human or service principal attached to one project."""
+
+    membership_id: str
+    project_id: str
+    member_id: str
+    display_name: str | None = None
+    role: ProjectMemberRole = ProjectMemberRole.VIEWER
+    status: ProjectMemberStatus = ProjectMemberStatus.ACTIVE
+    capabilities: list[ProjectCapability] = []
+    created_at: str
+    updated_at: str
+
+
+class ProjectMembershipListResponse(BaseModel):
+    """Response containing project memberships."""
+
+    items: list[ProjectMembership]
+    total: int
+
+
+class ProjectMembershipCreateRequest(BaseModel):
+    """Request to add a project member."""
+
+    member_id: str = Field(..., min_length=1, max_length=200)
+    display_name: str | None = Field(None, max_length=200)
+    role: ProjectMemberRole = ProjectMemberRole.VIEWER
+    status: ProjectMemberStatus = ProjectMemberStatus.ACTIVE
+
+
+class ProjectMembershipUpdateRequest(BaseModel):
+    """Request to update a project member."""
+
+    display_name: str | None = Field(None, max_length=200)
+    role: ProjectMemberRole | None = None
+    status: ProjectMemberStatus | None = None
+
+
+class ProjectMembershipDeleteResponse(BaseModel):
+    """Response after removing a project member."""
+
+    status: str = "deleted"
+    membership_id: str
+    member_id: str
+
+
+class ProjectPermissionCheckResponse(BaseModel):
+    """Response for a minimal RBAC capability check."""
+
+    project_id: str
+    member_id: str
+    capability: ProjectCapability
+    allowed: bool
+    role: ProjectMemberRole | None = None
+    reason: str
+
+
 class AttachTeamRequest(BaseModel):
     """Request to attach a team template to a project."""
 
@@ -721,6 +804,7 @@ class RunStatus(str, Enum):
     """Run lifecycle status."""
 
     RUNNING = "running"
+    WAITING_APPROVAL = "waiting_approval"
     COMPLETED = "completed"
     FAILED = "failed"
     BLOCKED = "blocked"
