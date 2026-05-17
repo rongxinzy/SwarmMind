@@ -10,6 +10,7 @@ import typer
 from swarmmind import __version__
 from swarmmind.cli.commands.approval import approval_app
 from swarmmind.cli.commands.audit import audit_app
+from swarmmind.cli.commands.auth import auth_app
 from swarmmind.cli.commands.conversation import chat_app, conversation_app
 from swarmmind.cli.commands.mcp import mcp_app
 from swarmmind.cli.commands.member import member_app
@@ -18,7 +19,8 @@ from swarmmind.cli.commands.project import project_app
 from swarmmind.cli.commands.run import run_app
 from swarmmind.cli.commands.system import register_system_commands
 from swarmmind.cli.commands.task import task_app
-from swarmmind.cli.config import CLIState, resolve_api_url
+from swarmmind.cli.commands.user import user_app
+from swarmmind.cli.config import CLIState, resolve_api_token, resolve_api_url
 
 app = typer.Typer(
     help="SwarmMind CLI: HTTP-first client for the supervisor API.",
@@ -38,6 +40,9 @@ def _version_callback(value: bool) -> bool:
 def main(
     ctx: typer.Context,
     api_url: Annotated[str | None, typer.Option("--api-url", help="Supervisor API URL.")] = None,
+    api_token: Annotated[
+        str | None, typer.Option("--api-token", help="Bearer token for authenticated API calls.")
+    ] = None,
     json_output: Annotated[bool, typer.Option("--json", help="Emit JSON or NDJSON output.")] = False,
     quiet: Annotated[bool, typer.Option("--quiet", "-q", help="Suppress normal output.")] = False,
     version: Annotated[
@@ -47,7 +52,9 @@ def main(
 ) -> None:
     """Resolve global CLI options."""
     _ = version
-    ctx.obj = CLIState(api_url=resolve_api_url(api_url), json_output=json_output, quiet=quiet)
+    ctx.obj = CLIState(
+        api_url=resolve_api_url(api_url), api_token=resolve_api_token(api_token), json_output=json_output, quiet=quiet
+    )
 
 
 def _version() -> str:
@@ -60,6 +67,8 @@ def _version() -> str:
 register_system_commands(app)
 app.add_typer(conversation_app, name="conversation")
 app.add_typer(chat_app, name="chat")
+app.add_typer(auth_app, name="auth")
+app.add_typer(user_app, name="user")
 app.add_typer(project_app, name="project")
 app.add_typer(run_app, name="run")
 app.add_typer(task_app, name="task")

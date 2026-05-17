@@ -133,3 +133,79 @@ def test_member_permission_command(monkeypatch) -> None:
 
     assert result.exit_code == 0
     assert json.loads(result.stdout)["allowed"] is True
+
+
+def test_user_create_command(monkeypatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/users"
+        payload = json.loads(request.content.decode())
+        assert payload["email"] == "ada@example.com"
+        assert payload["password"] == "correct horse"  # noqa: S105 - test fixture password.
+        return httpx.Response(
+            201,
+            json={
+                "user_id": "user-1",
+                "email": "ada@example.com",
+                "display_name": "Ada",
+                "role": "admin",
+                "status": "active",
+                "created_at": "2026-05-17T00:00:00",
+                "updated_at": "2026-05-17T00:00:00",
+                "last_login_at": None,
+            },
+        )
+
+    _patch_httpx_client(monkeypatch, handler)
+
+    result = runner.invoke(
+        app,
+        [
+            "--api-url",
+            "http://swarmmind.test",
+            "--json",
+            "user",
+            "create",
+            "ada@example.com",
+            "--password",
+            "correct horse",
+            "--display-name",
+            "Ada",
+            "--role",
+            "admin",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["user_id"] == "user-1"
+
+
+def test_auth_me_sends_bearer_token(monkeypatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/auth/me"
+        assert request.headers["authorization"] == "Bearer swm_test"
+        return httpx.Response(
+            200,
+            json={
+                "authenticated": True,
+                "token_id": "token-1",
+                "user": {
+                    "user_id": "user-1",
+                    "email": "ada@example.com",
+                    "display_name": "Ada",
+                    "role": "member",
+                    "status": "active",
+                    "created_at": "2026-05-17T00:00:00",
+                    "updated_at": "2026-05-17T00:00:00",
+                    "last_login_at": None,
+                },
+            },
+        )
+
+    _patch_httpx_client(monkeypatch, handler)
+
+    result = runner.invoke(
+        app, ["--api-url", "http://swarmmind.test", "--api-token", "swm_test", "--json", "auth", "me"]
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["token_id"] == "token-1"  # noqa: S105 - test fixture token ID.

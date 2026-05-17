@@ -73,6 +73,12 @@ swarmmind chat respond-clarification <conversation_id> <tool_call_id> "answer"
 Governance:
 
 ```bash
+swarmmind user create ada@example.com --password "change-me-now" --display-name "Ada" --role admin
+swarmmind user list
+swarmmind auth login ada@example.com --password "change-me-now" --token-name laptop
+swarmmind --api-token <token> auth me
+swarmmind --api-token <token> auth logout
+
 swarmmind project list --limit 20
 swarmmind project create "CRM MVP" --goal "Validate enterprise wedge"
 swarmmind project update <project_id> --phase "planning" --risk-level medium

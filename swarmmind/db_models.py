@@ -204,6 +204,49 @@ class ProjectDB(SQLModel, table=True):
     )
 
 
+class UserDB(SQLModel, table=True):
+    """Local user identity for CLI/API authentication."""
+
+    __tablename__ = "users"
+
+    user_id: str = Field(primary_key=True)
+    email: str
+    display_name: str | None = None
+    password_hash: str | None = None
+    role: str = Field(default="member")  # 'admin' | 'member'
+    status: str = Field(default="active")  # 'active' | 'disabled'
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+    last_login_at: datetime | None = None
+
+    __table_args__ = (
+        Index("idx_users_email", "email", unique=True),
+        Index("idx_users_status", "status"),
+        Index("idx_users_role", "role"),
+    )
+
+
+class UserTokenDB(SQLModel, table=True):
+    """Hashed bearer token attached to a local user."""
+
+    __tablename__ = "user_tokens"
+
+    token_id: str = Field(primary_key=True)
+    user_id: str = Field(foreign_key="users.user_id")
+    token_hash: str
+    name: str | None = None
+    status: str = Field(default="active")  # 'active' | 'revoked'
+    created_at: datetime | None = Field(default_factory=utc_now)
+    last_used_at: datetime | None = None
+    expires_at: datetime | None = None
+
+    __table_args__ = (
+        Index("idx_user_tokens_user", "user_id"),
+        Index("idx_user_tokens_hash", "token_hash", unique=True),
+        Index("idx_user_tokens_status", "status"),
+    )
+
+
 class ArtifactDB(SQLModel, table=True):
     """Artifact/evidence metadata for runs and conversations."""
 

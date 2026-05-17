@@ -28,6 +28,7 @@ from swarmmind.api.routers.runtime_models import (
     list_runtime_models,  # noqa: F401  (re-export for tests)
 )
 from swarmmind.api.routers.system import SystemRouterDeps, build_system_router
+from swarmmind.api.routers.users import UsersRouterDeps, build_users_router
 from swarmmind.config import ACTION_TIMEOUT_SECONDS, API_HOST, API_PORT
 from swarmmind.context_broker import derive_situation_tag, dispatch, record_supervisor_decision
 from swarmmind.db import init_db, seed_builtin_agent_teams, seed_default_agents
@@ -58,6 +59,7 @@ from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
 from swarmmind.repositories.run import RunRepository
 from swarmmind.repositories.strategy import StrategyRepository
 from swarmmind.repositories.task import TaskRepository
+from swarmmind.repositories.user import UserRepository
 from swarmmind.runtime import ensure_default_runtime_instance
 from swarmmind.runtime.catalog import sync_env_runtime_model
 from swarmmind.services.conversation_execution import ConversationExecutionService
@@ -101,6 +103,7 @@ agent_team_repo = AgentTeamRepository()
 project_team_repo = ProjectTeamInstanceRepository()
 task_repo = TaskRepository()
 audit_log_repo = AuditLogRepository()
+user_repo = UserRepository()
 
 conversation_support = ConversationSupportService(
     conversation_repo=conversation_repo,
@@ -373,6 +376,8 @@ export_conversation = conversation_handlers.export_conversation
 # ---- Include all routers ----
 
 app.include_router(conversation_router)
+
+app.include_router(build_users_router(UsersRouterDeps(user_repo=user_repo)))
 
 app.include_router(
     build_system_router(
