@@ -452,6 +452,28 @@ class ProjectAgentTeamInstanceDB(SQLModel, table=True):
     )
 
 
+class ProjectMembershipDB(SQLModel, table=True):
+    """Minimal project membership and RBAC boundary."""
+
+    __tablename__ = "project_memberships"
+
+    membership_id: str = Field(primary_key=True)
+    project_id: str = Field(foreign_key="projects.project_id")
+    member_id: str
+    display_name: str | None = None
+    role: str = Field(default="viewer")  # 'owner' | 'editor' | 'approver' | 'viewer'
+    status: str = Field(default="active")  # 'active' | 'inactive'
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_project_memberships_project", "project_id"),
+        Index("idx_project_memberships_member", "member_id"),
+        Index("idx_project_memberships_role", "role"),
+        sa.Index("idx_project_memberships_project_member", "project_id", "member_id", unique=True),
+    )
+
+
 class ApprovalRequestDB(SQLModel, table=True):
     """Product-layer approval request for high-risk run governance."""
 

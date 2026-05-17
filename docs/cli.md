@@ -89,6 +89,12 @@ swarmmind task create <project_id> "Write PRD" --priority high
 swarmmind task update <project_id> <task_id> --status in_progress
 swarmmind task delete <project_id> <task_id>
 
+swarmmind member list <project_id>
+swarmmind member add <project_id> <member_id> --role approver
+swarmmind member update <project_id> <member_id> --role editor
+swarmmind member can <project_id> <member_id> approve_high_risk
+swarmmind member remove <project_id> <member_id>
+
 swarmmind approval list --project-id <project_id>
 swarmmind approval create <project_id> "Approve CRM write" --risk-tier high
 swarmmind approval update <approval_id> --status approved --decision-reason "approved"

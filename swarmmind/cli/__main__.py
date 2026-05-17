@@ -12,6 +12,7 @@ from swarmmind.cli.commands.approval import approval_app
 from swarmmind.cli.commands.audit import audit_app
 from swarmmind.cli.commands.conversation import chat_app, conversation_app
 from swarmmind.cli.commands.mcp import mcp_app
+from swarmmind.cli.commands.member import member_app
 from swarmmind.cli.commands.memory import memory_app
 from swarmmind.cli.commands.project import project_app
 from swarmmind.cli.commands.run import run_app
@@ -65,6 +66,7 @@ app.add_typer(task_app, name="task")
 app.add_typer(approval_app, name="approval")
 app.add_typer(audit_app, name="audit")
 app.add_typer(memory_app, name="memory")
+app.add_typer(member_app, name="member")
 app.add_typer(mcp_app, name="mcp")
 
 

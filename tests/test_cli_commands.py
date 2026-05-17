@@ -75,3 +75,61 @@ def test_project_list_limit_command(monkeypatch) -> None:
 
     assert result.exit_code == 0
     assert json.loads(result.stdout) == {"items": [], "total": 0}
+
+
+def test_member_add_command(monkeypatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/projects/proj-1/members"
+        payload = json.loads(request.content.decode())
+        assert payload["member_id"] == "user-1"
+        assert payload["role"] == "approver"
+        return httpx.Response(
+            201,
+            json={
+                "membership_id": "mem-1",
+                "project_id": "proj-1",
+                "member_id": "user-1",
+                "display_name": None,
+                "role": "approver",
+                "status": "active",
+                "capabilities": ["view_project", "approve_high_risk"],
+                "created_at": "2026-05-17T00:00:00",
+                "updated_at": "2026-05-17T00:00:00",
+            },
+        )
+
+    _patch_httpx_client(monkeypatch, handler)
+
+    result = runner.invoke(
+        app,
+        ["--api-url", "http://swarmmind.test", "--json", "member", "add", "proj-1", "user-1", "--role", "approver"],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["role"] == "approver"
+
+
+def test_member_permission_command(monkeypatch) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/projects/proj-1/members/user-1/permissions/run_project"
+        return httpx.Response(
+            200,
+            json={
+                "project_id": "proj-1",
+                "member_id": "user-1",
+                "capability": "run_project",
+                "allowed": True,
+                "role": "editor",
+                "reason": "allowed",
+            },
+        )
+
+    _patch_httpx_client(monkeypatch, handler)
+
+    result = runner.invoke(
+        app,
+        ["--api-url", "http://swarmmind.test", "--json", "member", "can", "proj-1", "user-1", "run_project"],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.stdout)["allowed"] is True
