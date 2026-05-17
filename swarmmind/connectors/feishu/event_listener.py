@@ -98,7 +98,7 @@ class FeishuEventListener:
 
         # Strip @bot mention if present
         if self._bot_name and text.startswith(f"@{self._bot_name}"):
-            text = text[len(self._bot_name) + 1:].strip()
+            text = text[len(self._bot_name) + 1 :].strip()
 
         chat_id = message.get("chat_id", "")
         message_id = message.get("message_id", "")

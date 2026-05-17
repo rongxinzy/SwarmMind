@@ -26,9 +26,7 @@ def build_feishu_mcp_server(port: int = 7070) -> Any:
     try:
         from mcp.server.fastmcp import FastMCP
     except ModuleNotFoundError as exc:
-        raise RuntimeError(
-            "MCP support is not installed. Install with `pip install 'swarmmind[mcp]'`."
-        ) from exc
+        raise RuntimeError("MCP support is not installed. Install with `pip install 'swarmmind[mcp]'`.") from exc
 
     mcp = FastMCP("feishu", port=port)
 
@@ -166,10 +164,15 @@ def build_feishu_mcp_server(port: int = 7070) -> Any:
             attendees: Comma-separated list of attendee emails or open_ids (optional).
         """
         args = [
-            "calendar", "calendar_events", "create",
-            "--title", title,
-            "--start-time", start_time,
-            "--end-time", end_time,
+            "calendar",
+            "calendar_events",
+            "create",
+            "--title",
+            title,
+            "--start-time",
+            start_time,
+            "--end-time",
+            end_time,
         ]
         if description:
             args += ["--description", description]
