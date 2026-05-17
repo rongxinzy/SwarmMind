@@ -18,6 +18,11 @@ from swarmmind.time_utils import utc_now
 class UserRepository:
     """Repository for local users and bearer tokens."""
 
+    def count_users(self) -> int:
+        """Return the total number of registered users."""
+        with session_scope() as session:
+            return session.exec(select(UserDB)).all().__len__()
+
     def list_all(self) -> list[UserDB]:
         """List users ordered by creation time."""
         with session_scope() as session:

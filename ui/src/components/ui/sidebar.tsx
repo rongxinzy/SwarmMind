@@ -3,7 +3,6 @@
 import * as React from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import {
-  Building2,
   BookOpenText,
   Bot,
   Clock3,
@@ -29,6 +28,7 @@ import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 import type { ConversationRecord } from "@/components/ui/v0-ai-chat"
+import type { AuthUser } from "@/core/auth/context"
 import { cn } from "@/lib/utils"
 
 export type SidebarView =
@@ -233,6 +233,8 @@ interface SidebarProps {
   isRecentLoading?: boolean
   activeConversationId?: string
   pendingApprovalsCount?: number
+  user?: AuthUser | null
+  onLogout?: () => void
 }
 
 export function Sidebar({
@@ -249,6 +251,8 @@ export function Sidebar({
   isRecentLoading = false,
   activeConversationId,
   pendingApprovalsCount = 0,
+  user,
+  onLogout,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const [deletingConversationId, setDeletingConversationId] = React.useState<string | null>(null)
@@ -457,26 +461,37 @@ export function Sidebar({
         </div>
       </nav>
 
-      <div className="border-t border-sidebar-border/80 px-3 pb-3 pt-3">
-        <button
-          type="button"
-          className="flex w-full items-center gap-3 rounded-md border border-sidebar-border/70 bg-sidebar-accent/55 px-2.5 py-2 text-left transition-colors hover:bg-sidebar-accent"
-        >
-          <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-[10px] font-medium tracking-[0.08em] text-foreground">
-            KL
+      {user ? (
+        <div className="border-t border-sidebar-border/80 px-3 pb-3 pt-3">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-md border border-sidebar-border/70 bg-sidebar-accent/55 px-2.5 py-2 text-left transition-colors hover:bg-sidebar-accent"
+            >
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-[10px] font-medium tracking-[0.08em] text-foreground">
+                {(user.display_name ?? user.email).slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[12px] leading-5 font-medium tracking-[-0.01em] text-foreground">
+                  {user.display_name ?? user.email}
+                </p>
+                <p className="truncate text-[10px] leading-4 text-muted-foreground">{user.email}</p>
+              </div>
+            </button>
+            {onLogout && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onLogout}
+                title="退出登录"
+                className="shrink-0 rounded-xl text-muted-foreground hover:text-destructive"
+              >
+                <ChevronRight className="size-3.5 rotate-180" />
+              </Button>
+            )}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] leading-5 font-medium tracking-[-0.01em] text-foreground">Keran Li</p>
-            <div className="mt-px flex min-w-0 items-center gap-1.5 text-[10px] leading-4 tracking-[0.08em] text-muted-foreground">
-              <Building2 className="size-3 shrink-0" />
-              <span className="truncate">容芯开源组</span>
-            </div>
-          </div>
-          <div className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground/75 transition-colors group-hover/button:text-foreground">
-            <ChevronRight className="size-3.5" />
-          </div>
-        </button>
-      </div>
+        </div>
+      ) : null}
     </div>
   )
 

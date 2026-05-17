@@ -10,6 +10,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from swarmmind.api.routers.mappers import db_to_user
 from swarmmind.models import (
+    AuthSetupRequest,
+    AuthStatusResponse,
     AuthToken,
     CurrentUserResponse,
     DeleteUserResponse,
@@ -22,6 +24,9 @@ from swarmmind.models import (
 )
 from swarmmind.repositories.user import UserRepository
 from swarmmind.services.auth import generate_api_token, hash_api_token
+from swarmmind.time_utils import utc_now
+
+_TOKEN_EXPIRY_DAYS = 30
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -84,15 +89,52 @@ def build_users_router(deps: UsersRouterDeps) -> APIRouter:
         deps.user_repo.disable(user_id)
         return DeleteUserResponse(user_id=user_id)
 
+    @router.get("/auth/status", tags=["auth"])
+    def auth_status() -> AuthStatusResponse:
+        """Return whether any users exist — used by the frontend for first-run setup."""
+        return AuthStatusResponse(has_users=deps.user_repo.count_users() > 0)
+
+    @router.post("/auth/setup", tags=["auth"], status_code=status.HTTP_201_CREATED)
+    def auth_setup(body: AuthSetupRequest) -> AuthToken:
+        """Create the first admin user and return a bearer token.
+
+        Returns 409 if users already exist; the normal login endpoint should be
+        used instead.
+        """
+        if deps.user_repo.count_users() > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Setup already complete. Use /auth/login to authenticate.",
+            )
+        user = deps.user_repo.create(
+            email=body.email,
+            password=body.password,
+            display_name=body.display_name,
+            role="admin",
+        )
+        token = generate_api_token()
+        from datetime import timedelta
+        expires_at = utc_now() + timedelta(days=_TOKEN_EXPIRY_DAYS)
+        token_row = deps.user_repo.create_token(
+            user_id=user.user_id,
+            token_hash=hash_api_token(token),
+            name="setup",
+            expires_at=expires_at,
+        )
+        return AuthToken(token_id=token_row.token_id, token=token, user=db_to_user(user))
+
     @router.post("/auth/login", tags=["auth"])
     def login(body: LoginRequest) -> AuthToken:
-        """Exchange local credentials for a bearer token."""
+        """Exchange local credentials for a bearer token (30-day expiry)."""
+        from datetime import timedelta
         user = deps.user_repo.authenticate(email=body.email, password=body.password)
         token = generate_api_token()
+        expires_at = utc_now() + timedelta(days=_TOKEN_EXPIRY_DAYS)
         token_row = deps.user_repo.create_token(
             user_id=user.user_id,
             token_hash=hash_api_token(token),
             name=body.token_name,
+            expires_at=expires_at,
         )
         return AuthToken(token_id=token_row.token_id, token=token, user=db_to_user(user))
 
