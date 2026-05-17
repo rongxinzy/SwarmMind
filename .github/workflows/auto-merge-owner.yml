@@ -18,7 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       (github.event.pull_request.user.login == 'hawkli-1994'
-       || startsWith(github.head_ref, 'claude/'))
+       || startsWith(github.head_ref, 'claude/')
+       || startsWith(github.head_ref, 'codex/'))
       && github.event.pull_request.draft == false
     steps:
       - name: Enable auto-merge

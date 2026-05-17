@@ -3990,7 +3990,7 @@ wheels = [
 [[package]]
 name = "swarmmind"
 version = "0.1.1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "anthropic" },
@@ -4005,7 +4005,13 @@ dependencies = [
     { name = "pytest-asyncio" },
     { name = "python-dotenv" },
     { name = "sqlmodel" },
+    { name = "typer" },
     { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+mcp = [
+    { name = "mcp" },
 ]
 
 [package.dev-dependencies]
@@ -4024,6 +4030,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "litellm", specifier = ">=1.82.6" },
+    { name = "mcp", marker = "extra == 'mcp'", specifier = ">=1.26.0" },
     { name = "openai", specifier = ">=1.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.11" },
     { name = "pydantic", specifier = ">=2.9.2" },
@@ -4031,8 +4038,10 @@ requires-dist = [
     { name = "pytest-asyncio", specifier = ">=0.24.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "sqlmodel", specifier = ">=0.0.21" },
+    { name = "typer", specifier = ">=0.24.1" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30.6" },
 ]
+provides-extras = ["mcp"]
 
 [package.metadata.requires-dev]
 dev = [

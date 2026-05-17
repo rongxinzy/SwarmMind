@@ -61,6 +61,18 @@ class TestProjectEndpoints:
         assert "A" in titles
         assert "B" in titles
 
+    def test_list_projects_supports_limit_and_offset(self):
+        client.post("/projects", json={"title": "A"})
+        client.post("/projects", json={"title": "B"})
+        client.post("/projects", json={"title": "C"})
+
+        response = client.get("/projects", params={"limit": 1, "offset": 1})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 3
+        assert len(data["items"]) == 1
+
     def test_create_project_with_phase_and_risk_level(self):
         response = client.post(
             "/projects",

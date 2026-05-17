@@ -10,7 +10,7 @@
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 
-[English](README.md) · [技术架构](docs/architecture.md) · [路线图](docs/roadmap.md) · [参与贡献](#参与贡献--社区)
+[English](README.md) · [技术架构](docs/architecture.md) · [CLI](docs/cli.md) · [路线图](docs/roadmap.md) · [参与贡献](#参与贡献--社区)
 
 ---
 
@@ -34,7 +34,7 @@ SwarmMind 已在真实的组织环境中生产部署使用。
 
 ---
 
-## 四大核心能力
+## 五大核心能力
 
 ### 🧠 组织记忆
 
@@ -47,6 +47,10 @@ SwarmMind 已在真实的组织环境中生产部署使用。
 ### 🖥️ 开箱即用的界面
 
 非技术人员无需 API 密钥、无需命令行、无需学习 Prompt 工程——打开界面就能开始会话、检索组织知识，并将发现推进为正式项目。
+
+### ⌨️ 一等公民 CLI
+
+开发者、运维人员和 AI Coding Agent 可以把 `swarmmind` 当成稳定的产品界面使用，而不是临时调试入口。CLI 采用 HTTP-first 设计，与 FastAPI 后端共享同一套 API 契约，支持人类可读输出和 JSON/NDJSON 输出，适合本地开发闭环、自动化、smoke test、CI 和 MCP 工具暴露。
 
 ### 🔌 高度可扩展
 
@@ -107,6 +111,16 @@ make dev
 ```
 
 启动后访问 [http://localhost:3000](http://localhost:3000)，你会看到 ChatSession 界面——直接输入自然语言问题即可开始探索你的组织上下文。
+
+CLI 是与 Supervisor UI 并列的一等接口。面向 API 驱动开发、Agent 工作流、smoke test 和自动化，可以直接使用：
+
+```bash
+swarmmind health
+swarmmind chat new "梳理 CRM MVP 风险" --mode pro
+swarmmind project list --json
+```
+
+命令、JSON/NDJSON 输出、退出码与 MCP 模式见 [CLI 文档](docs/cli.md)。
 
 <!-- TODO: add screenshot of ChatSession UI -->
 

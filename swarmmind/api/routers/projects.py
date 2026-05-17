@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from swarmmind.api.routers.mappers import (
@@ -99,10 +100,13 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
     # ---- Project CRUD ----
 
     @router.get("/projects", tags=["projects"])
-    def list_projects() -> ProjectListResponse:
+    def list_projects(
+        limit: Annotated[int | None, Query(ge=1, le=500)] = None,
+        offset: Annotated[int, Query(ge=0)] = 0,
+    ) -> ProjectListResponse:
         """List all projects ordered by updated_at descending."""
-        rows = deps.project_repo.list_all()
-        return ProjectListResponse(items=[_db_to_project(r) for r in rows], total=len(rows))
+        rows = deps.project_repo.list_all(limit=limit, offset=offset)
+        return ProjectListResponse(items=[_db_to_project(r) for r in rows], total=deps.project_repo.count_all())
 
     @router.get("/projects/{project_id}", tags=["projects"], responses={404: {"description": "Project not found"}})
     def get_project(project_id: str) -> Project:

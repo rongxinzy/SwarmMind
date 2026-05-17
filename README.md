@@ -10,7 +10,7 @@
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 
-[中文文档](README_zh.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](#contributing--community)
+[中文文档](README_zh.md) · [Architecture](docs/architecture.md) · [CLI](docs/cli.md) · [Roadmap](docs/roadmap.md) · [Contributing](#contributing--community)
 
 ---
 
@@ -34,7 +34,7 @@ SwarmMind is in production use in real organizational environments.
 
 ---
 
-## Four Pillars
+## Five Pillars
 
 ### 🧠 Organizational Memory
 
@@ -47,6 +47,10 @@ Complex, multi-turn tasks with governance built in. Agents coordinate across pro
 ### 🖥️ Accessible UI
 
 Non-technical users can start a session, explore organizational knowledge, and promote findings into governed projects — in minutes, not days. No API keys, no CLI, no prompt engineering required.
+
+### ⌨️ First-Class CLI
+
+Developers, operators, and AI coding agents can use `swarmmind` as a stable product surface, not a debugging shortcut. The CLI is HTTP-first, shares the same API contracts as the FastAPI backend, supports human-readable and JSON/NDJSON output, and is suitable for local dev loops, automation, smoke tests, CI, and MCP tool exposure.
 
 ### 🔌 Extensible
 
@@ -107,6 +111,16 @@ make dev
 ```
 
 After startup, open [http://localhost:3000](http://localhost:3000). You will see the ChatSession interface — type any natural-language question to start exploring your organizational context.
+
+CLI is a first-class interface alongside the Supervisor UI. Use it for API-driven development, agent workflows, smoke tests, and automation:
+
+```bash
+swarmmind health
+swarmmind chat new "Map the CRM MVP risks" --mode pro
+swarmmind project list --json
+```
+
+See [CLI documentation](docs/cli.md) for commands, JSON/NDJSON output, exit codes, and MCP mode.
 
 <!-- TODO: add screenshot of ChatSession UI -->
 
