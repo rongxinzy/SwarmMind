@@ -114,6 +114,7 @@ def build_users_router(deps: UsersRouterDeps) -> APIRouter:
         )
         token = generate_api_token()
         from datetime import timedelta
+
         expires_at = utc_now() + timedelta(days=_TOKEN_EXPIRY_DAYS)
         token_row = deps.user_repo.create_token(
             user_id=user.user_id,
@@ -127,6 +128,7 @@ def build_users_router(deps: UsersRouterDeps) -> APIRouter:
     def login(body: LoginRequest) -> AuthToken:
         """Exchange local credentials for a bearer token (30-day expiry)."""
         from datetime import timedelta
+
         user = deps.user_repo.authenticate(email=body.email, password=body.password)
         token = generate_api_token()
         expires_at = utc_now() + timedelta(days=_TOKEN_EXPIRY_DAYS)
