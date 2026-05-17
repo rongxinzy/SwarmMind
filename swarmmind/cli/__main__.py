@@ -11,6 +11,7 @@ from swarmmind import __version__
 from swarmmind.cli.commands.approval import approval_app
 from swarmmind.cli.commands.audit import audit_app
 from swarmmind.cli.commands.auth import auth_app
+from swarmmind.cli.commands.connector import connector_app
 from swarmmind.cli.commands.conversation import chat_app, conversation_app
 from swarmmind.cli.commands.mcp import mcp_app
 from swarmmind.cli.commands.member import member_app
@@ -65,6 +66,7 @@ def _version() -> str:
 
 
 register_system_commands(app)
+app.add_typer(connector_app, name="connector")
 app.add_typer(conversation_app, name="conversation")
 app.add_typer(chat_app, name="chat")
 app.add_typer(auth_app, name="auth")

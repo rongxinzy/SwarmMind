@@ -490,9 +490,11 @@ app.include_router(
 
 from swarmmind.api.llm_gateway_routes import router as _gateway_router
 from swarmmind.api.llm_provider_routes import router as _provider_router
+from swarmmind.api.routers.connectors import router as _connectors_router
 
 app.include_router(_gateway_router)
 app.include_router(_provider_router)
+app.include_router(_connectors_router)
 
 # ---- Run ----
 

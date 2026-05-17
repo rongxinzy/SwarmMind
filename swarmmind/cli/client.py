@@ -15,6 +15,11 @@ from swarmmind.models import (
     AuditLogEntry,
     AuditLogListResponse,
     AuthToken,
+    ConnectorCreateRequest,
+    ConnectorHeartbeatRequest,
+    ConnectorListResponse,
+    ConnectorResponse,
+    ConnectorUpdateRequest,
     Conversation,
     ConversationListResponse,
     ConversationTraceResponse,
@@ -26,6 +31,7 @@ from swarmmind.models import (
     CurrentUserResponse,
     DeleteApprovalResponse,
     DeleteAuditLogResponse,
+    DeleteConnectorResponse,
     DeleteConversationResponse,
     DeleteProjectResponse,
     DeleteTaskResponse,
@@ -458,6 +464,58 @@ class SwarmMindClient:
 
     def get_memory(self, key: str, *, layer: str, scope_id: str) -> MemoryEntry:
         return self._list(MemoryEntry, "GET", f"/memory/{key}", params={"layer": layer, "scope_id": scope_id})
+
+    # ---- stream ----
+
+    # ---- connectors ----
+
+    def list_connectors(self) -> ConnectorListResponse:
+        """List all registered connectors."""
+        return self._list(ConnectorListResponse, "GET", "/connectors")
+
+    def create_connector(
+        self,
+        connector_type: str,
+        name: str,
+        config: dict[str, Any] | None = None,
+        connector_id: str | None = None,
+    ) -> ConnectorResponse:
+        """Register a new connector."""
+        body = ConnectorCreateRequest(
+            connector_id=connector_id,
+            name=name,
+            connector_type=connector_type,
+            config=config or {},
+        ).model_dump(mode="json", exclude_none=True)
+        return self._list(ConnectorResponse, "POST", "/connectors", json_body=body)
+
+    def get_connector(self, connector_id: str) -> ConnectorResponse:
+        """Get connector details."""
+        return self._list(ConnectorResponse, "GET", f"/connectors/{connector_id}")
+
+    def update_connector(
+        self,
+        connector_id: str,
+        name: str | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> ConnectorResponse:
+        """Update connector name or config."""
+        body = ConnectorUpdateRequest(name=name, config=config).model_dump(mode="json", exclude_none=True)
+        return self._list(ConnectorResponse, "PATCH", f"/connectors/{connector_id}", json_body=body)
+
+    def delete_connector(self, connector_id: str) -> DeleteConnectorResponse:
+        """Delete a connector."""
+        return self._list(DeleteConnectorResponse, "DELETE", f"/connectors/{connector_id}")
+
+    def connector_heartbeat(
+        self,
+        connector_id: str,
+        status: str,
+        mcp_url: str | None = None,
+    ) -> ConnectorResponse:
+        """Report connector health to the control plane."""
+        body = ConnectorHeartbeatRequest(status=status, mcp_url=mcp_url).model_dump(mode="json", exclude_none=True)
+        return self._list(ConnectorResponse, "POST", f"/connectors/{connector_id}/heartbeat", json_body=body)
 
     # ---- stream ----
 
