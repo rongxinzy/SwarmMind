@@ -633,6 +633,99 @@ class ProjectPermissionCheckResponse(BaseModel):
     reason: str
 
 
+class UserRole(str, Enum):
+    """Local user role."""
+
+    ADMIN = "admin"
+    MEMBER = "member"
+
+
+class UserStatus(str, Enum):
+    """Local user status."""
+
+    ACTIVE = "active"
+    DISABLED = "disabled"
+
+
+class User(BaseModel):
+    """Local user identity."""
+
+    user_id: str
+    email: str
+    display_name: str | None = None
+    role: UserRole = UserRole.MEMBER
+    status: UserStatus = UserStatus.ACTIVE
+    created_at: str
+    updated_at: str
+    last_login_at: str | None = None
+
+
+class UserListResponse(BaseModel):
+    """Response containing users."""
+
+    items: list[User]
+    total: int
+
+
+class UserCreateRequest(BaseModel):
+    """Request to create a local user."""
+
+    email: str = Field(..., min_length=3, max_length=320)
+    display_name: str | None = Field(None, max_length=200)
+    password: str = Field(..., min_length=8, max_length=200)
+    role: UserRole = UserRole.MEMBER
+    status: UserStatus = UserStatus.ACTIVE
+
+
+class UserUpdateRequest(BaseModel):
+    """Request to update a local user."""
+
+    email: str | None = Field(None, min_length=3, max_length=320)
+    display_name: str | None = Field(None, max_length=200)
+    password: str | None = Field(None, min_length=8, max_length=200)
+    role: UserRole | None = None
+    status: UserStatus | None = None
+
+
+class DeleteUserResponse(BaseModel):
+    """Response after disabling a local user."""
+
+    status: str = "disabled"
+    user_id: str
+
+
+class LoginRequest(BaseModel):
+    """Request to exchange credentials for an API token."""
+
+    email: str = Field(..., min_length=3, max_length=320)
+    password: str = Field(..., min_length=1, max_length=200)
+    token_name: str | None = Field(None, max_length=200)
+
+
+class AuthToken(BaseModel):
+    """API token returned once after login or token creation."""
+
+    token_id: str
+    token: str
+    token_type: str = "bearer"  # noqa: S105 - token type label, not a secret.
+    user: User
+
+
+class CurrentUserResponse(BaseModel):
+    """Current authenticated user and token context."""
+
+    user: User
+    token_id: str | None = None
+    authenticated: bool = True
+
+
+class LogoutResponse(BaseModel):
+    """Response after revoking the current token."""
+
+    status: str = "revoked"
+    token_id: str
+
+
 class AttachTeamRequest(BaseModel):
     """Request to attach a team template to a project."""
 

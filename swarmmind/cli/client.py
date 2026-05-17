@@ -14,6 +14,7 @@ from swarmmind.models import (
     ApprovalRequestListResponse,
     AuditLogEntry,
     AuditLogListResponse,
+    AuthToken,
     Conversation,
     ConversationListResponse,
     ConversationTraceResponse,
@@ -22,14 +23,18 @@ from swarmmind.models import (
     CreateConversationRequest,
     CreateRunRequest,
     CreateTaskRequest,
+    CurrentUserResponse,
     DeleteApprovalResponse,
     DeleteAuditLogResponse,
     DeleteConversationResponse,
     DeleteProjectResponse,
     DeleteTaskResponse,
+    DeleteUserResponse,
     DispatchResponse,
     GoalRequest,
     HealthResponse,
+    LoginRequest,
+    LogoutResponse,
     MemoryEntry,
     MemoryListResponse,
     Project,
@@ -54,6 +59,10 @@ from swarmmind.models import (
     UpdateApprovalRequest,
     UpdateRunRequest,
     UpdateTaskRequest,
+    User,
+    UserCreateRequest,
+    UserListResponse,
+    UserUpdateRequest,
 )
 
 T = TypeVar("T", bound=BaseModel)
@@ -98,12 +107,15 @@ class ParameterError(SwarmMindCLIError):
 class SwarmMindClient:
     """Thin HTTP client for the supervisor REST API."""
 
-    def __init__(self, api_url: str, timeout: float = 30.0) -> None:
+    def __init__(self, api_url: str, timeout: float = 30.0, api_token: str | None = None) -> None:
         self.api_url = api_url.rstrip("/")
+        headers = {"Accept": "application/json"}
+        if api_token:
+            headers["Authorization"] = f"Bearer {api_token}"
         self._client = httpx.Client(
             base_url=self.api_url,
             timeout=httpx.Timeout(timeout, connect=5.0),
-            headers={"Accept": "application/json"},
+            headers=headers,
         )
 
     def close(self) -> None:
@@ -159,6 +171,37 @@ class SwarmMindClient:
 
     def ready(self) -> ReadyResponse:
         return self._list(ReadyResponse, "GET", "/ready")
+
+    # ---- auth / users ----
+
+    def login(self, email: str, password: str, token_name: str | None = None) -> AuthToken:
+        body = LoginRequest(email=email, password=password, token_name=token_name).model_dump(
+            mode="json", exclude_none=True
+        )
+        return self._list(AuthToken, "POST", "/auth/login", json_body=body)
+
+    def me(self) -> CurrentUserResponse:
+        return self._list(CurrentUserResponse, "GET", "/auth/me")
+
+    def logout(self) -> LogoutResponse:
+        return self._list(LogoutResponse, "POST", "/auth/logout")
+
+    def list_users(self) -> UserListResponse:
+        return self._list(UserListResponse, "GET", "/users")
+
+    def create_user(self, **fields) -> User:
+        body = UserCreateRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
+        return self._list(User, "POST", "/users", json_body=body)
+
+    def get_user(self, user_id: str) -> User:
+        return self._list(User, "GET", f"/users/{user_id}")
+
+    def update_user(self, user_id: str, **fields) -> User:
+        body = UserUpdateRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
+        return self._list(User, "PATCH", f"/users/{user_id}", json_body=body)
+
+    def delete_user(self, user_id: str) -> DeleteUserResponse:
+        return self._list(DeleteUserResponse, "DELETE", f"/users/{user_id}")
 
     # ---- dispatch ----
 

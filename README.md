@@ -116,6 +116,8 @@ CLI is a first-class interface alongside the Supervisor UI. Use it for API-drive
 
 ```bash
 swarmmind health
+swarmmind user create ada@example.com --password "change-me-now" --role admin
+swarmmind auth login ada@example.com --password "change-me-now"
 swarmmind chat new "Map the CRM MVP risks" --mode pro
 swarmmind project list --json
 ```

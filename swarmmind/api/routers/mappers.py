@@ -21,6 +21,7 @@ from swarmmind.models import (
     Run,
     Task,
     TeamRole,
+    User,
 )
 from swarmmind.services.artifact_content import (
     is_virtual_user_data_path,
@@ -216,6 +217,20 @@ def db_to_project_membership(member) -> ProjectMembership:
         capabilities=project_role_capabilities(member.role) if member.status == "active" else [],
         created_at=member.created_at.isoformat() if member.created_at else "",
         updated_at=member.updated_at.isoformat() if member.updated_at else "",
+    )
+
+
+def db_to_user(user) -> User:
+    """Map a UserDB row to a public User model."""
+    return User(
+        user_id=user.user_id,
+        email=user.email,
+        display_name=user.display_name,
+        role=user.role,
+        status=user.status,
+        created_at=user.created_at.isoformat() if user.created_at else "",
+        updated_at=user.updated_at.isoformat() if user.updated_at else "",
+        last_login_at=user.last_login_at.isoformat() if user.last_login_at else None,
     )
 
 
