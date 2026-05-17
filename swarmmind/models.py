@@ -1193,4 +1193,3 @@ class DeleteConnectorResponse(BaseModel):
 
     connector_id: str
     deleted: bool
-
