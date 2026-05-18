@@ -1,4 +1,5 @@
 import { consumeNdjsonStream } from "../chat/stream";
+import { apiFetch, apiFetchJson } from "@/lib/api-client";
 import type {
   ApprovalListResponse,
   AuditLogListResponse,
@@ -9,14 +10,7 @@ import type {
   Task,
 } from "./types";
 
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
-  if (!res.ok) {
-    const detail = await res.text().catch(() => res.statusText);
-    throw new Error(`HTTP ${res.status}: ${detail}`);
-  }
-  return res.json() as Promise<T>;
-}
+const fetchJson = apiFetchJson;
 
 export async function listProjects(): Promise<ProjectListResponse> {
   return fetchJson<ProjectListResponse>("/projects");
@@ -55,7 +49,7 @@ export async function streamProjectMessage(
   projectId: string,
   request: SendProjectMessageRequest,
 ): Promise<Response> {
-  const res = await fetch(`/projects/${projectId}/messages/stream`, {
+  const res = await apiFetch(`/projects/${projectId}/messages/stream`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
@@ -95,7 +89,7 @@ export async function listApprovals(params?: { project_id?: string; status?: str
 }
 
 export async function patchApproval(approvalId: string, body: { status: string; decision_reason?: string | null }): Promise<void> {
-  await fetch(`/approvals/${approvalId}`, {
+  await apiFetch(`/approvals/${approvalId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

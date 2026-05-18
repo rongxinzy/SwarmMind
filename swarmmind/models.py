@@ -1193,3 +1193,20 @@ class DeleteConnectorResponse(BaseModel):
 
     connector_id: str
     deleted: bool
+
+
+# ── Auth setup / status models ────────────────────────────────────────────────
+
+
+class AuthStatusResponse(BaseModel):
+    """Reports whether the instance has any registered users."""
+
+    has_users: bool
+
+
+class AuthSetupRequest(BaseModel):
+    """Create the first admin user (only valid when no users exist)."""
+
+    email: str
+    password: str = Field(..., min_length=8)
+    display_name: str | None = None

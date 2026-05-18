@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api-client";
 import { ArtifactsProvider } from "@/components/workspace/artifacts/context";
 import { ChatComposerPanel } from "@/components/workspace/chat-composer-panel";
 import { ChatEmptyState, EMPTY_STATE_PROMPTS } from "@/components/workspace/chat-empty-state";
@@ -222,7 +223,7 @@ function V0ChatInner({
 
     for (let attempt = 1; attempt <= MODEL_FETCH_RETRY_COUNT; attempt += 1) {
       try {
-        const response = await fetch("/models");
+        const response = await apiFetch("/models");
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -268,7 +269,7 @@ function V0ChatInner({
 
   const fetchConversations = useCallback(async () => {
     try {
-      const response = await fetch("/conversations");
+      const response = await apiFetch("/conversations");
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -295,7 +296,7 @@ function V0ChatInner({
     setPendingApproval(null);
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/conversations/${nextConversationId}/messages`,
       );
       if (!response.ok) {
@@ -404,7 +405,7 @@ function V0ChatInner({
 
   const createConversation = useCallback(
     async (goal: string) => {
-      const response = await fetch("/conversations", {
+      const response = await apiFetch("/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ goal }),
@@ -898,7 +899,7 @@ function V0ChatInner({
         payload.model_name = modelName;
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `/conversations/${nextConversationId}/messages/stream`,
         {
           method: "POST",
@@ -1098,7 +1099,7 @@ function V0ChatInner({
   const handleExport = useCallback(async (format: "markdown" | "json" = "markdown") => {
     if (!currentConversationId) return;
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/conversations/${currentConversationId}/export?format=${format}`,
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -1139,7 +1140,7 @@ function V0ChatInner({
 
       try {
         // Send clarification response to backend
-        const res = await fetch(
+        const res = await apiFetch(
           `/conversations/${currentConversationId}/clarification`,
           {
             method: "POST",

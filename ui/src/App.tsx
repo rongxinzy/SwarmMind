@@ -13,6 +13,7 @@ import {
 
 import { Workbench } from "@/components/workbench";
 import { Button } from "@/components/ui/button";
+import { LoginPage } from "@/components/auth/login-page";
 import { ApprovalsPage } from "@/components/workspace/approvals/approvals-page";
 import { ProjectPage } from "@/components/workspace/project/project-page";
 import { ProjectEmptyState } from "@/components/workspace/project/project-empty-state";
@@ -27,6 +28,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Sidebar, type SidebarView, VIEW_LABELS } from "@/components/ui/sidebar";
 import { V0Chat, type ConversationRecord } from "@/components/ui/v0-ai-chat";
+import { AuthProvider, useAuth } from "@/core/auth/context";
+import { apiFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { Toaster } from "sonner";
 
@@ -158,7 +161,8 @@ function PageHeader({
   );
 }
 
-export default function App() {
+function AppShell() {
+  const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [activeView, setActiveView] = useState<SidebarView>("workbench");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
@@ -176,7 +180,7 @@ export default function App() {
 
   const fetchRecentConversations = useCallback(async () => {
     try {
-      const response = await fetch("/conversations");
+      const response = await apiFetch("/conversations");
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -202,7 +206,7 @@ export default function App() {
       setIsRecentLoading(true);
       try {
         // Try the dedicated recent endpoint first
-        const response = await fetch("/conversations/recent");
+        const response = await apiFetch("/conversations/recent");
         if (!cancelled) {
           if (response.status === 204) {
             // No recent conversation, stay in default view
@@ -346,7 +350,7 @@ export default function App() {
 
   const handleDeleteConversation = useCallback(
     async (conversationId: string) => {
-      const response = await fetch(`/conversations/${conversationId}`, {
+      const response = await apiFetch(`/conversations/${conversationId}`, {
         method: "DELETE",
       });
 
@@ -537,6 +541,18 @@ export default function App() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
   return (
     <div
       className={cn(
@@ -558,6 +574,8 @@ export default function App() {
         isRecentLoading={isRecentLoading}
         activeConversationId={activeConversationId}
         pendingApprovalsCount={pendingApprovalsCount}
+        user={user}
+        onLogout={() => { void logout(); }}
       />
 
       <main
@@ -590,5 +608,13 @@ export default function App() {
       </main>
       <Toaster position="top-right" />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
   );
 }
