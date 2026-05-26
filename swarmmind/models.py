@@ -1195,6 +1195,34 @@ class DeleteConnectorResponse(BaseModel):
     deleted: bool
 
 
+class ConnectorConfigFieldInfo(BaseModel):
+    """A single field descriptor from a connector manifest's config schema."""
+
+    name: str
+    description: str
+    required: bool
+    secret: bool
+    default: str | None = None
+
+
+class ConnectorTypeInfo(BaseModel):
+    """Describes a registered connector type and its configuration schema."""
+
+    name: str
+    version: str
+    description: str
+    capabilities: list[str]
+    transport: str
+    config_schema: list[ConnectorConfigFieldInfo]
+
+
+class ConnectorTypesResponse(BaseModel):
+    """Response listing all available connector types."""
+
+    items: list[ConnectorTypeInfo]
+    total: int
+
+
 # ── Auth setup / status models ────────────────────────────────────────────────
 
 

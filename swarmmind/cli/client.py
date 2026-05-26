@@ -19,6 +19,7 @@ from swarmmind.models import (
     ConnectorHeartbeatRequest,
     ConnectorListResponse,
     ConnectorResponse,
+    ConnectorTypesResponse,
     ConnectorUpdateRequest,
     Conversation,
     ConversationListResponse,
@@ -516,6 +517,10 @@ class SwarmMindClient:
         """Report connector health to the control plane."""
         body = ConnectorHeartbeatRequest(status=status, mcp_url=mcp_url).model_dump(mode="json", exclude_none=True)
         return self._list(ConnectorResponse, "POST", f"/connectors/{connector_id}/heartbeat", json_body=body)
+
+    def list_connector_types(self) -> ConnectorTypesResponse:
+        """List all registered connector types with their config schemas."""
+        return self._list(ConnectorTypesResponse, "GET", "/connectors/types")
 
     # ---- stream ----
 
