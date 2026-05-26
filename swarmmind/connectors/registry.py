@@ -7,9 +7,9 @@ Usage::
 
     from swarmmind.connectors.registry import REGISTRY
 
-    manifest = REGISTRY.get_manifest("feishu-cli")   # or None
+    manifest = REGISTRY.get_manifest("feishu-cli")  # or None
     all_types = REGISTRY.list_manifests()
-    REGISTRY.is_registered("feishu-cli")             # bool
+    REGISTRY.is_registered("feishu-cli")  # bool
 """
 
 from __future__ import annotations

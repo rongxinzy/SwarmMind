@@ -87,53 +87,65 @@ def test_validate_config_empty_schema_empty_config():
 
 
 def test_validate_config_valid_all_fields():
-    manifest = _make_manifest([
-        ConnectorConfigField(name="api_key", description="Key", required=True, secret=True),
-        ConnectorConfigField(name="base_url", description="URL", required=False),
-    ])
+    manifest = _make_manifest(
+        [
+            ConnectorConfigField(name="api_key", description="Key", required=True, secret=True),
+            ConnectorConfigField(name="base_url", description="URL", required=False),
+        ]
+    )
     errors = validate_config(manifest, {"api_key": "secret", "base_url": "http://x"})
     assert errors == []
 
 
 def test_validate_config_missing_required_field():
-    manifest = _make_manifest([
-        ConnectorConfigField(name="api_key", description="Key", required=True, secret=True),
-    ])
+    manifest = _make_manifest(
+        [
+            ConnectorConfigField(name="api_key", description="Key", required=True, secret=True),
+        ]
+    )
     errors = validate_config(manifest, {})
     assert len(errors) == 1
     assert errors[0]["field"] == "api_key"
 
 
 def test_validate_config_empty_string_required_field():
-    manifest = _make_manifest([
-        ConnectorConfigField(name="api_key", description="Key", required=True, secret=True),
-    ])
+    manifest = _make_manifest(
+        [
+            ConnectorConfigField(name="api_key", description="Key", required=True, secret=True),
+        ]
+    )
     errors = validate_config(manifest, {"api_key": "  "})
     assert len(errors) == 1
     assert errors[0]["field"] == "api_key"
 
 
 def test_validate_config_unknown_field_rejected():
-    manifest = _make_manifest([
-        ConnectorConfigField(name="base_url", description="URL", required=False),
-    ])
+    manifest = _make_manifest(
+        [
+            ConnectorConfigField(name="base_url", description="URL", required=False),
+        ]
+    )
     errors = validate_config(manifest, {"base_url": "http://x", "secret_sauce": "nope"})
     assert len(errors) == 1
     assert errors[0]["field"] == "secret_sauce"
 
 
 def test_validate_config_optional_field_absent_is_ok():
-    manifest = _make_manifest([
-        ConnectorConfigField(name="base_url", description="URL", required=False),
-    ])
+    manifest = _make_manifest(
+        [
+            ConnectorConfigField(name="base_url", description="URL", required=False),
+        ]
+    )
     assert validate_config(manifest, {}) == []
 
 
 def test_validate_config_multiple_errors():
-    manifest = _make_manifest([
-        ConnectorConfigField(name="req1", description="R1", required=True),
-        ConnectorConfigField(name="req2", description="R2", required=True),
-    ])
+    manifest = _make_manifest(
+        [
+            ConnectorConfigField(name="req1", description="R1", required=True),
+            ConnectorConfigField(name="req2", description="R2", required=True),
+        ]
+    )
     errors = validate_config(manifest, {"unknown_key": "val"})
     field_names = {e["field"] for e in errors}
     assert "req1" in field_names
