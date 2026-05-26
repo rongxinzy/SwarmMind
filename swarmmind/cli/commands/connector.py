@@ -111,6 +111,12 @@ def connector_status(
     run_client_command(ctx, lambda client: client.get_connector(connector_id))
 
 
+@connector_app.command("types")
+def list_connector_types(ctx: typer.Context) -> None:
+    """List all available connector types and their configuration schemas."""
+    run_client_command(ctx, lambda client: client.list_connector_types())
+
+
 # ── Feishu-specific commands ──────────────────────────────────────────────────
 
 
