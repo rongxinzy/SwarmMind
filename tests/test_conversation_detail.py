@@ -24,7 +24,7 @@ class FakeDeerFlowRuntimeAdapter:
 def setup_db(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
+    monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter, raising=False)
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
     init_db()
     seed_default_agents()
