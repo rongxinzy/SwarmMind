@@ -32,9 +32,8 @@ try:
     ensure_default_runtime_instance()
 except RuntimeConfigError as exc:
     import logging
-    logging.getLogger(__name__).warning(
-        "Runtime bootstrap skipped (no LLM providers configured): %s", exc
-    )
+
+    logging.getLogger(__name__).warning("Runtime bootstrap skipped (no LLM providers configured): %s", exc)
 
 
 def _ensure_litellm_stub() -> None:
