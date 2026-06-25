@@ -74,7 +74,7 @@ export function ChatView({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
-      })) as { project_id: string }
+      }))
       toast.success("已升级为项目")
       onOpenProject(data.project_id)
     } catch (err) {

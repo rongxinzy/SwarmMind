@@ -20,5 +20,6 @@
     }
   },
   "include": ["src"],
+  "exclude": ["src/components/ai-elements"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

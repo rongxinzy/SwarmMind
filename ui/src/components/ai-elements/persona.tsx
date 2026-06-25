@@ -190,7 +190,7 @@ PersonaWithoutModel.displayName = "PersonaWithoutModel";
 export const Persona: FC<PersonaProps> = memo(
   ({
     variant = "obsidian",
-    state = "idle",
+    state,
     onLoad,
     onLoadError,
     onReady,
@@ -231,18 +231,18 @@ export const Persona: FC<PersonaProps> = memo(
         onLoad: ((loadedRive) =>
           callbacksRef.current.onLoad?.(
             loadedRive
-          )) as RiveParameters["onLoad"],
+          )),
         onLoadError: ((err) =>
           callbacksRef.current.onLoadError?.(
             err
-          )) as RiveParameters["onLoadError"],
+          )),
         onPause: ((event) =>
-          callbacksRef.current.onPause?.(event)) as RiveParameters["onPause"],
+          callbacksRef.current.onPause?.(event)),
         onPlay: ((event) =>
-          callbacksRef.current.onPlay?.(event)) as RiveParameters["onPlay"],
+          callbacksRef.current.onPlay?.(event)),
         onReady: () => callbacksRef.current.onReady?.(),
         onStop: ((event) =>
-          callbacksRef.current.onStop?.(event)) as RiveParameters["onStop"],
+          callbacksRef.current.onStop?.(event)),
       }),
       []
     );

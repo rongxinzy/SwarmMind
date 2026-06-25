@@ -21,7 +21,7 @@ export function LoginPage() {
 
   const isSetup = hasUsers === false
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault()
     setIsLoading(true)
     setError(null)

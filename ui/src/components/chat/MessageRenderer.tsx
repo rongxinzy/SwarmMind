@@ -30,7 +30,7 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool"
 import { CopyIcon, RefreshCcwIcon } from "lucide-react"
-import type { ChatMessage, MessagePart, ReasoningPart, TextPart, ToolInvocationPart } from "@/types/chat"
+import type { ChatMessage, MessagePart, ReasoningPart, TextPart } from "@/types/chat"
 
 interface MessageRendererProps {
   message: ChatMessage
@@ -94,7 +94,7 @@ function PartRenderer({ part, onOpenApprovals }: PartRendererProps) {
       return <MessageResponse>{part.text}</MessageResponse>
 
     case "tool-invocation": {
-      const toolPart = part as ToolInvocationPart
+      const toolPart = part
       const outputNode = toolPart.output
         ? formatToolOutput(toolPart.output)
         : null

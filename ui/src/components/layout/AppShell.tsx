@@ -23,10 +23,7 @@ export function AppShell() {
 
   const fetchConversations = useCallback(async () => {
     try {
-      const data = (await apiFetchJson<{ items: Conversation[]; total: number }>("/conversations")) as {
-        items: Conversation[]
-        total: number
-      }
+      const data = (await apiFetchJson<{ items: Conversation[]; total: number }>("/conversations"))
       setConversations(
         [...data.items].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()),
       )
@@ -41,7 +38,7 @@ export function AppShell() {
     try {
       const data = (await apiFetchJson<{ items: { approval_id: string; status: string }[]; total: number }>(
         "/approvals?status=pending",
-      )) as { items: { approval_id: string; status: string }[]; total: number }
+      ))
       setPendingApprovalsCount(data.total)
     } catch {
       // non-critical

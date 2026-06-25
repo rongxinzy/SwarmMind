@@ -30,7 +30,7 @@ export function ApprovalsPanel() {
     setIsLoading(true)
     apiFetchJson<{ items: Approval[]; total: number }>("/approvals")
       .then((data) => setApprovals(data.items))
-      .catch((err) => toast.error(err instanceof Error ? err.message : "加载审批失败"))
+      .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "加载审批失败"))
       .finally(() => setIsLoading(false))
   }
 

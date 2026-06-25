@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { CheckIcon, CopyIcon } from "lucide-react";
-import type { ComponentProps, CSSProperties, HTMLAttributes } from "react";
+import type { ComponentProps, HTMLAttributes } from "react";
 import {
   createContext,
   memo,
@@ -69,7 +69,7 @@ const TokenSpan = ({ token }: { token: ThemedToken }) => (
         fontWeight: isBold(token.fontStyle) ? "bold" : undefined,
         textDecoration: isUnderline(token.fontStyle) ? "underline" : undefined,
         ...token.htmlStyle,
-      } as CSSProperties
+      }
     }
   >
     {token.content}

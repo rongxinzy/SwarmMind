@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { apiFetch } from "@/lib/api"
-import type { ChatMessage, ChatStatus, MessagePart, TextPart, ReasoningPart, ToolInvocationPart } from "@/types/chat"
+import type { ChatMessage, ChatStatus, TextPart, ReasoningPart, ToolInvocationPart } from "@/types/chat"
 
 interface ChatState {
   messages: ChatMessage[]
@@ -157,7 +157,7 @@ async function consumeNdjsonStream(
   const decoder = new TextDecoder()
   let buffer = ""
 
-  while (true) {
+  for (;;) {
     const { value, done } = await reader.read()
     if (done) break
     buffer += decoder.decode(value, { stream: true })
@@ -268,7 +268,7 @@ function applyEvent(
             input: (event.input as Record<string, unknown>) || {},
             output: (event.output as Record<string, unknown>) || {},
           }
-          lastAssistant.parts.push(part as MessagePart)
+          lastAssistant.parts.push(part)
         }
       }
       return { ...state, messages, status: "streaming" }

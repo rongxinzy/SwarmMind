@@ -59,7 +59,7 @@ export function ProjectsPanel({ projectId, onOpenProject }: ProjectsPanelProps) 
           if (found) setSelected(found)
         }
       })
-      .catch((err) => toast.error(err instanceof Error ? err.message : "加载项目失败"))
+      .catch((err: unknown) => toast.error(err instanceof Error ? err.message : "加载项目失败"))
       .finally(() => setIsLoading(false))
   }, [projectId])
 
