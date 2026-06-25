@@ -76,3 +76,60 @@ jobs:
       - name: Run production build
         working-directory: ui
         run: npx vite build
+
+  e2e:
+    name: 🧪 E2E Chat Flow
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install backend dependencies
+        run: uv sync --locked
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: ui/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: ui
+        run: npx playwright install chromium --with-deps
+
+      - name: Run E2E tests
+        working-directory: ui
+        env:
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+        run: pnpm run e2e
+
+      - name: Upload E2E artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: ui/test-results/
+          retention-days: 7
