@@ -105,7 +105,7 @@ const parseStackFrame = (line: string): StackFrame => {
     };
   }
 
-  // Fallback: unparseable line
+  // Fallback: unparsable line
   return {
     columnNumber: null,
     filePath: null,
