@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
+from swarmmind.api.chat_routes import ChatRouterDeps, build_chat_router
 from swarmmind.api.conversation_routes import (
     ClarificationResponseRequest as ConversationClarificationResponseRequest,
 )
@@ -68,7 +68,7 @@ from swarmmind.services.conversation_support import (
     generate_title_with_deerflow,
 )
 from swarmmind.services.conversation_trace_service import ConversationTraceService
-from swarmmind.services.lifecycle import run_cleanup_scanner, startup_lifecycle
+from swarmmind.services.lifecycle import run_cleanup_scanner
 from swarmmind.services.message_trace_service import _default_message_trace_service
 from swarmmind.services.run_context import RunContext
 from swarmmind.services.run_lifecycle import RunLifecycleService
@@ -143,16 +143,16 @@ def _cleanup_scanner():
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Bootstrap API dependencies and launch background cleanup workers."""
-    startup_lifecycle(
-        init_db=init_db,
-        seed_default_agents=seed_default_agents,
-        seed_builtin_agent_teams=seed_builtin_agent_teams,
-        sync_env_runtime_model=sync_env_runtime_model,
-        ensure_default_runtime_instance=ensure_default_runtime_instance,
-        cleanup_scanner=_cleanup_scanner,
-        api_host=API_HOST,
-        api_port=API_PORT,
-    )
+    import asyncio
+    import threading
+
+    await asyncio.to_thread(init_db)
+    await asyncio.to_thread(seed_default_agents)
+    await asyncio.to_thread(seed_builtin_agent_teams)
+    await asyncio.to_thread(sync_env_runtime_model)
+    await asyncio.to_thread(ensure_default_runtime_instance)
+    threading.Thread(target=_cleanup_scanner, daemon=True).start()
+    logger.info("SwarmMind API startup complete")
     yield
 
 
@@ -179,6 +179,8 @@ def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOpt
 
 
 def _conversation_execution_service() -> ConversationExecutionService:
+    from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
+
     return ConversationExecutionService(
         conversation_repo=conversation_repo,
         message_repo=message_repo,
@@ -377,6 +379,19 @@ export_conversation = conversation_handlers.export_conversation
 
 app.include_router(conversation_router)
 
+app.include_router(
+    build_chat_router(
+        ChatRouterDeps(
+            conversation_repo=conversation_repo,
+            project_repo=project_repo,
+            conversation_support=conversation_support,
+            stream_conversation_message=_stream_conversation_message,
+            stream_project_message=_stream_project_message,
+            resolve_runtime_options=_resolve_runtime_options,
+        )
+    )
+)
+
 app.include_router(build_users_router(UsersRouterDeps(user_repo=user_repo)))
 
 app.include_router(
@@ -502,4 +517,4 @@ if __name__ == "__main__":
     import uvicorn
 
     logging.basicConfig(level=logging.INFO)
-    uvicorn.run(app, host=API_HOST, port=API_PORT)
+    uvicorn.run(app, host=API_HOST, port=API_PORT, log_level="info")
