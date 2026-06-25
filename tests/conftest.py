@@ -16,12 +16,24 @@ import pytest
 # Keep LiteLLM from blocking test collection/startup with a remote cost-map fetch.
 os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
-from swarmmind.db import dispose_engines
+from swarmmind.db import dispose_engines, init_db
 from swarmmind.runtime import ensure_default_runtime_instance
+from swarmmind.runtime.errors import RuntimeConfigError
+
+# Ensure database tables exist before runtime initialization.
+# runtime bootstrap queries llm_providers — the table must be present first.
+init_db()
 
 # Materialize DeerFlow runtime bundle before any deerflow import attempts to
 # read config.yaml from the project root.
-ensure_default_runtime_instance()
+# Gracefully degrade when no LLM providers are configured — CI runs
+# tests with -m "not requires_llm", so no runtime model is expected.
+try:
+    ensure_default_runtime_instance()
+except RuntimeConfigError as exc:
+    import logging
+
+    logging.getLogger(__name__).warning("Runtime bootstrap skipped (no LLM providers configured): %s", exc)
 
 
 def _ensure_litellm_stub() -> None:
