@@ -13,6 +13,10 @@ from dotenv import load_dotenv
 # smoke tests and deployment overrides can select isolated databases and runtimes.
 load_dotenv(override=False)
 
+# LiteLLM: avoid blocking startup by fetching the remote model cost map from
+# GitHub. Use the bundled local backup unless the operator explicitly overrides.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
 # Database
 # Preferred: a full SQLAlchemy URL so deployments can switch dialects by config only.
 # Legacy fallback: SWARMMIND_DB_PATH keeps local SQLite workflows working.

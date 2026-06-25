@@ -1,9 +1,15 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-// Note: Tooltip components available when needed
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { type LucideIcon, XIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { XIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes } from "react";
 
 export type ArtifactProps = HTMLAttributes<HTMLDivElement>;
@@ -11,8 +17,8 @@ export type ArtifactProps = HTMLAttributes<HTMLDivElement>;
 export const Artifact = ({ className, ...props }: ArtifactProps) => (
   <div
     className={cn(
-      "bg-background flex flex-col overflow-hidden rounded-lg border shadow-lg",
-      className,
+      "flex flex-col overflow-hidden rounded-lg border bg-background shadow-sm",
+      className
     )}
     {...props}
   />
@@ -26,8 +32,8 @@ export const ArtifactHeader = ({
 }: ArtifactHeaderProps) => (
   <div
     className={cn(
-      "bg-muted/50 flex items-center justify-between border-b px-4 py-3",
-      className,
+      "flex items-center justify-between border-b bg-muted/50 px-4 py-3",
+      className
     )}
     {...props}
   />
@@ -44,8 +50,8 @@ export const ArtifactClose = ({
 }: ArtifactCloseProps) => (
   <Button
     className={cn(
-      "text-muted-foreground hover:text-foreground size-8 p-0",
-      className,
+      "size-8 p-0 text-muted-foreground hover:text-foreground",
+      className
     )}
     size={size}
     type="button"
@@ -60,8 +66,8 @@ export const ArtifactClose = ({
 export type ArtifactTitleProps = HTMLAttributes<HTMLParagraphElement>;
 
 export const ArtifactTitle = ({ className, ...props }: ArtifactTitleProps) => (
-  <div
-    className={cn("text-foreground text-sm font-medium", className)}
+  <p
+    className={cn("font-medium text-foreground text-sm", className)}
     {...props}
   />
 );
@@ -103,8 +109,8 @@ export const ArtifactAction = ({
   const button = (
     <Button
       className={cn(
-        "text-muted-foreground hover:text-foreground size-8 p-0",
-        className,
+        "size-8 p-0 text-muted-foreground hover:text-foreground",
+        className
       )}
       size={size}
       type="button"
@@ -116,7 +122,19 @@ export const ArtifactAction = ({
     </Button>
   );
 
-  // TODO: Add tooltip support when needed
+  if (tooltip) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger>{button}</TooltipTrigger>
+          <TooltipContent>
+            <p>{tooltip}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
   return button;
 };
 
@@ -126,8 +144,5 @@ export const ArtifactContent = ({
   className,
   ...props
 }: ArtifactContentProps) => (
-  <div
-    className={cn("min-h-0 flex-1 overflow-auto p-4", className)}
-    {...props}
-  />
+  <div className={cn("flex-1 overflow-auto p-4", className)} {...props} />
 );

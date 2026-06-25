@@ -25,7 +25,7 @@ jobs:
             exit 1
           fi
 
-          if [[ "$BRANCH_NAME" =~ ^(feature|fix|docs|refactor|test|chore|perf|hotfix)/[a-z0-9-]+$ ]]; then
+          if [[ "$BRANCH_NAME" =~ ^(feat|feature|fix|docs|refactor|test|chore|perf|hotfix)/[a-z0-9-]+$ ]]; then
             echo "✅ Branch name '$BRANCH_NAME' follows the naming convention."
             exit 0
           fi
@@ -41,7 +41,7 @@ jobs:
           echo "Expected format: <type>/<short-description>"
           echo ""
           echo "Allowed types:"
-          echo "  - feature   - New features"
+          echo "  - feat      - New features (shorthand, same as feature)"
           echo "  - fix       - Bug fixes"
           echo "  - docs      - Documentation"
           echo "  - refactor  - Code refactoring"
@@ -53,7 +53,7 @@ jobs:
           echo "  - codex     - Codex agent branches"
           echo ""
           echo "Examples:"
-          echo "  ✅ feature/user-auth"
+          echo "  ✅ feat/user-auth"
           echo "  ✅ fix/memory-leak"
           echo "  ✅ docs/api-guide"
           echo "  ✅ claude/my-task"

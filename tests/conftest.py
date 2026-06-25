@@ -13,7 +13,15 @@ from types import ModuleType
 
 import pytest
 
+# Keep LiteLLM from blocking test collection/startup with a remote cost-map fetch.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
 from swarmmind.db import dispose_engines
+from swarmmind.runtime import ensure_default_runtime_instance
+
+# Materialize DeerFlow runtime bundle before any deerflow import attempts to
+# read config.yaml from the project root.
+ensure_default_runtime_instance()
 
 
 def _ensure_litellm_stub() -> None:

@@ -1,231 +1,42 @@
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * SwarmMind design tokens
+ * 根系（用户给定色号，冷调近白低对比，零饱和干扰）：
+ *   主区背景      #ffffff
+ *   侧边栏背景     #f7f7f7
+ *   侧栏选中底     #ededee
+ *   分隔线/输入框边框 #ededef
+ *   输入框阴影      #e7e7e7
+ *   聚焦边缘光      #b2d1ff → #ecf4fc（径向，极细）
+ * 其余 token 全部由上述灰阶派生，保持明度差分层、无色相干扰。
+ */
+
+/*
+ * ─────────────────────────────────────────────────────
+ *  场景字体变量
+ * ─────────────────────────────────────────────────────
+ *  全局 UI  → font-sans（跨平台系统无衬线栈，零网络请求）
+ *  长文正文 → font-serif（Averia Serif Libre / 霞鹜文楷）
+ *  代码展示 → font-mono（Maple Mono / 系统等宽回退）
+ */
+:root {
+  --font-cereal: "Cereal", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Averia Serif Libre", "LXGW WenKai", serif;
+  --font-mono: "Maple Mono", "Maple Mono CN", ui-monospace, monospace;
+}
+
 @layer base {
-  :root {
-    color-scheme: light;
-
-    /* Codex Theme Anchors */
-    --codex-accent: #339CFF;
-    --codex-bg: #FBFBFA;
-    --codex-fg: #252525;
-    --codex-sidebar: rgba(243, 243, 242, 0.94);
-    --codex-control: #F0F0EF;
-    --codex-border: #E6E4E1;
-
-    /* Core Surface Tokens */
-    --surface: #FFFFFF;
-    --surface-muted: #F6F6F5;
-    --surface-control: #F0F0EF;
-    --surface-hover: #ECECEA;
-    --border: #E6E4E1;
-    --border-subtle: #EFEEEB;
-    --border-strong: #D8D5D0;
-    --muted-foreground: #8D8A85;
-    --secondary-foreground: #6B6863;
-
-    /* Accent Family */
-    --accent-hover: #2F91EE;
-    --accent-active: #287FD3;
-    --accent-soft: #EAF4FF;
-    --accent-border: #A8D4FF;
-    --accent-ring: rgba(51, 156, 255, 0.20);
-
-    /* Semantic Status Colors - hex, not oklch */
-    --status-running: #339CFF;
-    --status-running-bg: #EAF4FF;
-    --status-running-border: #A8D4FF;
-    --status-approval: #B7791F;
-    --status-approval-bg: #FFF7E8;
-    --status-approval-border: #F0D59A;
-    --status-blocked: #C2413B;
-    --status-blocked-bg: #FFF0EF;
-    --status-blocked-border: #F0B7B3;
-    --status-done: #1F8F4D;
-    --status-done-bg: #EAF8F0;
-    --status-done-border: #A9DFC0;
-    --status-draft: #76777C;
-    --status-draft-bg: #F4F4F5;
-    --status-draft-border: #E2E2E4;
-
-    /* Diff and Code */
-    --diff-add-bg: #E1F3E8;
-    --diff-add-gutter: #0EA55E;
-    --diff-remove-bg: #F7E8E8;
-    --diff-remove-gutter: #E53935;
-    --code-surface: #FBFBFB;
-
-    /* Typography - system fonts only */
-    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
-    --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-
-    /* Radius Scale */
-    --radius-xs: 4px;
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 10px;
-    --radius-xl: 12px;
-    --radius-2xl: 16px;
-    --radius-pill: 999px;
-
-    /* Shadows */
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.06);
-    --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.10);
-    --focus-ring: 0 0 0 3px var(--accent-ring);
-
-    /* ShadCN Theme Mapping - MUST be HSL for shadcn tailwind plugin */
-    --background: 48 8% 98%;
-    --foreground: 0 0% 15%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 15%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 15%;
-    --primary: 210 100% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 48 6% 94%;
-    --secondary-foreground: 0 0% 15%;
-    --muted: 48 6% 94%;
-    --muted-foreground: 32 5% 53%;
-    --accent: 210 100% 95%;
-    --accent-foreground: 0 0% 15%;
-    --destructive: 0 60% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 40 8% 89%;
-    --input: 0 0% 100%;
-    --ring: 210 100% 60%;
-    --radius: 10px;
-    --sidebar: 48 6% 95%;
-    --sidebar-foreground: 0 0% 15%;
-    --sidebar-primary: 210 100% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 40 6% 91%;
-    --sidebar-accent-foreground: 0 0% 15%;
-    --sidebar-border: 40 8% 89%;
-    --sidebar-ring: 210 100% 60%;
-
-    /* User Bubble - HSL */
-    --user-bubble: 40 6% 93%;
-    --user-bubble-border: 40 8% 89%;
-
-    /* Deprecated compatibility aliases.
-     * Existing implementation may still reference the old v2 warm/brass names.
-     * Map them to Codex tokens during migration, then remove direct usage.
-     */
-    --warm-paper: var(--background);
-    --warm-ivory: var(--surface);
-    --warm-mist: var(--surface-muted);
-    --warm-sand: var(--surface-control);
-    --warm-border: var(--border);
-    --warm-ring: var(--border-strong);
-    --warm-ring-subtle: var(--border-subtle);
-    --brass: var(--accent);
-    --brass-light: var(--accent-soft);
-    --brass-border: var(--accent-border);
-    --brass-dark: var(--accent-active);
-
-    /* Neutral scale compatibility */
-    --neutral-150: #F0F0EE;
-    --neutral-200: #E4E2DE;
-    --neutral-500: #8D8A85;
-    --neutral-600: #6B6863;
-    --neutral-700: #4D4A46;
-    --neutral-800: #353330;
-    --neutral-900: #252525;
-
-    /* Shadow compatibility */
-    --shadow-whisper: 0 1px 3px rgba(0, 0, 0, 0.04);
-    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.08);
-    --shadow-ring: 0 0 0 1px var(--border-strong);
-    --shadow-sticky: 0 -2px 20px rgba(0, 0, 0, 0.06);
-
-    /* Status chat compatibility (mapped to accent since v4.0 removed it) */
-    --status-chat: var(--accent);
-    --status-chat-bg: var(--accent-soft);
-    --status-chat-border: var(--accent-border);
-
-    /* Font compatibility */
-    --font-body: var(--font-ui);
-    --font-heading: var(--font-ui);
-    --font-display: var(--font-ui);
-
-    /* Color soft tones for workbench cards */
-    --blue-soft: #EAF4FF;
-    --green-soft: #EAF8F0;
-    --orange-soft: #FFF7E8;
-    --purple-soft: #F3F0FF;
-
-    /* Shimmer component colors */
-    --color-background: hsl(var(--background));
-    --color-muted-foreground: hsl(var(--muted-foreground));
-  }
-
-  .dark {
-    color-scheme: dark;
-
-    --background: 0 0% 9%;
-    --foreground: 0 0% 100%;
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 210 100% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 63%;
-    --accent: 210 100% 18%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 50% 40%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 19%;
-    --input: 0 0% 15%;
-    --ring: 210 100% 60%;
-    --sidebar: 0 0% 12%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 210 100% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 19%;
-    --sidebar-ring: 210 100% 60%;
-    --user-bubble: 0 0% 18%;
-    --user-bubble-border: 0 0% 22%;
-
-    /* Dark mode compatibility aliases */
-    --neutral-150: #262626;
-    --neutral-200: #303030;
-    --neutral-500: #A1A1A1;
-    --neutral-600: #C9C9C9;
-    --neutral-700: #D6D6D6;
-    --neutral-800: #E0E0E0;
-    --neutral-900: #FFFFFF;
-    --shadow-whisper: 0 1px 3px rgba(0, 0, 0, 0.20);
-    --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.30);
-    --shadow-ring: 0 0 0 1px var(--border-strong);
-    --shadow-sticky: 0 -2px 20px rgba(0, 0, 0, 0.25);
-    --status-chat: var(--accent);
-    --status-chat-bg: rgba(51, 156, 255, 0.18);
-    --status-chat-border: rgba(51, 156, 255, 0.48);
-    --font-body: var(--font-ui);
-    --font-heading: var(--font-ui);
-    --font-display: var(--font-ui);
-    --blue-soft: rgba(51, 156, 255, 0.18);
-    --green-soft: rgba(31, 143, 77, 0.24);
-    --orange-soft: rgba(183, 121, 31, 0.18);
-    --purple-soft: rgba(124, 58, 237, 0.18);
-    --color-background: hsl(var(--background));
-    --color-muted-foreground: hsl(var(--muted-foreground));
-  }
-
-  * {
-    @apply border-border outline-ring/40;
-  }
-
+  /* ── 全局字体渲染基准 ── */
   html {
+    font-feature-settings: normal;
+    font-variation-settings: normal;
+    text-size-adjust: 100%;
+    text-autospace: normal;
+    tab-size: 4;
+    -webkit-tap-highlight-color: transparent;
     @apply font-sans scroll-smooth;
   }
 
@@ -234,488 +45,149 @@
     min-height: 100vh;
   }
 
-  ::selection {
-    background: rgba(51, 156, 255, 0.15);
-    color: hsl(var(--foreground));
+  * {
+    @apply border-border outline-ring/40;
   }
 
-  .sidebar-scroll::-webkit-scrollbar {
-    width: 8px;
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    /* primary 用近黑而非彩色按钮 —— 唯一色彩留给聚焦光 */
+    --primary: 0 0% 10%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 6% 93%;
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 240 6% 93%;
+    --muted-foreground: 240 3% 44%;
+
+    --accent: 240 6% 93%;
+    --accent-foreground: 0 0% 10%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 7% 93%;
+    --input: 0 0% 100%;
+    --ring: 217 100% 85%;
+
+    --radius: 8px;
+
+    /* 侧边栏 */
+    --sidebar: 0 0% 97%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-primary: 0 0% 10%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 6% 93%;
+    --sidebar-accent-foreground: 0 0% 10%;
+    --sidebar-border: 240 7% 93%;
+    --sidebar-ring: 217 100% 85%;
+
+    /* 图表色（冷调，低调） */
+    --chart-1: 217 100% 85%;
+    --chart-2: 240 6% 60%;
+    --chart-3: 240 6% 40%;
+    --chart-4: 0 0% 20%;
+    --chart-5: 0 0% 75%;
+
+    /* 聚焦边缘光：内层细描边 #b2d1ff，外层柔光 #ecf4fc，极细 */
+    --focus-glow-inner: 217 100% 85%;
+    --focus-glow-outer: 210 67% 96%;
+    --input-shadow: 220 8% 91%;
+
+    /* 文字 alpha 透明色（浅色主题） */
+    --text-primary: #0d0d0d;
+    --text-quaternary: #989798;
+    --caption: rgba(0, 0, 0, 0.4);
+    --disabled: rgba(0, 0, 0, 0.24);
+    --link: #0063db;
   }
 
-  .sidebar-scroll::-webkit-scrollbar-track {
-    background: transparent;
-  }
+  .dark {
+    --background: 0 0% 9%;
+    --foreground: 0 0% 96%;
 
-  .sidebar-scroll::-webkit-scrollbar-thumb {
-    background: rgba(60, 60, 67, 0.22);
-    border-radius: 999px;
-  }
+    --card: 0 0% 12%;
+    --card-foreground: 0 0% 96%;
 
-  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(60, 60, 67, 0.32);
-  }
+    --popover: 0 0% 12%;
+    --popover-foreground: 0 0% 96%;
 
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 9%;
 
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 96%;
 
-  /* Animation Keyframes */
-  @keyframes shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
+    --muted: 0 0% 16%;
+    --muted-foreground: 240 4% 63%;
 
-  @keyframes fade-up {
-    0% { opacity: 0; transform: translateY(8px); }
-    100% { opacity: 1; transform: translateY(0); }
-  }
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 96%;
 
-  @keyframes chat-dot-bounce {
-    0%, 80%, 100% {
-      transform: translateY(0);
-      opacity: 0.35;
-    }
-    40% {
-      transform: translateY(-3px);
-      opacity: 1;
-    }
-  }
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 96%;
 
-  @keyframes ring-pulse {
-    0%, 100% { box-shadow: 0 0 0 1px var(--border); }
-    50% { box-shadow: 0 0 0 2px var(--accent-border); }
+    --border: 0 0% 19%;
+    --input: 0 0% 16%;
+    --ring: 217 100% 75%;
+
+    --sidebar: 0 0% 7%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 0 0% 96%;
+    --sidebar-primary-foreground: 0 0% 9%;
+    --sidebar-accent: 0 0% 16%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 19%;
+    --sidebar-ring: 217 100% 75%;
+
+    --chart-1: 217 100% 75%;
+    --chart-2: 240 4% 63%;
+    --chart-3: 240 4% 43%;
+    --chart-4: 0 0% 80%;
+    --chart-5: 0 0% 30%;
+
+    --focus-glow-inner: 217 100% 75%;
+    --focus-glow-outer: 210 50% 30%;
+    --input-shadow: 0 0% 12%;
+
+    /* 文字 alpha 透明色（深色主题） */
+    --text-primary: #ddd;
+    --text-quaternary: #989798;
+    --caption: rgba(255, 255, 255, 0.4);
+    --disabled: rgba(255, 255, 255, 0.3);
+    --link: #39f;
   }
 }
 
 @layer components {
-  /* Status Pills - Codex v4.0 */
-  .status-pill {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border;
-  }
-
-  .status-pill-running {
-    color: var(--status-running);
-    background-color: var(--status-running-bg);
-    border-color: var(--status-running-border);
-  }
-
-  .status-pill-approval {
-    color: var(--status-approval);
-    background-color: var(--status-approval-bg);
-    border-color: var(--status-approval-border);
-  }
-
-  .status-pill-blocked {
-    color: var(--status-blocked);
-    background-color: var(--status-blocked-bg);
-    border-color: var(--status-blocked-border);
-  }
-
-  .status-pill-done {
-    color: var(--status-done);
-    background-color: var(--status-done-bg);
-    border-color: var(--status-done-border);
-  }
-
-  .status-pill-draft {
-    color: var(--status-draft);
-    background-color: var(--status-draft-bg);
-    border-color: var(--status-draft-border);
-  }
-
-  /* Surface Cards */
-  .surface-card {
-    @apply rounded-lg border bg-card;
-    box-shadow: var(--shadow-xs);
-  }
-
-  .surface-card-flat {
-    @apply rounded-lg border bg-card;
-  }
-
-  .surface-elevated {
-    @apply rounded-xl border bg-card;
-    box-shadow: var(--shadow-xs);
-  }
-
-  /* Composer */
-  .composer-container {
-    @apply rounded-xl border bg-card transition-all duration-200;
-    box-shadow: var(--shadow-xs);
-  }
-
-  .composer-container:focus-within {
-    border-color: var(--accent);
-    box-shadow: var(--focus-ring), var(--shadow-xs);
-  }
-
-  /* Sticky Composer Separator */
-  .composer-sticky {
-    @apply sticky bottom-0 z-20;
-    background: linear-gradient(to top, var(--codex-bg) 0%, var(--codex-bg) 85%, transparent 100%);
-  }
-
-  .composer-sticky::before {
-    content: '';
-    @apply absolute inset-x-0 -top-4 h-4 pointer-events-none;
-    background: linear-gradient(to bottom, transparent, var(--codex-bg));
-  }
-
-  /* Page Shell */
-  .page-shell {
-    @apply bg-background;
-  }
-
-  /* Typography Utilities - No negative tracking */
-  .text-display {
-    @apply text-[24px] leading-[32px] font-semibold;
-  }
-
-  .text-heading {
-    @apply text-[22px] leading-[30px] font-semibold;
-  }
-
-  .text-subheading {
-    @apply text-[18px] leading-[26px] font-semibold;
-  }
-
-  .text-body-large {
-    @apply text-[16px] leading-[26px];
-  }
-
-  .text-body {
-    @apply text-[14px] leading-[22px];
-  }
-
-  .text-caption {
-    @apply text-[12px] leading-[18px] font-medium;
-  }
-
-  .text-label {
-    @apply text-[11px] leading-[16px] font-medium;
-  }
-
-  .section-kicker {
-    @apply text-[11px] leading-4 font-medium text-muted-foreground;
-  }
-
-  .field-label {
-    @apply text-[11px] leading-4 font-medium text-muted-foreground;
-  }
-
-  /* Skeleton Loading */
-  .skeleton-line {
-    background: linear-gradient(90deg, var(--surface-control) 25%, var(--surface-hover) 37%, var(--surface-control) 63%);
-    background-size: 400% 100%;
-    animation: shimmer 1.6s ease infinite;
-  }
-
-  .skeleton-pulse {
-    @apply bg-surface-control animate-pulse rounded;
-  }
-
-  /* User Bubble - Neutral tint */
-  .user-bubble {
-    background-color: hsl(var(--user-bubble));
-    border: 1px solid hsl(var(--user-bubble-border));
-    transition: background-color 180ms ease, border-color 180ms ease;
-  }
-
-  /* Animation Utilities */
-  .fade-up {
-    animation: fade-up 220ms ease-out both;
-  }
-
-  .chat-stream-dot {
-    display: inline-block;
-    min-width: 4px;
-    margin-inline: 1px;
-    color: var(--muted-foreground);
-    animation: chat-dot-bounce 1.05s infinite ease-in-out;
-  }
-
-  .ring-hover:hover {
-    box-shadow: 0 0 0 1px var(--border);
-  }
-
-  /* Assistant Markdown Styling */
-  .assistant-markdown [data-streamdown="code-block"] {
-    margin: 1.25rem 0;
-    padding: 0;
-    gap: 0;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--code-surface);
-  }
-
-  .assistant-markdown [data-streamdown="code-block-header"] {
-    min-height: 36px;
-    padding: 0 0.875rem;
-    border-bottom: 1px solid var(--border-subtle);
-    background: var(--surface-control);
-    color: var(--muted-foreground);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    line-height: 36px;
-    letter-spacing: 0.05em;
-  }
-
-  .assistant-markdown [data-streamdown="code-block-header"] span {
-    margin-left: 0;
-    font-family: var(--font-mono);
-  }
-
-  .assistant-markdown [data-streamdown="code-block-actions"] {
-    gap: 0.25rem;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .assistant-markdown [data-streamdown="code-block-copy-button"],
-  .assistant-markdown [data-streamdown="code-block-download-button"] {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    height: 26px;
-    width: 26px;
-    padding: 0;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface-control);
-    color: var(--muted-foreground);
-    box-shadow: none;
-    line-height: 0;
-    overflow: hidden;
-  }
-
-  .assistant-markdown [data-streamdown="code-block-copy-button"]:hover,
-  .assistant-markdown [data-streamdown="code-block-download-button"]:hover {
-    background: var(--surface-hover);
-    color: var(--foreground);
-  }
-
-  .assistant-markdown [data-streamdown="code-block-copy-button"] svg,
-  .assistant-markdown [data-streamdown="code-block-download-button"] svg {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-  }
-
-  .assistant-markdown [data-streamdown="code-block-body"] {
-    border: 0;
-    border-radius: 0;
-    background: var(--code-surface);
-    padding: 0.875rem 1.125rem 1rem;
-    box-shadow: none;
-  }
-
-  .assistant-markdown [data-streamdown="code-block-body"] pre {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    overflow: visible;
-  }
-
-  .assistant-markdown [data-streamdown="code-block-body"] code {
-    font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--foreground);
-  }
-
-  .assistant-markdown :not(pre) > code {
-    border-radius: var(--radius-sm);
-    background: var(--surface-control);
-    border: 1px solid var(--border);
-    padding: 0.1rem 0.35rem;
-    font-size: 0.875em;
-    color: hsl(var(--foreground));
-  }
-
-  /* Syntax Highlighting */
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-comment,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.comment,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.prolog,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.doctype {
-    color: #7c848c;
-  }
-
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-keyword,
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-selector-tag,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.keyword,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.atrule {
-    color: var(--accent);
-  }
-
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-string,
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-attribute,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.string,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.attr-value {
-    color: var(--status-done);
-  }
-
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-number,
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-literal,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.number,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.boolean {
-    color: var(--status-approval);
-  }
-
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-title,
-  .assistant-markdown [data-streamdown="code-block-body"] .hljs-function,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.function,
-  .assistant-markdown [data-streamdown="code-block-body"] .token.class-name {
-    color: var(--foreground);
-  }
-
-  /* Markdown Prose Rhythm */
-  .assistant-markdown {
-    max-width: 72ch;
-  }
-
-  .assistant-markdown h1,
-  .assistant-markdown h2,
-  .assistant-markdown h3,
-  .assistant-markdown h4 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-    line-height: 1.3;
-    color: hsl(var(--foreground));
-  }
-
-  .assistant-markdown h1 { font-size: 1.125rem; }
-  .assistant-markdown h2 { font-size: 1rem; }
-  .assistant-markdown h3 { font-size: 0.9375rem; }
-  .assistant-markdown h4 { font-size: 0.875rem; }
-
-  .assistant-markdown p {
-    margin-top: 0.625rem;
-    margin-bottom: 0.625rem;
-    line-height: 1.7;
-    color: hsl(var(--foreground));
-  }
-
-  .assistant-markdown ul,
-  .assistant-markdown ol {
-    margin-top: 0.625rem;
-    margin-bottom: 0.625rem;
-    padding-left: 1.375rem;
-  }
-
-  .assistant-markdown li {
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
-    line-height: 1.65;
-  }
-
-  .assistant-markdown li > p {
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .assistant-markdown hr {
-    margin: 1.5rem 0;
-    border-color: var(--border);
-    border-top-width: 1px;
-  }
-
-  .assistant-markdown blockquote {
-    margin: 1rem 0;
-    padding: 0.5rem 0.875rem;
-    border-left: 2px solid var(--border);
-    color: hsl(var(--muted-foreground));
-    font-style: normal;
-  }
-
-  .assistant-markdown blockquote p {
-    margin: 0;
-  }
-
-  .assistant-markdown strong {
-    font-weight: 600;
-    color: hsl(var(--foreground));
-  }
-
-  .assistant-markdown a {
-    color: var(--accent);
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 2px;
-  }
-
-  .assistant-markdown table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    line-height: 1.5;
-    margin: 1rem 0;
-  }
-
-  .assistant-markdown th {
-    padding: 0.375rem 0.75rem;
-    text-align: left;
-    font-size: 11px;
-    font-weight: 500;
-    color: hsl(var(--muted-foreground));
-    border-bottom: 1px solid var(--border);
-  }
-
-  .assistant-markdown td {
-    padding: 0.4rem 0.75rem;
-    border-bottom: 1px solid var(--border-subtle);
-    color: hsl(var(--foreground));
-    vertical-align: top;
-  }
-
-  .assistant-markdown tr:last-child td {
-    border-bottom: 0;
-  }
-
-  /* Empty State Styling */
-  .empty-state-icon {
-    @apply inline-flex items-center justify-center rounded-lg border bg-card;
-    box-shadow: var(--shadow-xs);
-  }
-
-  /* Quick Prompt Cards */
-  .quick-prompt-card {
-    @apply flex items-start gap-3 rounded-lg border bg-card px-4 py-3.5 text-left transition-all duration-200;
-    box-shadow: var(--shadow-xs);
-  }
-
-  .quick-prompt-card:hover {
-    @apply bg-surface-hover;
-    box-shadow: 0 0 0 1px var(--border), var(--shadow-xs);
-  }
-
-  /* Mode Picker Button */
-  .mode-picker-button {
-    @apply flex min-h-10 items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 text-left transition-all duration-200;
-  }
-
-  .mode-picker-button:hover {
-    @apply border-border bg-surface-hover;
-  }
-
-  /* Scroll to Latest Button */
-  .scroll-to-latest {
-    @apply inline-flex items-center justify-center rounded-full border bg-card p-2.5 transition-all duration-200;
-    box-shadow: var(--shadow-xs);
-  }
-
-  .scroll-to-latest:hover {
-    box-shadow: 0 0 0 1px var(--border), var(--shadow-xs);
+  /*
+   * 聚焦边缘光（Dropbox Dash 风格多层蓝影）。
+   * 激活时边框变品牌蓝，叠加三层半透明蓝阴影，形成"发光"效果。
+   * 无过渡动画 —— 即时响应。
+   */
+  .focus-glow {
+    transition: none;
+  }
+  .focus-glow:focus-within {
+    border-color: rgba(0, 87, 255, 0.35);
+    box-shadow:
+      0 2px 4px 0 rgba(116, 158, 243, 0.02),
+      0 4px 12px 0 rgba(102, 188, 253, 0.04),
+      0 8px 24px 0 rgba(95, 178, 255, 0.17);
+  }
+
+  /* 杀死 InputGroup 自带的边框和聚焦环 —— 聚焦光只由外层 .focus-glow 容器负责 */
+  .focus-glow [data-slot="input-group"] {
+    border-color: transparent !important;
+    box-shadow: none !important;
   }
 }

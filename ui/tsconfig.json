@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
@@ -20,5 +20,6 @@
     }
   },
   "include": ["src"],
+  "exclude": ["src/components/ai-elements"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
