@@ -65,18 +65,11 @@ DESIGN.md
 
 # Architecture & planning docs (target state and execution plans)
 docs/architecture.md
-docs/chat-mainline-execution-plan.md
-docs/archive/enterprise-crm-user-story.md
-docs/technical-debt-repayment-plan.md
 docs/README.md
 
 # UI wireframes & design process docs
 docs/ui/
 docs/ui/*.md
-
-# Sprint & archive docs (planning artifacts)
-docs/sprint*
-docs/archive/
 
 # Internal scripts — diagnostics, demos, harness utilities
 scripts/

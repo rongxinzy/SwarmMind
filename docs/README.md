@@ -16,12 +16,12 @@ SwarmMind uses two document classes:
 - `roadmap.md` [A]: milestone roadmap (M0-M4) and immediate priorities.
 - `agent-action-roadmap.md` [B]: agent-facing execution guide that translates target docs into implementation order.
 - `ui/` [A]: page maps, flows, and interaction rules.
-- `chat-mainline-execution-plan.md` [B]: current ChatSession-first execution plan.
-- `technical-debt-repayment-plan.md` [B]: current technical debt posture.
-- `sprint-*` [B]: dated sprint plans and PRDs.
-- `archive/` [B]: historical or superseded context (including the archived `enterprise-crm-user-story.md`).
+- `cli.md` [B]: CLI command reference.
+- `research/` [B]: dated research notes.
 
 `AGENTS.md` at the repository root is the current engineering-status entry point. It maps code implementation to the target architecture.
+
+Superseded documents are deleted outright — git history is the archive.
 
 ## Reading Order
 
@@ -38,12 +38,11 @@ For implementation work:
 2. `architecture.md`
 3. `roadmap.md`
 4. `agent-action-roadmap.md`
-5. `chat-mainline-execution-plan.md`
-6. the relevant `docs/sprint-*` or `docs/ui/*` file
+5. the relevant `docs/ui/*` file
 
 ## Governance Rules
 
 - `architecture.md` is the architecture baseline.
-- `roadmap.md` decides phase ordering; sprint plans should not quietly reorder the product.
-- Dated sprint documents may become stale and should be treated as execution snapshots.
+- `roadmap.md` decides milestone ordering.
 - If code proves the architecture wrong, update `architecture.md` through an explicit architecture decision instead of silently letting implementation redefine the target.
+- When a document becomes outdated, delete it; do not keep an `archive/` directory.

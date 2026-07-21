@@ -24,9 +24,8 @@ When documents disagree, use this order:
 4. `DESIGN.md` for visual system, density, components, and UI style.
 5. `docs/ui/*` for page structure, flows, and interaction details.
 6. `AGENTS.md` for current implementation status and runnable commands.
-7. `docs/sprint-*` for dated execution snapshots only.
 
-Do not use sprint plans or current code to silently rewrite the target architecture. If the target is wrong, change the target docs explicitly first.
+Do not use current code to silently rewrite the target architecture. If the target is wrong, change the target docs explicitly first.
 
 ## 3. First Five Questions
 
