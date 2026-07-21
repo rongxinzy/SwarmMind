@@ -1,4 +1,4 @@
-"""Tests for DeerFlow event streaming in DeerFlowRuntimeAdapter."""
+"""Tests for DeerFlow event streaming in DeerFlowRuntime."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 
-from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
+from swarmmind.agents.deerflow_runtime import DeerFlowRuntime
 from swarmmind.services.runtime_event_processing import (
     StreamCaptureState,
     iter_new_turn_messages,
@@ -62,9 +62,9 @@ class FakeClient:
 
 
 def test_stream_events_skips_history_messages_before_current_turn(monkeypatch):
-    monkeypatch.setattr("swarmmind.agents.general_agent.uuid.uuid4", lambda: "current-turn-user")
+    monkeypatch.setattr("swarmmind.agents.deerflow_runtime.uuid.uuid4", lambda: "current-turn-user")
 
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
+    agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
     agent._client = FakeClient(
         [
             {
@@ -103,6 +103,55 @@ def test_stream_events_skips_history_messages_before_current_turn(monkeypatch):
     # only the values snapshot produces a final_text tracked internally.
     # Since AIMessage has no tool_calls, values handler yields nothing visible.
     assert events == []
+
+
+def test_stream_events_can_emit_native_deerflow_messages(monkeypatch):
+    monkeypatch.setattr("swarmmind.agents.deerflow_runtime.uuid.uuid4", lambda: "current-turn-user")
+
+    agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
+    agent._client = FakeClient(
+        [
+            {
+                "messages": [
+                    HumanMessage(content="这一轮问题", id="current-turn-user"),
+                    AIMessage(
+                        content="这一轮回答",
+                        id="current-turn-assistant",
+                        additional_kwargs={"reasoning_content": "先分析"},
+                    ),
+                ],
+            },
+        ],
+    )
+    agent._resolve_runtime_options = lambda runtime_options: SimpleNamespace(
+        model_name="test-model",
+        thinking_enabled=True,
+        plan_mode=False,
+        subagent_enabled=False,
+    )
+
+    events = list(
+        agent.stream_events(
+            "这一轮问题",
+            ctx=SimpleNamespace(session_id="conversation-1"),
+            runtime_options=SimpleNamespace(),
+            native_messages=True,
+        ),
+    )
+
+    assert events == [
+        {
+            "type": "deerflow.message",
+            "message": {
+                "type": "ai",
+                "id": "current-turn-assistant",
+                "name": None,
+                "content": "这一轮回答",
+                "additional_kwargs": {"reasoning_content": "先分析"},
+                "response_metadata": {},
+            },
+        }
+    ]
 
 
 def test_process_messages_mode_chunk_accumulates_reasoning_and_content() -> None:

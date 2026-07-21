@@ -11,8 +11,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import type { ToolUIPart } from "@/components/ai-elements/types";
 import { cn } from "@/lib/utils";
-import type { ToolUIPart } from "ai";
 import { ChevronDownIcon, Code } from "lucide-react";
 import type { ComponentProps } from "react";
 

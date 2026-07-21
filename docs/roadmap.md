@@ -1,81 +1,58 @@
 # Roadmap
 
 > Document type: [A] target roadmap.
-> Roadmap principle: prove one useful governed work path before building a broad enterprise platform.
+> 定位：普通 B/S 架构 Agent 聊天软件。四个产品面：Chat、任务、Project、组织管理。
 
-## Prioritization Framework
+## 原则
 
-- **P0: Main path reliability.** A user can start a `ChatSession`, understand execution state, recover from errors, and promote valuable work into a real `Project`.
-- **P1: Project governance.** Formal work has runs, artifacts, approvals, audit, and minimal membership semantics.
-- **P2: Enterprise scale.** Connectors, policy intelligence, runtime pools, and plugin governance expand only after the main path has repeatable value.
+- 先裁剪，再建设：把旧定位遗留的表面下线，再补新定位缺的块。
+- 每个里程碑都要有用户可直接使用的结果，不建"为未来准备"的脚手架。
 
-## Phase Plan
+## 里程碑
 
-| Phase | Priority | Theme | Outcomes |
-|---|---|---|---|
-| Phase A | P0 | ChatSession + DeerFlow Gateway foundation | Reliable conversation lifecycle, stream-state visibility, runtime bootstrap, model catalog foundation, trace reconstruction baseline |
-| Phase B | P0 | ChatSession to Project closure | Minimal Project model, Promote to Project, Project page with real data, trace summary, artifact/evidence handoff |
-| Phase C | P1 | Governed Project execution | Project tasks, runs, artifacts, approvals, audit log, minimal project membership/RBAC, AgentTeamTemplate instantiation |
-| Phase D | P2 | Enterprise scale | Priority connectors, policy evaluation/versioning, runtime pools, richer routing, private skill/plugin governance |
+### M0. 收敛与裁剪
 
-## Immediate Milestones
+把与四个产品面无关的表面下线或删除。
 
-### M1. Keep ChatSession Dependable
+- UI：移除/隐藏 trace、artifact registry、审批、connector 等页面与入口。
+- API：下线 trace summary、artifact content、memory 查询、audit 等端点。
+- 代码：删除 `AGENTS.md` 待裁剪清单中的模块及对应测试。
+- 文档：`docs/ui/*` 线框按四个产品面重写。
 
-Already implemented work should stay protected while new features land:
+### M1. Chat 直连
 
-- stable create/switch/delete/recover conversation lifecycle;
-- semantic stream events for thinking, running, artifact, clarification, error, and done states;
-- model catalog and mode language that users can understand;
-- regression tests for stream, title, runtime bridge, and catalog behavior.
+- UI 落地 Chat / Work 双模式：侧边栏顶部 Work | Chat 分段开关（参考 Kimi），两个模式的会话列表与新建入口完全分开。
+- 后端提供"当前用户可用模型清单 + 接入凭证"端点（数据来自 ModelAllocation，模型来自 LLM Gateway 配置）。
+- 前端用 Vercel AI SDK 实现 Chat 会话：选模型、多轮对话、历史持久化。
+- 会话落库（`session_type=chat`），可列表、切换、删除。
 
-### M2. Close Promote to Project
+### M2. 任务会话归位
 
-This is the next decisive product slice.
+现有 DeerFlow ChatSession 路径保留并归入 Work 模式的"任务"面。
 
-- Add a minimal `Project` table/repository/API surface.
-- Add a `Promote to Project` endpoint from a completed or valuable `ChatSession`.
-- Generate a structured project seed: title, goal, scope, constraints, source conversation, and next step.
-- Render a Project page that uses real data instead of a placeholder.
-- Keep the source ChatSession as provenance rather than copying it into the project.
+- 会话类型区分 chat / task；现有 DeerFlow 会话标记为 task。
+- 流式事件、标题生成、会话生命周期保持现有行为。
+- 任务会话启动时按 McpGrant 注入已授权的 MCP server。
 
-### M3. Make Trace and Artifacts Useful
+### M3. Project 工作区
 
-- Attach run identifiers and trace summaries to assistant outputs.
-- Show readable execution summaries without exposing raw DeerFlow checkpoint structure.
-- Persist minimal artifact/evidence records that can feed Project views.
-- Define retry/resume behavior at the run level.
+- Project = workspace 文件夹：创建项目时建目录，路径根由配置决定。
+- Project 下可建多个任务会话，项目页列出会话并可进入。
+- 项目记忆：project 作用域 KV，项目内所有会话可读写，项目间隔离。
+- 移除 Promote to Project 相关入口。
 
-### M4. Add Governance Only Where Risk Is Real
+### M4. 组织管理
 
-- Introduce approval only for high-risk capability use.
-- Anchor approvals on `project_id` and `run_id`.
-- Persist approval decisions into audit history.
-- Avoid proposal screens for ordinary low-risk actions.
+- 数据模型：Organization / Team / TeamMembership（角色 admin / member）。
+- ModelAllocation：模型 + 配额，组织/团队/成员三级挂载，就近优先。
+- McpGrant：MCP server 白名单维护与团队/成员授权。
+- 管理后台 UI：开户、建团队、分配配额/模型/MCP 权限。
+- 登录鉴权接通成员身份，各产品面按分配结果限制可用资源。
 
-## Deferred Until After M2/M3
+## 顺序
 
-These are valid but should not interrupt the current route:
+M0 → M1 / M2（可并行）→ M3 → M4。M4 的数据模型可以在 M1 之前先行（ModelAllocation 是 M1 模型清单的数据源）。
 
-- full login, organization management, and complete RBAC;
-- provider CRUD and tenant-level model administration;
-- broad implementation of Teams, Skills, Knowledge, Assets, and Schedules pages;
-- connector marketplace or private plugin governance;
-- runtime pool isolation beyond the default local/runtime profile path.
+## 明确不在路线内
 
-## Success Metrics
-
-- Time from first prompt to useful assistant result.
-- Percent of valuable sessions successfully promoted into Projects.
-- Percent of Project pages showing real state rather than placeholder state.
-- Trace completeness for completed runs.
-- Recovery rate after stream/runtime failure.
-- High-risk approval precision: approvals should catch meaningful risk without interrupting routine work.
-
-## Current Product Bet
-
-The near-term bet is not "build every enterprise-control-plane feature." It is:
-
-**If SwarmMind can reliably turn exploratory conversation into governed project execution, then enterprise governance features have a concrete surface to attach to.**
-
-Everything else should serve that bet.
+审批治理、connector 平台、模板市场、runtime 池化、Promote 流程、trace/artifact 产品面、分层记忆——见 `docs/architecture.md` §7 非目标。

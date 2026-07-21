@@ -85,6 +85,16 @@ def test_db_to_message_maps_tool_fields() -> None:
     assert message.name == "ask_clarification_response"
 
 
+def test_list_messages_exposes_raw_rows_for_native_payload_history() -> None:
+    rows = [SimpleNamespace(id="msg-1", native_payload={"type": "ai"})]
+    service = ConversationSupportService(
+        conversation_repo=FakeConversationRepo(),
+        message_repo=FakeMessageRepo(messages=rows),
+    )
+
+    assert service.list_messages("conv-1") == rows
+
+
 def test_persist_user_message_creates_and_touches_conversation() -> None:
     conversation_repo = FakeConversationRepo()
     message_repo = FakeMessageRepo()

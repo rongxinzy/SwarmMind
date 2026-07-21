@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Self
+from typing import Any, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -328,6 +328,7 @@ class SendMessageRequest(BaseModel):
     mode: ConversationMode | None = None
     model_name: str | None = None
     reasoning: bool = False  # Whether to enable LLM reasoning/thinking mode
+    native_message: dict[str, Any] | None = None
 
 
 class SendMessageResponse(BaseModel):
@@ -837,10 +838,9 @@ class AuditLogListResponse(BaseModel):
 class CreateAuditLogEntry(BaseModel):
     """Request to create a new audit log entry."""
 
-    audit_type: str = Field(default="approval_decision")
+    audit_type: str = Field(default="event")
     project_id: str
     run_id: str | None = None
-    approval_id: str | None = None
     actor_id: str | None = None
     actor_type: str = "user"
     decision: str | None = Field(None, max_length=50)
@@ -1036,7 +1036,6 @@ class ProjectOverviewResponse(BaseModel):
     recent_tasks: list[Task]
     recent_artifacts: list[Artifact]
     recent_runs: list[Run]
-    recent_approvals: list[ApprovalRequest]
 
 
 class DeleteAuditLogResponse(BaseModel):

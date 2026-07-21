@@ -78,12 +78,12 @@ def task_status_from_result(content: str) -> tuple[str, str | None]:
     return "running", normalized or None
 
 
-def general_agent_status_labels(runtime_options: ConversationRuntimeOptions) -> tuple[str, str]:
+def deerflow_runtime_status_labels(runtime_options: ConversationRuntimeOptions) -> tuple[str, str]:
     """Return phase labels for status events by runtime mode."""
     if runtime_options.mode == ConversationMode.ULTRA:
         return (
-            "Agent Team 正在判断这轮探索需要怎样的协作方式",
-            "Agent Team 正在协作处理你的问题",
+            "正在判断这轮探索需要怎样的协作方式",
+            "正在协作处理你的问题",
         )
     if runtime_options.mode == ConversationMode.PRO:
         return (
@@ -101,20 +101,20 @@ def general_agent_status_labels(runtime_options: ConversationRuntimeOptions) -> 
     )
 
 
-def translate_general_agent_event(
+def translate_deerflow_runtime_event(
     event: dict,
     runtime_options: ConversationRuntimeOptions,
 ) -> list[str]:
-    """Translate DeerFlow/GeneralAgent events into UI semantic layer stream events."""
+    """Translate DeerFlow runtime events into auxiliary UI events for non-native streams."""
     event_type = event.get("type")
 
-    # 0. status.plan_steps
+    # 0. plan_steps
     if event_type == "plan_steps":
         steps = event.get("steps", [])
         if isinstance(steps, list) and steps:
             return [
                 serialize_stream_event(
-                    "status.plan_steps",
+                    "plan_steps",
                     steps=[
                         {
                             "description": s.get("description", ""),
@@ -215,9 +215,8 @@ def translate_general_agent_event(
         if tool_name == "ask_clarification":
             return [serialize_stream_event("status.clarification", question=content)]
 
-        # Capability guard marker: intercepted by CapabilityGuardMiddleware.
-        # The actual status.waiting_approval event is emitted by ConversationExecutionService
-        # after the stream completes, so we skip the raw marker here.
+        # Historical capability-guard marker. Approval gating is out of the
+        # current execution path, so do not surface the raw marker to clients.
         if content.startswith('{"__capability_guard__"'):
             return []
 
@@ -299,7 +298,7 @@ def translate_general_agent_event(
             if isinstance(steps, list) and steps:
                 return [
                     serialize_stream_event(
-                        "status.plan_steps",
+                        "plan_steps",
                         steps=[
                             {
                                 "description": s.get("description", ""),
@@ -418,10 +417,10 @@ def translate_general_agent_event(
 
 
 __all__ = [
-    "general_agent_status_labels",
+    "deerflow_runtime_status_labels",
     "serialize_stream_event",
     "task_card_title",
     "task_status_from_result",
     "tool_activity_label",
-    "translate_general_agent_event",
+    "translate_deerflow_runtime_event",
 ]

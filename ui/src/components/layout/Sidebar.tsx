@@ -5,7 +5,7 @@ import {
   LogOut,
   MessageSquareText,
   PenSquare,
-  ShieldCheck,
+  ServerCog,
   Trash2,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -21,13 +21,12 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useAuth } from "@/hooks/useAuth"
 
-export type SidebarView = "chat" | "projects" | "approvals"
+export type SidebarView = "chat" | "projects" | "providers"
 
 interface Conversation {
   id: string
@@ -43,7 +42,6 @@ interface SidebarProps {
   onSelectConversation: (id: string) => void
   onDeleteConversation: (id: string) => Promise<void>
   onNewChat: () => void
-  pendingApprovalsCount: number
 }
 
 export function AppSidebar({
@@ -54,7 +52,6 @@ export function AppSidebar({
   onSelectConversation,
   onDeleteConversation,
   onNewChat,
-  pendingApprovalsCount,
 }: SidebarProps) {
   const { user, logout } = useAuth()
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -74,29 +71,28 @@ export function AppSidebar({
     view: SidebarView
     label: string
     icon: LucideIcon
-    badge?: number
   }[] = [
-    { view: "chat", label: "对话", icon: MessageSquareText },
+    { view: "chat", label: "任务", icon: MessageSquareText },
     { view: "projects", label: "项目", icon: FolderKanban },
-    {
-      view: "approvals",
-      label: "审批中心",
-      icon: ShieldCheck,
-      badge: pendingApprovalsCount > 0 ? pendingApprovalsCount : undefined,
-    },
+    { view: "providers", label: "算力", icon: ServerCog },
   ]
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="gap-0 px-3 pt-4 pb-3">
-        {/* 品牌：极简，仅字标 + 副标，无彩色色块 */}
-        <div className="flex items-center gap-2 px-2 pb-4">
-          <div className="flex flex-col leading-tight">
-            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground">
+    <Sidebar collapsible="icon" className="border-r border-[#e8e8e8]">
+      <SidebarHeader className="gap-2 px-2 pb-3 pt-4">
+        <div className="flex items-center gap-2 px-1 pb-3 group-data-[collapsible=icon]:justify-center">
+          <div className="grid size-8 shrink-0 grid-cols-2 gap-0.5 rounded-lg bg-[#141414] p-1.5">
+            <span className="rounded-[3px] bg-white" />
+            <span className="rounded-[3px] bg-white/65" />
+            <span className="rounded-[3px] bg-white/65" />
+            <span className="rounded-[3px] bg-white" />
+          </div>
+          <div className="flex flex-col leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="text-sm font-semibold text-sidebar-foreground">
               SwarmMind
             </span>
-            <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-              Supervised Work Surface
+            <span className="text-[11px] text-muted-foreground">
+              Deliverable Workbench
             </span>
           </div>
         </div>
@@ -104,16 +100,18 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={onNewChat}
+              tooltip="新任务"
+              aria-label="新任务"
               className="h-8 text-sm text-sidebar-foreground"
             >
               <PenSquare className="size-4" />
-              <span>新建任务</span>
+              <span className="group-data-[collapsible=icon]:hidden">新任务</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="px-3">
+      <SidebarContent className="px-2">
         <SidebarGroup className="px-0">
           <SidebarGroupContent>
             <SidebarMenu>
@@ -122,23 +120,22 @@ export function AppSidebar({
                   <SidebarMenuButton
                     isActive={activeView === item.view}
                     onClick={() => onViewChange(item.view)}
+                    tooltip={item.label}
+                    aria-label={item.label}
                     className="h-8 text-sm"
                   >
                     <item.icon className="size-4" />
-                    <span>{item.label}</span>
+                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
                   </SidebarMenuButton>
-                  {item.badge !== undefined && (
-                    <SidebarMenuBadge>{item.badge > 9 ? "9+" : item.badge}</SidebarMenuBadge>
-                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup className="flex-1 px-0">
-          <SidebarGroupLabel className="px-2 text-[10px] uppercase tracking-[0.14em]">
-            最近会话
+        <SidebarGroup className="flex-1 px-0 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="px-2 text-xs">
+            最近工作
           </SidebarGroupLabel>
           <SidebarGroupContent className="overflow-y-auto">
             <SidebarMenu>
@@ -171,13 +168,13 @@ export function AppSidebar({
         <SidebarFooter className="border-t border-sidebar-border px-3 py-3">
           <SidebarMenu>
             <SidebarMenuItem>
-              <div className="flex items-center gap-2 px-2">
+              <div className="flex items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
                 <Avatar size="sm" className="bg-sidebar-accent text-sidebar-foreground">
                   <AvatarFallback>
                     {(user.display_name ?? user.email).slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
                   <p className="truncate text-sm font-medium text-sidebar-foreground">
                     {user.display_name ?? user.email}
                   </p>
@@ -186,7 +183,7 @@ export function AppSidebar({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-8 text-muted-foreground hover:text-foreground"
+                  className="size-8 text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:hidden"
                   onClick={() => void logout()}
                 >
                   <LogOut className="size-4" />

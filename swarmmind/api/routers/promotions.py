@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
@@ -18,12 +19,44 @@ from swarmmind.models import (
 )
 from swarmmind.services.artifact_content import (
     build_artifact_file_response,
+    normalize_virtual_path,
     resolve_virtual_artifact_path,
 )
 
 logger = logging.getLogger(__name__)
 
 NEW_CONVERSATION_TITLE = "New Conversation"
+WEB_BUNDLE_ASSET_SUFFIXES = {
+    ".avif",
+    ".cjs",
+    ".css",
+    ".csv",
+    ".eot",
+    ".gif",
+    ".ico",
+    ".jpeg",
+    ".jpg",
+    ".js",
+    ".json",
+    ".map",
+    ".mjs",
+    ".mp3",
+    ".mp4",
+    ".ogg",
+    ".otf",
+    ".png",
+    ".svg",
+    ".ttf",
+    ".txt",
+    ".wasm",
+    ".wav",
+    ".webm",
+    ".webmanifest",
+    ".webp",
+    ".woff",
+    ".woff2",
+    ".xml",
+}
 
 
 @dataclass(frozen=True)
@@ -74,6 +107,40 @@ def build_promotions_router(deps: PromotionsRouterDeps) -> APIRouter:
                 )
             except Exception as e:
                 logger.warning("Failed to attach team %s to project %s: %s", team_template_id, project_id, e)
+
+    def _registered_skill_root(conversation_id: str, artifact_path: str) -> str | None:
+        requested = normalize_virtual_path(artifact_path)
+        if not requested:
+            return None
+
+        for artifact in deps.artifact_repo.list_by_conversation(conversation_id):
+            raw_path = getattr(artifact, "path", None) or getattr(artifact, "name", None) or getattr(artifact, "storage_uri", None)
+            root = normalize_virtual_path(raw_path)
+            if not root or not root.endswith(".skill"):
+                continue
+            if requested.startswith(f"{root.rstrip('/')}/"):
+                return root
+
+        return None
+
+    def _registered_web_bundle_root(conversation_id: str, artifact_path: str) -> str | None:
+        requested = normalize_virtual_path(artifact_path)
+        if not requested or PurePosixPath(requested).suffix.lower() not in WEB_BUNDLE_ASSET_SUFFIXES:
+            return None
+
+        matching_roots: list[str] = []
+        for artifact in deps.artifact_repo.list_by_conversation(conversation_id):
+            raw_path = getattr(artifact, "path", None) or getattr(artifact, "name", None) or getattr(artifact, "storage_uri", None)
+            entry = normalize_virtual_path(raw_path)
+            mime_type = getattr(artifact, "mime_type", None)
+            if not entry or not (entry.lower().endswith((".html", ".htm")) or mime_type in {"text/html", "application/xhtml+xml"}):
+                continue
+
+            root = entry.rsplit("/", 1)[0]
+            if requested.startswith(f"{root.rstrip('/')}/"):
+                matching_roots.append(root)
+
+        return max(matching_roots, key=len, default=None)
 
     def _generate_project_seed(conversation_id: str, override: PromoteConversationRequest | None) -> dict:
         conv = deps.conversation_repo.get_by_id(conversation_id)
@@ -200,10 +267,29 @@ def build_promotions_router(deps: PromotionsRouterDeps) -> APIRouter:
     def get_conversation_artifact_file(conversation_id: str, artifact_path: str, download: bool = False) -> Response:
         """Return the registered artifact file content for a conversation."""
         conversation = deps.conversation_repo.get_by_id(conversation_id)
-        artifact = deps.artifact_repo.get_by_conversation_path(conversation_id, artifact_path)
-        virtual_path = artifact.path or artifact.name or artifact_path
+        skill_root_path = None
+        web_bundle_root_path = None
+        try:
+            artifact = deps.artifact_repo.get_by_conversation_path(conversation_id, artifact_path)
+            virtual_path = artifact.path or artifact.name or artifact_path
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            skill_root_path = _registered_skill_root(conversation_id, artifact_path)
+            if skill_root_path is None:
+                web_bundle_root_path = _registered_web_bundle_root(conversation_id, artifact_path)
+            if skill_root_path is None and web_bundle_root_path is None:
+                raise
+            virtual_path = normalize_virtual_path(artifact_path) or artifact_path
         thread_id = conversation.thread_id or deps.runtime_support.conversation_thread_id(conversation_id)
         actual_path = resolve_virtual_artifact_path(thread_id, virtual_path)
+        container_root_path = skill_root_path or web_bundle_root_path
+        if container_root_path is not None:
+            container_root_actual_path = resolve_virtual_artifact_path(thread_id, container_root_path)
+            try:
+                actual_path.relative_to(container_root_actual_path)
+            except ValueError:
+                raise HTTPException(status_code=403, detail="Access denied: artifact bundle path traversal detected") from None
         return build_artifact_file_response(actual_path, download=download)
 
     @router.post(

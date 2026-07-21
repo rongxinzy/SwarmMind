@@ -75,4 +75,4 @@ jobs:
 
       - name: Run production build
         working-directory: ui
-        run: npx vite build
+        run: pnpm run build

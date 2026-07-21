@@ -1,13 +1,13 @@
 "use client";
 
+import { Children, type ComponentProps, useCallback } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   ScrollArea,
   ScrollBar,
 } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import type { ComponentProps } from "react";
-import { useCallback } from "react";
 
 export type SuggestionsProps = ComponentProps<typeof ScrollArea>;
 
@@ -16,9 +16,17 @@ export const Suggestions = ({
   children,
   ...props
 }: SuggestionsProps) => (
-  <ScrollArea className="w-full overflow-x-auto whitespace-nowrap" {...props}>
-    <div className={cn("flex w-max flex-nowrap items-center gap-2", className)}>
-      {children}
+  <ScrollArea className="w-full overflow-x-auto whitespace-normal" {...props}>
+    <div className={cn("flex w-full flex-wrap items-center gap-2", className)} data-slot="suggestions-list">
+      {Children.map(children, (child) =>
+        child != null ? (
+          <span className="max-w-full">
+            {child}
+          </span>
+        ) : (
+          child
+        ),
+      )}
     </div>
     <ScrollBar className="hidden" orientation="horizontal" />
   </ScrollArea>
@@ -44,7 +52,10 @@ export const Suggestion = ({
 
   return (
     <Button
-      className={cn("cursor-pointer rounded-full px-4", className)}
+      className={cn(
+        "h-auto max-w-full cursor-pointer rounded-full px-4 py-2 text-center text-xs font-normal whitespace-normal",
+        className,
+      )}
       onClick={handleClick}
       size={size}
       type="button"

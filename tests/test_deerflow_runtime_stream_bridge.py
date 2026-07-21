@@ -1,4 +1,4 @@
-"""Regression tests for the sync/async stream bridge in DeerFlowRuntimeAdapter."""
+"""Regression tests for the sync/async stream bridge in DeerFlowRuntime."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from types import SimpleNamespace
 
 from langchain_core.messages import AIMessage, AIMessageChunk
 
-from swarmmind.agents.general_agent import DeerFlowRuntimeAdapter
+from swarmmind.agents.deerflow_runtime import DeerFlowRuntime
 from swarmmind.services.runtime_event_processing import extract_content_delta, extract_reasoning_delta
 
 
 def test_stream_events_yields_async_events_and_returns_final_result() -> None:
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
+    agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
 
     async def fake_astream_events(goal, ctx=None, runtime_options=None):
         assert goal == "investigate"
@@ -39,7 +39,7 @@ def test_stream_events_yields_async_events_and_returns_final_result() -> None:
 
 
 def test_stream_events_reraises_async_failure() -> None:
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
+    agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
 
     async def fake_astream_events(goal, ctx=None, runtime_options=None):
         raise RuntimeError("stream exploded")
@@ -60,7 +60,7 @@ def test_stream_events_reraises_async_failure() -> None:
 
 
 def test_run_deerflow_turn_collects_async_result_without_stream_wrapper() -> None:
-    agent = DeerFlowRuntimeAdapter.__new__(DeerFlowRuntimeAdapter)
+    agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
 
     async def fake_astream_events(goal, ctx=None, runtime_options=None):
         assert goal == "investigate"
@@ -107,4 +107,4 @@ def test_extract_reasoning_collects_multiple_blocks() -> None:
         ]
     )
 
-    assert DeerFlowRuntimeAdapter._extract_reasoning(message) == "first pass\n\nsecond pass"
+    assert DeerFlowRuntime._extract_reasoning(message) == "first pass\n\nsecond pass"

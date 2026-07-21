@@ -93,7 +93,7 @@ def stream_event_text(event: dict[str, Any]) -> str | None:
         return _first_text(event, "label", "phase")
     if event_type in {"status.thinking", "status.running"}:
         return _first_text(event, "text", "label")
-    if event_type == "status.plan_steps":
+    if event_type == "plan_steps":
         steps = event.get("steps") or []
         descriptions = [s.get("description") for s in steps if isinstance(s, dict) and s.get("description")]
         return "plan: " + " | ".join(descriptions) if descriptions else None
@@ -101,8 +101,6 @@ def stream_event_text(event: dict[str, Any]) -> str | None:
         return f"artifact: {_first_text(event, 'name', 'artifact_type')}"
     if event_type == "status.clarification":
         return f"clarification: {_first_text(event, 'question')}"
-    if event_type == "status.waiting_approval":
-        return f"waiting approval: {_first_text(event, 'title', 'approval_id', 'requested_capability')}"
     if event_type == "content.accumulated":
         return str(event.get("text") or "")
     if event_type == "assistant_final":
@@ -143,7 +141,6 @@ def _summarize_item(item: Any) -> str:
         ("id", "title", "updated_at"),
         ("run_id", "status", "goal"),
         ("task_id", "title", "status"),
-        ("approval_id", "title", "status"),
         ("audit_id", "audit_type", "decision"),
         ("key", "value", "version"),
         ("agent_id", "status", "action_proposal_id"),

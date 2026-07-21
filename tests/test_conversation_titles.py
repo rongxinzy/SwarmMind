@@ -24,17 +24,12 @@ def setup_db(tmp_path, monkeypatch):
     yield
 
 
-class FakeProposal:
-    def __init__(self, description: str):
-        self.description = description
-
-
-class FakeDeerFlowRuntimeAdapter:
+class FakeDeerFlowRuntime:
     def __init__(self, *args, **kwargs):
         pass
 
-    def act(self, goal: str, proposal_id: str, ctx=None, runtime_options=None):
-        return FakeProposal(f"Stub DeerFlow response for: {goal}")
+    def run_turn(self, goal: str, ctx=None, runtime_options=None):
+        return f"Stub DeerFlow response for: {goal}"
 
 
 def _conversation_row(conversation_id: str):
@@ -60,7 +55,7 @@ class TestConversationTitles:
         assert conversation.title_generated_at is None
 
     def test_first_complete_exchange_generates_title(self, monkeypatch):
-        monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
+        monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
         monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "finance")
         monkeypatch.setattr(context_broker, "derive_situation_tag", lambda _: "finance")
         monkeypatch.setattr(
@@ -87,7 +82,7 @@ class TestConversationTitles:
     def test_subsequent_messages_do_not_regenerate_title(self, monkeypatch):
         calls: list[tuple[str, str]] = []
 
-        monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
+        monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
         monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "finance")
         monkeypatch.setattr(context_broker, "derive_situation_tag", lambda _: "finance")
 
@@ -120,7 +115,7 @@ class TestConversationTitles:
         assert len(calls) == 1
 
     def test_title_generation_falls_back_when_llm_fails(self, monkeypatch):
-        monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter)
+        monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
         monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "finance")
         monkeypatch.setattr(context_broker, "derive_situation_tag", lambda _: "finance")
 

@@ -2,8 +2,8 @@
 
 <!-- TODO: add logo -->
 
-> **The open-source control plane for enterprise AI agents.**
-> Turn organizational knowledge into governed, searchable, agent-executable context.
+> **An open-source, self-hosted agent chat app. Plain B/S architecture.**
+> Chat directly with models, run agent tasks, organize work into projects, and manage your org's accounts, models, and MCP permissions.
 
 [![CI](https://github.com/rongxinzy/SwarmMind/actions/workflows/ci.yml/badge.svg)](https://github.com/rongxinzy/SwarmMind/actions)
 [![Version](https://img.shields.io/badge/version-v0.1.1-blue.svg)](https://github.com/rongxinzy/SwarmMind/releases)
@@ -14,51 +14,25 @@
 
 ---
 
-## "Who in our org knows about this?"
+## What It Is
 
-Your team asks this every day. The answer is buried across Slack threads, meeting notes, project docs, and people's heads — and every time someone leaves or a project changes hands, that knowledge disappears.
+SwarmMind is a straightforward browser/server chat application with two modes, switched from the top of the sidebar:
 
-SwarmMind makes organizational knowledge searchable and executable. Your AI agents stop hallucinating answers from thin air and start routing to the people, projects, and context that actually hold the answer.
+**Chat mode** — talk to a model directly. No agent runtime, no plans, no orchestration. The frontend connects via the Vercel AI SDK; the model list is whatever your admin allocated to you.
 
----
+**Work mode** — agent work. Two things live here:
 
-## Why SwarmMind
+- **Tasks**: agent sessions executed by the [DeerFlow](https://github.com/hawkli-1994/deer-flow) runtime. The agent plans, calls tools and MCP servers, and streams its progress.
+- **Projects**: a workspace folder that holds multiple task sessions. All sessions inside a project share the project's memory.
 
-Most AI agent frameworks focus on **orchestration** — how agents talk to each other.
+Plus **organization admin** for the admin role:
 
-SwarmMind focuses on **what agents know**: organizational memory, governance, and trust. It is a **control plane**, not a framework.
+- two-level structure: organization → teams → members;
+- create accounts and assign members to teams;
+- allocate quota and models per org / team / member;
+- grant custom MCP server permissions.
 
-> "Orchestration is a solved problem. The hard part is making sure the right agent has the right context, the right permissions, and leaves a traceable audit trail. That's what we built."
-
-SwarmMind is in production use in real organizational environments.
-
----
-
-## Five Pillars
-
-### 🧠 Organizational Memory
-
-Multi-layered memory across personal, project, and organization-wide scopes. Every piece of knowledge is tracked: who created it, who can access it, and how confident the system is in its accuracy. When someone asks "who knows about X," the answer is a real route to real context — not a hallucination.
-
-### 🤝 Multi-Agent Collaboration
-
-Complex, multi-turn tasks with governance built in. Agents coordinate across projects, hand off work with full context, and escalate to humans when approval is required. This is not a demo pipeline — it is production-grade execution designed for organizational use.
-
-### 🖥️ Accessible UI
-
-Non-technical users can start a session, explore organizational knowledge, and promote findings into governed projects — in minutes, not days. No API keys, no CLI, no prompt engineering required.
-
-### ⌨️ First-Class CLI
-
-Developers, operators, and AI coding agents can use `swarmmind` as a stable product surface, not a debugging shortcut. The CLI is HTTP-first, shares the same API contracts as the FastAPI backend, supports human-readable and JSON/NDJSON output, and is suitable for local dev loops, automation, smoke tests, CI, and MCP tool exposure.
-
-### 🔌 Extensible
-
-Plugins, Skills, and MCP tools let you customize every agent's capabilities. Connect your CRM, code repositories, OA systems, or any custom data source. The control plane handles the governance; your integrations handle the domain.
-
----
-
-> SwarmMind is infrastructure that doesn't feel like infrastructure. The control plane handles governance; the UI handles humans.
+That's the whole product. No approval workflows, no connector platform, no template marketplace, no governance center.
 
 ---
 
@@ -66,41 +40,24 @@ Plugins, Skills, and MCP tools let you customize every agent's capabilities. Con
 
 ```mermaid
 flowchart LR
-  U["👤 User"] --> UI["Supervisor UI"]
-  UI --> API["FastAPI Gateway"]
-  API --> CP["Control Plane Stores\n(Memory · Projects · Audit)"]
+  U["User"] --> UI["Next.js UI"]
+  UI -->|"Chat mode: Vercel AI SDK"| LLM["Model providers"]
+  UI -->|"Work mode: REST + NDJSON"| API["FastAPI backend"]
   API --> RT["DeerFlow Runtime"]
-  CP --> UI
-  RT --> API
+  RT --> GW["LLM Gateway"]
+  GW --> LLM
+  API --> DB[("SQLModel + Alembic<br/>SQLite / PostgreSQL")]
 ```
 
-SwarmMind is the **control plane**. [DeerFlow](https://github.com/hawkli-1994/deer-flow) is the runtime.
+DeerFlow is the execution kernel for task sessions only; Chat sessions never touch it.
 
-The control plane owns: identity, project boundaries, routing, approvals, traces, artifacts, and audit records. The runtime owns: agent execution, tool calls, and checkpoints.
-
-→ [Full architecture diagram and design decisions](docs/architecture.md)
-
----
-
-## How SwarmMind Compares
-
-| Dimension | SwarmMind | CrewAI | LangGraph |
-|-----------|-----------|--------|-----------|
-| **Primary focus** | Governance + organizational memory | Role-based agent orchestration | Stateful graph orchestration |
-| **Memory model** | Multi-layered: personal, project, org-wide | Shared memory per crew | Thread-level state |
-| **Governance** | Built-in (permissions, audit trail, approvals — expanding) | Not included | Not included |
-| **UI** | Built-in supervisor UI for non-technical users | No built-in UI | LangSmith (separate product) |
-| **Extensibility** | Plugins, Skills, MCP tools | Tools via LangChain or custom | LangChain ecosystem |
-| **Runtime** | DeerFlow (delegated) | Built-in | Built-in |
-| **License** | AGPL-3.0 | MIT | MIT |
-
-> Different tools for different problems. SwarmMind is for organizations that need governed agent execution with persistent organizational memory. CrewAI and LangGraph are excellent for developers building agent applications from scratch.
+→ [Full architecture document](docs/architecture.md)
 
 ---
 
 ## Quick Start
 
-**Prerequisites:** Python 3.12+, Node.js 20+, PostgreSQL (or a Supabase project URL)
+**Prerequisites:** Python 3.12+, Node.js 20+, PostgreSQL or SQLite for local development.
 
 ```bash
 git clone https://github.com/rongxinzy/SwarmMind.git
@@ -110,51 +67,35 @@ make install
 make dev
 ```
 
-After startup, open [http://localhost:3000](http://localhost:3000). You will see the ChatSession interface — type any natural-language question to start exploring your organizational context.
+After startup, open [http://localhost:3000](http://localhost:3000).
 
-CLI is a first-class interface alongside the Supervisor UI. Use it for API-driven development, agent workflows, smoke tests, and automation:
+CLI is a first-class interface alongside the web UI:
 
 ```bash
 swarmmind health
 swarmmind user create ada@example.com --password "change-me-now" --role admin
 swarmmind auth login ada@example.com --password "change-me-now"
-swarmmind chat new "Map the CRM MVP risks" --mode pro
+swarmmind chat new "Summarize this week's incident reports"
 swarmmind project list --json
 ```
 
 See [CLI documentation](docs/cli.md) for commands, JSON/NDJSON output, exit codes, and MCP mode.
 
-<!-- TODO: add screenshot of ChatSession UI -->
-
----
-
-## Use Cases
-
-**Organizational knowledge routing**
-> "Who on our team has worked on payment integrations before?"
-
-SwarmMind routes the question across project memory and personal agent profiles to surface the right person and their relevant context — not a generic web search result.
-
-**Project memory management**
-> "Catch me up on the infrastructure migration — I just joined the team."
-
-Agents pull from project-scoped memory across sessions, preserving context between meetings, handoffs, and team changes.
-
-**Governance and audit**
-> "Show me every decision made on the Q3 budget approval, with evidence."
-
-Every agent action, approval, and artifact is linked to a traceable audit log. Leadership gets direct answers backed by evidence, not reconstructed summaries.
+<!-- TODO: add screenshot of the Chat / Work mode sidebar -->
 
 ---
 
 ## Project Status
 
-SwarmMind is **v0.1.1** — early stage, in active development, and deployed in production organizational environments.
+SwarmMind is **v0.1.1**: early stage and actively developed.
 
-Current focus:
-- **P0** — Keep ChatSession reliable; complete `Promote to Project` flow
-- **P1** — Governed project execution: runs, artifacts, approvals, and audit
-- **P2** — Enterprise connectors and policy intelligence
+Current milestones:
+
+- **M0**: prune legacy surfaces down to the four product faces.
+- **M1**: Chat mode — direct model chat over the Vercel AI SDK.
+- **M2**: task sessions on the DeerFlow runtime.
+- **M3**: projects — workspace folders, multiple sessions, shared project memory.
+- **M4**: org admin — teams, accounts, quota, model allocation, MCP grants.
 
 → [Full roadmap](docs/roadmap.md)
 
@@ -179,4 +120,4 @@ SwarmMind is open-source under AGPL-3.0. Contributions are welcome.
 
 ## Acknowledgments
 
-Built on [DeerFlow](https://github.com/hawkli-1994/deer-flow) runtime for agent execution.
+Built on the [DeerFlow](https://github.com/hawkli-1994/deer-flow) runtime for agent task execution.

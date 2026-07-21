@@ -111,6 +111,10 @@ class ConversationSupportService:
             created_at=str(msg.created_at) if msg.created_at is not None else "",
         )
 
+    def list_messages(self, conversation_id: str) -> list[Any]:
+        """List raw persisted message rows for consumers that need native payloads."""
+        return self._message_repo.list_by_conversation(conversation_id)
+
     def persist_user_message(self, conversation_id: str, content: str, run_id: str | None = None) -> Message:
         """Persist a user message and update the conversation timestamp."""
         self._conversation_repo.get_by_id(conversation_id)

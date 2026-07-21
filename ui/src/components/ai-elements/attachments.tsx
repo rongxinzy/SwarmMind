@@ -7,8 +7,8 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import type { FileUIPart, SourceDocumentUIPart } from "@/components/ai-elements/types";
 import { cn } from "@/lib/utils";
-import type { FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   FileTextIcon,
   GlobeIcon,

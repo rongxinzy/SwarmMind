@@ -57,7 +57,7 @@ class TestRunContext:
         ctx = RunContext.for_project(project.project_id, conversation.id)
         assert ctx.project_id == project.project_id
         assert ctx.conversation_id == conversation.id
-        assert ctx.risk_policy == RiskPolicy.MODERATE
+        assert ctx.risk_policy == RiskPolicy.PERMISSIVE
         assert ctx.run_id
 
     def test_for_project_custom_policy(self, project, conversation):

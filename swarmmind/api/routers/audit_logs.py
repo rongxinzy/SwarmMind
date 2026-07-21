@@ -22,7 +22,6 @@ class AuditLogsRouterDeps:
     audit_log_repo: object
     project_repo: object
     run_repo: object
-    approval_request_repo: object
 
 
 def build_audit_logs_router(deps: AuditLogsRouterDeps) -> APIRouter:
@@ -33,13 +32,11 @@ def build_audit_logs_router(deps: AuditLogsRouterDeps) -> APIRouter:
     def list_audit_logs(
         project_id: str | None = None,
         run_id: str | None = None,
-        approval_id: str | None = None,
     ) -> AuditLogListResponse:
         """List audit log entries with optional filters."""
         rows = deps.audit_log_repo.list_by_filters(
             project_id=project_id,
             run_id=run_id,
-            approval_id=approval_id,
         )
         return AuditLogListResponse(
             items=[db_to_audit_log_entry(r) for r in rows],
@@ -52,13 +49,10 @@ def build_audit_logs_router(deps: AuditLogsRouterDeps) -> APIRouter:
         deps.project_repo.get_by_id(body.project_id)
         if body.run_id:
             deps.run_repo.get_by_id(body.run_id)
-        if body.approval_id:
-            deps.approval_request_repo.get(body.approval_id)
         entry = deps.audit_log_repo.create(
             audit_type=body.audit_type,
             project_id=body.project_id,
             run_id=body.run_id,
-            approval_id=body.approval_id,
             actor_id=body.actor_id,
             actor_type=body.actor_type,
             decision=body.decision,

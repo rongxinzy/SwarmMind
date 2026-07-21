@@ -11,16 +11,15 @@ SwarmMind uses two document classes:
 
 ## Structure
 
-- `product-positioning.md` [A]: ICP, problem framing, product boundaries, differentiation, and current wedge.
-- `architecture.md` [A]: architecture baseline, terminology, control-plane/runtime boundary, store boundaries, and phase architecture.
-- `roadmap.md` [A]: pragmatic phase roadmap and immediate milestones.
+- `product-positioning.md` [A]: one-line positioning, the four product surfaces (Chat / 任务 / Project / 组织管理), and product boundaries.
+- `architecture.md` [A]: architecture baseline, terminology, execution paths, control-plane store boundaries, organization/permission model, and non-goals.
+- `roadmap.md` [A]: milestone roadmap (M0-M4) and immediate priorities.
 - `agent-action-roadmap.md` [B]: agent-facing execution guide that translates target docs into implementation order.
 - `ui/` [A]: page maps, flows, and interaction rules.
-- `enterprise-crm-user-story.md` [A]: scenario validation for the target architecture.
 - `chat-mainline-execution-plan.md` [B]: current ChatSession-first execution plan.
 - `technical-debt-repayment-plan.md` [B]: current technical debt posture.
 - `sprint-*` [B]: dated sprint plans and PRDs.
-- `archive/` [B]: historical or superseded context.
+- `archive/` [B]: historical or superseded context (including the archived `enterprise-crm-user-story.md`).
 
 `AGENTS.md` at the repository root is the current engineering-status entry point. It maps code implementation to the target architecture.
 
@@ -31,8 +30,7 @@ For product and architecture decisions:
 1. `product-positioning.md`
 2. `architecture.md`
 3. `roadmap.md`
-4. `enterprise-crm-user-story.md`
-5. `ui/`
+4. `ui/`
 
 For implementation work:
 

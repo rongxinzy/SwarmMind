@@ -89,7 +89,6 @@ class TestProjectEndpoints:
         assert data["risk_level"] == "high"
 
     def test_get_project_overview(self):
-        from swarmmind.repositories.approval_request import ApprovalRequestRepository
         from swarmmind.repositories.artifact import ArtifactRepository
         from swarmmind.repositories.run import RunRepository
         from swarmmind.repositories.task import TaskRepository
@@ -101,14 +100,11 @@ class TestProjectEndpoints:
         task_repo = TaskRepository()
         run_repo = RunRepository()
         artifact_repo = ArtifactRepository()
-        approval_repo = ApprovalRequestRepository()
 
         task_repo.create(project_id=proj_id, title="Task 1", status="todo")
         task_repo.create(project_id=proj_id, title="Task 2", status="blocked")
         run_repo.create(project_id=proj_id, goal="Run 1")
         artifact_repo.create(project_id=proj_id, name="Artifact 1")
-        approval_repo.create(project_id=proj_id, title="Approval 1", status="pending")
-        approval_repo.create(project_id=proj_id, title="Approval 2", status="approved")
 
         response = client.get(f"/projects/{proj_id}/overview")
         assert response.status_code == 200
@@ -119,11 +115,11 @@ class TestProjectEndpoints:
         assert data["stats"]["blocked_count"] == 1
         assert data["stats"]["run_count"] == 1
         assert data["stats"]["artifact_count"] == 1
-        assert data["stats"]["pending_approval_count"] == 1
+        assert "pending_approval_count" not in data["stats"]
         assert len(data["recent_tasks"]) == 2
         assert len(data["recent_runs"]) == 1
         assert len(data["recent_artifacts"]) == 1
-        assert len(data["recent_approvals"]) == 2
+        assert "recent_approvals" not in data
 
     def test_get_project_overview_not_found(self):
         response = client.get("/projects/nonexistent/overview")

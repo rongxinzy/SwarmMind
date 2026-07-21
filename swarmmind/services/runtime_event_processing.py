@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import uuid
 from collections.abc import Callable, Generator
 from dataclasses import dataclass, field
@@ -24,6 +25,106 @@ class StreamCaptureState:
     tool_results: list[str] = field(default_factory=list)
     seen_ids: set[str] = field(default_factory=set)
     last_todos: list[dict] | None = None
+
+
+def _jsonable(value: Any) -> Any:
+    """Return a JSON-safe copy without changing LangChain message semantics."""
+    if value is None or isinstance(value, str | int | float | bool):
+        return value
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, list | tuple | set):
+        return [_jsonable(item) for item in value]
+    if hasattr(value, "model_dump"):
+        return _jsonable(value.model_dump())
+    try:
+        json.dumps(value)
+        return value
+    except TypeError:
+        return str(value)
+
+
+def _serialize_tool_call(tool_call: Any) -> dict[str, Any]:
+    if isinstance(tool_call, dict):
+        return {
+            "name": str(tool_call.get("name") or ""),
+            "args": _jsonable(tool_call.get("args") or {}),
+            "id": tool_call.get("id"),
+            "type": tool_call.get("type") or "tool_call",
+        }
+    return {
+        "name": str(getattr(tool_call, "name", "") or ""),
+        "args": _jsonable(getattr(tool_call, "args", {}) or {}),
+        "id": getattr(tool_call, "id", None),
+        "type": getattr(tool_call, "type", None) or "tool_call",
+    }
+
+
+def serialize_deerflow_message(message: object, extract_text: Callable[[object], str] | None = None) -> dict[str, Any] | None:
+    """Serialize a LangChain message into the flat LangGraph SDK Message shape."""
+    if isinstance(message, HumanMessage):
+        return {
+            "type": "human",
+            "id": getattr(message, "id", None),
+            "name": getattr(message, "name", None),
+            "content": _jsonable(getattr(message, "content", "")),
+            "additional_kwargs": _jsonable(getattr(message, "additional_kwargs", {}) or {}),
+            "response_metadata": _jsonable(getattr(message, "response_metadata", {}) or {}),
+        }
+
+    if isinstance(message, AIMessage | AIMessageChunk):
+        native: dict[str, Any] = {
+            "type": "ai",
+            "id": getattr(message, "id", None),
+            "name": getattr(message, "name", None),
+            "content": _jsonable(getattr(message, "content", "")),
+            "additional_kwargs": _jsonable(getattr(message, "additional_kwargs", {}) or {}),
+            "response_metadata": _jsonable(getattr(message, "response_metadata", {}) or {}),
+        }
+        tool_calls = getattr(message, "tool_calls", None)
+        if tool_calls:
+            native["tool_calls"] = [_serialize_tool_call(tool_call) for tool_call in tool_calls]
+        invalid_tool_calls = getattr(message, "invalid_tool_calls", None)
+        if invalid_tool_calls:
+            native["invalid_tool_calls"] = _jsonable(invalid_tool_calls)
+        usage_metadata = getattr(message, "usage_metadata", None)
+        if usage_metadata:
+            native["usage_metadata"] = _jsonable(usage_metadata)
+        return native
+
+    if isinstance(message, ToolMessage):
+        content = getattr(message, "content", "")
+        if extract_text is not None:
+            content = extract_text(content)
+        return {
+            "type": "tool",
+            "id": getattr(message, "id", None),
+            "name": getattr(message, "name", None),
+            "content": _jsonable(content),
+            "tool_call_id": getattr(message, "tool_call_id", None),
+            "status": getattr(message, "status", None) or "success",
+            "additional_kwargs": _jsonable(getattr(message, "additional_kwargs", {}) or {}),
+            "response_metadata": _jsonable(getattr(message, "response_metadata", {}) or {}),
+        }
+
+    return None
+
+
+def _streaming_ai_message_event(capture_state: StreamCaptureState) -> dict[str, Any]:
+    additional_kwargs: dict[str, Any] = {}
+    if capture_state.accumulated_reasoning:
+        additional_kwargs["reasoning_content"] = capture_state.accumulated_reasoning
+    return {
+        "type": "deerflow.message",
+        "transient": True,
+        "message": {
+            "type": "ai",
+            "id": capture_state.current_chunk_msg_id,
+            "content": capture_state.accumulated_content,
+            "additional_kwargs": additional_kwargs,
+            "response_metadata": {},
+        },
+    }
 
 
 def process_messages_mode_chunk(
@@ -58,7 +159,7 @@ def process_messages_mode_chunk(
     content_delta = extract_content_delta(msg_chunk)
     if content_delta:
         # 注意：accumulated_content 是累计完整内容，非增量片段。
-        # 上层事件序列化时使用 content.accumulated 以准确表达语义。
+        # 上层事件序列化时使用 content.accumulated 明确表达累计状态。
         capture_state.accumulated_content += content_delta
         events.append(
             {

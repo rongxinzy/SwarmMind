@@ -7,20 +7,15 @@ module.exports = {
     "plugin:@typescript-eslint/stylistic-type-checked",
     "plugin:react-hooks/recommended",
   ],
-  ignorePatterns: ["dist", ".eslintrc.cjs", "src/components/ai-elements"],
+  ignorePatterns: ["dist", ".next", ".eslintrc.cjs", "src/components/ai-elements"],
   parser: "@typescript-eslint/parser",
   parserOptions: {
     ecmaVersion: "latest",
     sourceType: "module",
-    project: ["./tsconfig.json", "./tsconfig.node.json"],
+    project: ["./tsconfig.json"],
     tsconfigRootDir: __dirname,
   },
-  plugins: ["react-refresh"],
   rules: {
-    "react-refresh/only-export-components": [
-      "warn",
-      { allowConstantExport: true },
-    ],
     // Strict rules
     "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
     "@typescript-eslint/no-explicit-any": "error",

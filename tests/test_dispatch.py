@@ -62,7 +62,7 @@ class TestDispatch:
         assert result.agent_id == "general"
         assert result.status == "pending"
 
-    def test_dispatch_unknown_goal_routes_to_general_agent(self):
+    def test_dispatch_unknown_goal_routes_to_deerflow_runtime(self):
         from swarmmind.context_broker import dispatch
 
         result = dispatch("Make me a sandwich")

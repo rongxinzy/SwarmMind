@@ -135,6 +135,7 @@ class MessageDB(SQLModel, table=True):
     tool_call_id: str | None = None
     name: str | None = None
     run_id: str | None = None
+    native_payload: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON))
     created_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_messages_conversation", "conversation_id"),)

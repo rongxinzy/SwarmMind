@@ -1,7 +1,7 @@
 """Regression test for ultra mode restaurant agent team snapshot.
 
 Uses mock DeerFlow snapshot data to verify stream-event translation
-and semantic-layer event sequences without requiring a live LLM.
+and auxiliary event sequences without requiring a live LLM.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 from swarmmind.models import ConversationMode, ConversationRuntimeOptions
-from swarmmind.services.stream_events import translate_general_agent_event
+from swarmmind.services.stream_events import translate_deerflow_runtime_event
 
 SNAPSHOTS_DIR = Path(__file__).with_suffix("").parent / "snapshots"
 NDJSON_PATH = SNAPSHOTS_DIR / "ultra_restaurant_agent_team.ndjson"
@@ -75,35 +75,35 @@ def test_snapshot_integrity_and_structure():
 
 
 # -----------------------------------------------------------------------------
-# Test 2: Semantic-layer event translation
+# Test 2: Auxiliary event translation
 # -----------------------------------------------------------------------------
-def test_semantic_layer_event_translation():
+def test_auxiliary_event_translation():
     events = _load_events()
-    semantic_events: list[dict] = []
+    auxiliary_events: list[dict] = []
 
-    semantic_events.extend(
-        json.loads(line) for event in events for line in translate_general_agent_event(event, RUNTIME_OPTIONS)
+    auxiliary_events.extend(
+        json.loads(line) for event in events for line in translate_deerflow_runtime_event(event, RUNTIME_OPTIONS)
     )
 
-    types = [e["type"] for e in semantic_events]
+    types = [e["type"] for e in auxiliary_events]
 
     # Sequence starts with status.thinking
     assert types[0] == "status.thinking", f"Expected status.thinking first, got {types[0]}"
 
     # Contains status.running (possibly multiple times)
-    assert "status.running" in types, "Missing status.running in semantic events"
+    assert "status.running" in types, "Missing status.running in auxiliary events"
 
     # Contains at least one status.clarification
-    assert "status.clarification" in types, "Missing status.clarification in semantic events"
+    assert "status.clarification" in types, "Missing status.clarification in auxiliary events"
 
     # Contains content.accumulated
-    assert "content.accumulated" in types, "Missing content.accumulated in semantic events"
+    assert "content.accumulated" in types, "Missing content.accumulated in auxiliary events"
 
     # Sequence ends with content.accumulated (the last assistant_message)
     assert types[-1] == "content.accumulated", f"Expected content.accumulated last, got {types[-1]}"
 
     # No error events
-    assert "error" not in types, f"Unexpected error events: {[e for e in semantic_events if e['type'] == 'error']}"
+    assert "error" not in types, f"Unexpected error events: {[e for e in auxiliary_events if e['type'] == 'error']}"
 
 
 # -----------------------------------------------------------------------------
@@ -111,10 +111,10 @@ def test_semantic_layer_event_translation():
 # -----------------------------------------------------------------------------
 def test_business_content_validation():
     events = _load_events()
-    semantic_events: list[dict] = []
+    auxiliary_events: list[dict] = []
 
-    semantic_events.extend(
-        json.loads(line) for event in events for line in translate_general_agent_event(event, RUNTIME_OPTIONS)
+    auxiliary_events.extend(
+        json.loads(line) for event in events for line in translate_deerflow_runtime_event(event, RUNTIME_OPTIONS)
     )
 
     # Final assistant_message content should contain at least 2 of the keywords
@@ -125,7 +125,7 @@ def test_business_content_validation():
     assert len(matched) >= 2, f"Final content should contain at least 2 keywords from {keywords}, got {matched}"
 
     # Clarification event should contain "小费"
-    clarification_events = [e for e in semantic_events if e["type"] == "status.clarification"]
+    clarification_events = [e for e in auxiliary_events if e["type"] == "status.clarification"]
     assert clarification_events, "No clarification events found"
     for clar in clarification_events:
         assert "小费" in clar.get("question", ""), f"Clarification missing '小费': {clar}"

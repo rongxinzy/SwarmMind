@@ -6,6 +6,10 @@ BACKEND_DIR := .
 UI_DIR := ui
 PM2_NAME_API := swarmmind-api
 PM2_NAME_UI := swarmmind-ui
+API_HOST ?= 127.0.0.1
+API_PORT ?= 8000
+API_DEV_CMD := uv run uvicorn swarmmind.api.supervisor:app --host $(API_HOST) --port $(API_PORT)
+UI_DEV_CMD := ./node_modules/.bin/next dev --turbo
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
@@ -105,33 +109,35 @@ ci: install format-check lint typecheck security test ## Full CI pipeline
 # ---- Dev ----
 dev: ## Run both backend and frontend via PM2 (background)
 	@pm2 delete $(PM2_NAME_API) $(PM2_NAME_UI) 2>/dev/null; \
-	pm2 start "uv run python -m swarmmind.api.supervisor" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR); \
-	pm2 start "pnpm run dev" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR); \
+	pm2 start "$(API_DEV_CMD)" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR); \
+	pm2 start "$(UI_DEV_CMD)" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR); \
 	pm2 logs --nostream --lines 5
 
 frontend: ## Run frontend only via PM2
 	@pm2 delete $(PM2_NAME_UI) 2>/dev/null; \
-	pm2 start "pnpm run dev" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
+	pm2 start "$(UI_DEV_CMD)" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
 
 backend: ## Run backend only via PM2
 	@pm2 delete $(PM2_NAME_API) 2>/dev/null; \
-	pm2 start "uv run python -m swarmmind.api.supervisor" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR)
+	pm2 start "$(API_DEV_CMD)" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR)
 
 # ---- PM2 ----
 # IMPORTANT: Use `pm2 stop` to stop processes gracefully. DO NOT use `kill -9` on PM2 processes.
 # `kill -9` kills the process but PM2 will auto-restart it, creating a zombie loop.
 # Only use `kill -9` as a last resort if PM2 stop fails.
 restart: ## Restart both services (restart to pick up code changes and .env updates)
-	pm2 restart $(PM2_NAME_API) --update-env 2>/dev/null || pm2 start "uv run python -m swarmmind.api.supervisor" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR); \
+	pm2 delete $(PM2_NAME_API) 2>/dev/null; \
+	pm2 start "$(API_DEV_CMD)" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR); \
 	pm2 delete $(PM2_NAME_UI) 2>/dev/null; \
-	pm2 start "pnpm run dev" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
+	pm2 start "$(UI_DEV_CMD)" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
 
 restart-api: ## Restart backend only (--update-env picks up .env changes)
-	pm2 restart $(PM2_NAME_API) --update-env 2>/dev/null || pm2 start "uv run python -m swarmmind.api.supervisor" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR)
+	pm2 delete $(PM2_NAME_API) 2>/dev/null; \
+	pm2 start "$(API_DEV_CMD)" --name=$(PM2_NAME_API) --cwd=$(BACKEND_DIR)
 
 restart-ui: ## Recreate frontend only so PM2 always uses the current repo cwd
 	@pm2 delete $(PM2_NAME_UI) 2>/dev/null; \
-	pm2 start "pnpm run dev" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
+	pm2 start "$(UI_DEV_CMD)" --name=$(PM2_NAME_UI) --cwd=$(UI_DIR)
 
 stop: ## Stop both services gracefully (use this, NOT kill -9)
 	pm2 stop $(PM2_NAME_API) $(PM2_NAME_UI)

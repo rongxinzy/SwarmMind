@@ -40,28 +40,28 @@ class TestAuditLogEndpoints:
             "/audit-logs",
             json={
                 "project_id": proj.project_id,
-                "audit_type": "approval_decision",
+                "audit_type": "run.completed",
                 "actor_id": "user-1",
                 "actor_type": "user",
-                "decision": "approved",
-                "reason": "Looks good",
+                "decision": "completed",
+                "reason": "Run finished",
                 "metadata": {"key": "value"},
             },
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["audit_type"] == "approval_decision"
+        assert data["audit_type"] == "run.completed"
         assert data["project_id"] == proj.project_id
         assert data["actor_id"] == "user-1"
-        assert data["decision"] == "approved"
-        assert data["reason"] == "Looks good"
+        assert data["decision"] == "completed"
+        assert data["reason"] == "Run finished"
         assert data["metadata"] == {"key": "value"}
         assert "audit_id" in data
 
     def test_create_audit_log_project_not_found(self):
         response = client.post(
             "/audit-logs",
-            json={"project_id": "nonexistent", "audit_type": "approval_decision"},
+            json={"project_id": "nonexistent", "audit_type": "run.completed"},
         )
         assert response.status_code == 404
 

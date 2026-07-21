@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react"
 import { AppSidebar as Sidebar, type SidebarView } from "./Sidebar"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { ChatView } from "@/components/chat/ChatView"
 import { ProjectsPanel } from "@/components/project/ProjectsPanel"
-import { ApprovalsPanel } from "@/components/approvals/ApprovalsPanel"
+import { ProvidersPanel } from "@/components/admin/ProvidersPanel"
 import { apiFetch, apiFetchJson } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -18,7 +18,6 @@ export function AppShell() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [activeConversationId, setActiveConversationId] = useState<string | undefined>(undefined)
   const [activeProjectId, setActiveProjectId] = useState<string | undefined>(undefined)
-  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const [isLoadingConversations, setIsLoadingConversations] = useState(true)
 
   const fetchConversations = useCallback(async () => {
@@ -34,32 +33,21 @@ export function AppShell() {
     }
   }, [])
 
-  const fetchPendingApprovals = useCallback(async () => {
-    try {
-      const data = (await apiFetchJson<{ items: { approval_id: string; status: string }[]; total: number }>(
-        "/approvals?status=pending",
-      ))
-      setPendingApprovalsCount(data.total)
-    } catch {
-      // non-critical
-    }
-  }, [])
-
   useEffect(() => {
     void fetchConversations()
-    void fetchPendingApprovals()
-    const interval = setInterval(fetchPendingApprovals, 30000)
-    return () => clearInterval(interval)
-  }, [fetchConversations, fetchPendingApprovals])
+  }, [fetchConversations])
 
   // Recover from URL on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const urlConversationId = params.get("conversation")
     const urlProjectId = params.get("project")
+    const urlView = params.get("view")
     if (urlProjectId) {
       setActiveProjectId(urlProjectId)
       setActiveView("projects")
+    } else if (urlView === "providers") {
+      setActiveView("providers")
     } else if (urlConversationId) {
       setActiveConversationId(urlConversationId)
       setActiveView("chat")
@@ -118,15 +106,25 @@ export function AppShell() {
   const handleViewChange = useCallback(
     (view: SidebarView) => {
       setActiveView(view)
+      if (view === "providers") {
+        setActiveProjectId(undefined)
+        window.history.replaceState(null, "", "/?view=providers")
+        return
+      }
+      if (view === "projects" && !activeProjectId) {
+        window.history.replaceState(null, "", "/?view=projects")
+        return
+      }
       if (view === "chat" && !activeConversationId) {
+        setActiveProjectId(undefined)
         window.history.replaceState(null, "", "/")
       }
     },
-    [activeConversationId],
+    [activeConversationId, activeProjectId],
   )
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen>
       <Sidebar
         activeView={activeView}
         onViewChange={handleViewChange}
@@ -135,22 +133,23 @@ export function AppShell() {
         onSelectConversation={handleSelectConversation}
         onDeleteConversation={handleDeleteConversation}
         onNewChat={handleNewChat}
-        pendingApprovalsCount={pendingApprovalsCount}
       />
-      <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background md:ml-[var(--sidebar-width)]">
+      <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden bg-background">
+        <div className="absolute left-3 top-3 z-20 md:hidden">
+          <SidebarTrigger className="size-9 rounded-full border border-[#e8e8e8] bg-white shadow-sm" />
+        </div>
         {activeView === "chat" && (
           <ChatView
             conversationId={activeConversationId}
             onConversationCreated={handleConversationCreated}
             onOpenProject={handleOpenProject}
-            onOpenApprovals={() => handleViewChange("approvals")}
             isLoadingConversations={isLoadingConversations}
           />
         )}
         {activeView === "projects" && (
           <ProjectsPanel projectId={activeProjectId} onOpenProject={handleOpenProject} />
         )}
-        {activeView === "approvals" && <ApprovalsPanel />}
+        {activeView === "providers" && <ProvidersPanel />}
       </main>
     </SidebarProvider>
   )

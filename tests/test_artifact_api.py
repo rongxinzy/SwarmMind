@@ -176,6 +176,97 @@ class TestArtifactEndpoints:
         assert response.status_code == 200
         assert response.headers["content-disposition"].startswith("attachment;")
 
+    def test_get_skill_artifact_preview_entry(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        skill_dir = deer_home / "threads" / conv.id / "user-data" / "outputs" / "research.skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# Research Skill\n\nUse this skill.", encoding="utf-8")
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        art_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/outputs/research.skill",
+            artifact_type="present_files",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/outputs/research.skill/SKILL.md")
+        assert response.status_code == 200
+        assert response.text == "# Research Skill\n\nUse this skill."
+        assert response.headers["content-type"].startswith("text/markdown")
+
+    def test_get_skill_artifact_preview_rejects_escape(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        output_dir = deer_home / "threads" / conv.id / "user-data" / "outputs"
+        skill_dir = output_dir / "research.skill"
+        skill_dir.mkdir(parents=True)
+        (skill_dir / "SKILL.md").write_text("# Research Skill", encoding="utf-8")
+        (output_dir / "secret.txt").write_text("hidden", encoding="utf-8")
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        art_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/outputs/research.skill",
+            artifact_type="present_files",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/outputs/research.skill/%2E%2E/secret.txt")
+        assert response.status_code == 403
+
+    def test_get_html_artifact_bundle_asset(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        site_dir = deer_home / "threads" / conv.id / "user-data" / "outputs" / "site"
+        site_dir.mkdir(parents=True)
+        (site_dir / "index.html").write_text('<link rel="stylesheet" href="style.css">', encoding="utf-8")
+        (site_dir / "style.css").write_text("body { color: black; }", encoding="utf-8")
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        art_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/outputs/site/index.html",
+            artifact_type="present_files",
+            mime_type="text/html",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/outputs/site/style.css")
+        assert response.status_code == 200
+        assert response.text == "body { color: black; }"
+        assert response.headers["content-type"].startswith("text/css")
+
+    def test_get_html_artifact_bundle_rejects_escape(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        art_repo = ArtifactRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        output_dir = deer_home / "threads" / conv.id / "user-data" / "outputs"
+        site_dir = output_dir / "site"
+        site_dir.mkdir(parents=True)
+        (site_dir / "index.html").write_text("<html></html>", encoding="utf-8")
+        (output_dir / "secret.css").write_text("hidden", encoding="utf-8")
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        art_repo.create(
+            conversation_id=conv.id,
+            name="/mnt/user-data/outputs/site/index.html",
+            artifact_type="present_files",
+            mime_type="text/html",
+        )
+
+        response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/outputs/site/%2E%2E/secret.css")
+        assert response.status_code == 403
+
     def test_get_artifact_file_requires_registered_artifact(self, monkeypatch, tmp_path):
         conv_repo = ConversationRepository()
         conv = conv_repo.create("Chat", "pending")
@@ -204,3 +295,29 @@ class TestArtifactEndpoints:
 
         response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/%2E%2E/secret.txt")
         assert response.status_code == 403
+
+    def test_upload_file_registers_user_data_artifact(self, monkeypatch, tmp_path):
+        conv_repo = ConversationRepository()
+        conv = conv_repo.create("Chat", "pending")
+
+        deer_home = tmp_path / "deer-home"
+        monkeypatch.setenv("DEER_FLOW_HOME", str(deer_home))
+
+        response = client.post(
+            f"/api/threads/{conv.id}/uploads",
+            files=[("files", ("brief.txt", b"hello upload", "text/plain"))],
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        uploaded = data["files"][0]
+        assert uploaded["filename"] == "brief.txt"
+        assert uploaded["size"] == len(b"hello upload")
+        assert uploaded["virtual_path"] == "/mnt/user-data/uploads/brief.txt"
+        assert (deer_home / "threads" / conv.id / "user-data" / "uploads" / "brief.txt").read_text(
+            encoding="utf-8"
+        ) == "hello upload"
+
+        artifact_response = client.get(f"/conversations/{conv.id}/artifacts/mnt/user-data/uploads/brief.txt")
+        assert artifact_response.status_code == 200
+        assert artifact_response.text == "hello upload"

@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from langchain.agents.middleware import ModelRequest
+from langchain_core.messages import SystemMessage
+
+from swarmmind.agents.deerflow_runtime import _SwarmMindDeerFlowClientMixin
+from swarmmind.agents.middlewares.identity_middleware import SwarmMindIdentityMiddleware
 from swarmmind.db import init_db, seed_default_agents
 from swarmmind.prompting import SWARMMIND_PRODUCT_IDENTITY_PROMPT, rewrite_swarmmind_identity_prompt
 
@@ -29,7 +34,36 @@ You are DeerFlow 2.0, an open-source super agent.
     assert "You are DeerFlow 2.0, an open-source super agent." not in prompt
 
 
-def test_seed_default_agents_updates_general_identity_prompt(tmp_path, monkeypatch):
+def test_identity_middleware_rewrites_native_deerflow_model_request():
+    middleware = SwarmMindIdentityMiddleware(SWARMMIND_PRODUCT_IDENTITY_PROMPT)
+    request = ModelRequest(
+        model=object(),
+        messages=[],
+        system_message=SystemMessage(
+            content="""<role>
+You are DeerFlow 2.0, an open-source super agent.
+</role>
+
+<thinking_style>Think carefully.</thinking_style>
+"""
+        ),
+    )
+
+    rewritten = middleware._with_swarmmind_identity(request)
+
+    assert rewritten.system_message is not None
+    assert isinstance(rewritten.system_message.content, str)
+    assert "You are SwarmMind" in rewritten.system_message.content
+    assert "You are DeerFlow 2.0" not in rewritten.system_message.content
+    assert "<thinking_style>Think carefully.</thinking_style>" in rewritten.system_message.content
+
+
+def test_client_mixin_does_not_replace_native_deerflow_runtime_methods():
+    assert "_ensure_agent" not in _SwarmMindDeerFlowClientMixin.__dict__
+    assert "astream" not in _SwarmMindDeerFlowClientMixin.__dict__
+
+
+def test_seed_default_agents_updates_swarmmind_identity_prompt(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
     init_db()

@@ -34,17 +34,20 @@ class MessageRepository:
         tool_call_id: str | None = None,
         name: str | None = None,
         run_id: str | None = None,
+        native_payload: dict | None = None,
+        message_id: str | None = None,
     ) -> MessageDB:
         """Create a new message."""
         with session_scope() as session:
             msg = MessageDB(
-                id=str(uuid.uuid4()),
+                id=message_id or str(uuid.uuid4()),
                 conversation_id=conversation_id,
                 role=role,
                 content=content,
                 tool_call_id=tool_call_id,
                 name=name,
                 run_id=run_id,
+                native_payload=native_payload,
             )
             session.add(msg)
             session.commit()

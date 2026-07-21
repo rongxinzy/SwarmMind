@@ -16,11 +16,10 @@ def list_audit_logs(
     ctx: typer.Context,
     project_id: Annotated[str | None, typer.Option("--project-id")] = None,
     run_id: Annotated[str | None, typer.Option("--run-id")] = None,
-    approval_id: Annotated[str | None, typer.Option("--approval-id")] = None,
 ) -> None:
     run_client_command(
         ctx,
-        lambda client: client.list_audit_logs(project_id=project_id, run_id=run_id, approval_id=approval_id),
+        lambda client: client.list_audit_logs(project_id=project_id, run_id=run_id),
     )
 
 
@@ -36,9 +35,8 @@ def get_audit_log(
 def create_audit_log(
     ctx: typer.Context,
     project_id: Annotated[str, typer.Argument(help="Project ID.")],
-    audit_type: Annotated[str, typer.Option("--audit-type")] = "approval_decision",
+    audit_type: Annotated[str, typer.Option("--audit-type")] = "event",
     run_id: Annotated[str | None, typer.Option("--run-id")] = None,
-    approval_id: Annotated[str | None, typer.Option("--approval-id")] = None,
     actor_id: Annotated[str | None, typer.Option("--actor-id")] = None,
     actor_type: Annotated[str, typer.Option("--actor-type")] = "user",
     decision: Annotated[str | None, typer.Option("--decision")] = None,
@@ -50,7 +48,6 @@ def create_audit_log(
             project_id=project_id,
             audit_type=audit_type,
             run_id=run_id,
-            approval_id=approval_id,
             actor_id=actor_id,
             actor_type=actor_type,
             decision=decision,

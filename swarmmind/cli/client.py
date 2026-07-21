@@ -10,8 +10,6 @@ import httpx
 from pydantic import BaseModel
 
 from swarmmind.models import (
-    ApprovalRequest,
-    ApprovalRequestListResponse,
     AuditLogEntry,
     AuditLogListResponse,
     AuthToken,
@@ -24,13 +22,11 @@ from swarmmind.models import (
     Conversation,
     ConversationListResponse,
     ConversationTraceResponse,
-    CreateApprovalRequest,
     CreateAuditLogEntry,
     CreateConversationRequest,
     CreateRunRequest,
     CreateTaskRequest,
     CurrentUserResponse,
-    DeleteApprovalResponse,
     DeleteAuditLogResponse,
     DeleteConnectorResponse,
     DeleteConversationResponse,
@@ -63,7 +59,6 @@ from swarmmind.models import (
     SendMessageResponse,
     Task,
     TaskListResponse,
-    UpdateApprovalRequest,
     UpdateRunRequest,
     UpdateTaskRequest,
     User,
@@ -390,36 +385,6 @@ class SwarmMindClient:
     def delete_task(self, project_id: str, task_id: str) -> DeleteTaskResponse:
         return self._list(DeleteTaskResponse, "DELETE", f"/projects/{project_id}/tasks/{task_id}")
 
-    # ---- approvals ----
-
-    def list_approvals(
-        self,
-        *,
-        project_id: str | None = None,
-        status: str | None = None,
-        risk_tier: str | None = None,
-    ) -> ApprovalRequestListResponse:
-        return self._list(
-            ApprovalRequestListResponse,
-            "GET",
-            "/approvals",
-            params={"project_id": project_id, "status": status, "risk_tier": risk_tier},
-        )
-
-    def create_approval(self, **fields) -> ApprovalRequest:
-        body = CreateApprovalRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
-        return self._list(ApprovalRequest, "POST", "/approvals", json_body=body)
-
-    def get_approval(self, approval_id: str) -> ApprovalRequest:
-        return self._list(ApprovalRequest, "GET", f"/approvals/{approval_id}")
-
-    def update_approval(self, approval_id: str, **fields) -> ApprovalRequest:
-        body = UpdateApprovalRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
-        return self._list(ApprovalRequest, "PATCH", f"/approvals/{approval_id}", json_body=body)
-
-    def delete_approval(self, approval_id: str) -> DeleteApprovalResponse:
-        return self._list(DeleteApprovalResponse, "DELETE", f"/approvals/{approval_id}")
-
     # ---- audit logs ----
 
     def list_audit_logs(
@@ -427,13 +392,12 @@ class SwarmMindClient:
         *,
         project_id: str | None = None,
         run_id: str | None = None,
-        approval_id: str | None = None,
     ) -> AuditLogListResponse:
         return self._list(
             AuditLogListResponse,
             "GET",
             "/audit-logs",
-            params={"project_id": project_id, "run_id": run_id, "approval_id": approval_id},
+            params={"project_id": project_id, "run_id": run_id},
         )
 
     def create_audit_log(self, **fields) -> AuditLogEntry:

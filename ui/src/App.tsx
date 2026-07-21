@@ -1,3 +1,5 @@
+"use client"
+
 import { AuthProvider, useAuth } from "@/hooks/useAuth"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Spinner } from "@/components/ui/spinner"

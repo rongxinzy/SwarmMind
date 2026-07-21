@@ -2,34 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * SwarmMind design tokens
- * 根系（用户给定色号，冷调近白低对比，零饱和干扰）：
- *   主区背景      #ffffff
- *   侧边栏背景     #f7f7f7
- *   侧栏选中底     #ededee
- *   分隔线/输入框边框 #ededef
- *   输入框阴影      #e7e7e7
- *   聚焦边缘光      #b2d1ff → #ecf4fc（径向，极细）
- * 其余 token 全部由上述灰阶派生，保持明度差分层、无色相干扰。
- */
-
-/*
- * ─────────────────────────────────────────────────────
- *  场景字体变量
- * ─────────────────────────────────────────────────────
- *  全局 UI  → font-sans（跨平台系统无衬线栈，零网络请求）
- *  长文正文 → font-serif（Averia Serif Libre / 霞鹜文楷）
- *  代码展示 → font-mono（Maple Mono / 系统等宽回退）
- */
 :root {
-  --font-cereal: "Cereal", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Averia Serif Libre", "LXGW WenKai", serif;
+  --font-cereal: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Tahoma, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+  --font-serif: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Maple Mono", "Maple Mono CN", ui-monospace, monospace;
 }
 
 @layer base {
-  /* ── 全局字体渲染基准 ── */
   html {
     font-feature-settings: normal;
     font-variation-settings: normal;
@@ -59,56 +38,52 @@
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    /* primary 用近黑而非彩色按钮 —— 唯一色彩留给聚焦光 */
     --primary: 0 0% 10%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 6% 93%;
+    --secondary: 0 0% 96%;
     --secondary-foreground: 0 0% 10%;
 
-    --muted: 240 6% 93%;
-    --muted-foreground: 240 3% 44%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 36%;
 
-    --accent: 240 6% 93%;
+    --accent: 0 0% 96%;
     --accent-foreground: 0 0% 10%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 7% 93%;
+    --border: 0 0% 91%;
     --input: 0 0% 100%;
-    --ring: 217 100% 85%;
+    --ring: 0 0% 8%;
 
     --radius: 8px;
 
     /* 侧边栏 */
-    --sidebar: 0 0% 97%;
+    --sidebar: 0 0% 98%;
     --sidebar-foreground: 0 0% 10%;
     --sidebar-primary: 0 0% 10%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 6% 93%;
+    --sidebar-accent: 0 0% 93%;
     --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 240 7% 93%;
-    --sidebar-ring: 217 100% 85%;
+    --sidebar-border: 0 0% 91%;
+    --sidebar-ring: 0 0% 8%;
 
-    /* 图表色（冷调，低调） */
-    --chart-1: 217 100% 85%;
-    --chart-2: 240 6% 60%;
-    --chart-3: 240 6% 40%;
-    --chart-4: 0 0% 20%;
-    --chart-5: 0 0% 75%;
+    --chart-1: 251 88% 67%;
+    --chart-2: 147 73% 31%;
+    --chart-3: 37 100% 35%;
+    --chart-4: 212 48% 45%;
+    --chart-5: 0 0% 24%;
 
-    /* 聚焦边缘光：内层细描边 #b2d1ff，外层柔光 #ecf4fc，极细 */
-    --focus-glow-inner: 217 100% 85%;
-    --focus-glow-outer: 210 67% 96%;
-    --input-shadow: 220 8% 91%;
+    --focus-glow-inner: 0 0% 10%;
+    --focus-glow-outer: 0 0% 88%;
+    --input-shadow: 0 0% 88%;
 
-    /* 文字 alpha 透明色（浅色主题） */
-    --text-primary: #0d0d0d;
-    --text-quaternary: #989798;
+    --text-primary: #1a1a1a;
+    --text-quaternary: #858585;
     --caption: rgba(0, 0, 0, 0.4);
     --disabled: rgba(0, 0, 0, 0.24);
-    --link: #0063db;
+    --link: #3b6ea8;
   }
 
   .dark {
@@ -138,7 +113,7 @@
 
     --border: 0 0% 19%;
     --input: 0 0% 16%;
-    --ring: 217 100% 75%;
+    --ring: 0 0% 96%;
 
     --sidebar: 0 0% 7%;
     --sidebar-foreground: 0 0% 96%;
@@ -147,45 +122,44 @@
     --sidebar-accent: 0 0% 16%;
     --sidebar-accent-foreground: 0 0% 96%;
     --sidebar-border: 0 0% 19%;
-    --sidebar-ring: 217 100% 75%;
+    --sidebar-ring: 0 0% 96%;
 
-    --chart-1: 217 100% 75%;
-    --chart-2: 240 4% 63%;
-    --chart-3: 240 4% 43%;
-    --chart-4: 0 0% 80%;
-    --chart-5: 0 0% 30%;
+    --chart-1: 251 88% 72%;
+    --chart-2: 147 55% 52%;
+    --chart-3: 37 90% 55%;
+    --chart-4: 212 55% 62%;
+    --chart-5: 0 0% 74%;
 
-    --focus-glow-inner: 217 100% 75%;
-    --focus-glow-outer: 210 50% 30%;
+    --focus-glow-inner: 0 0% 96%;
+    --focus-glow-outer: 0 0% 28%;
     --input-shadow: 0 0% 12%;
 
-    /* 文字 alpha 透明色（深色主题） */
     --text-primary: #ddd;
     --text-quaternary: #989798;
     --caption: rgba(255, 255, 255, 0.4);
     --disabled: rgba(255, 255, 255, 0.3);
-    --link: #39f;
+    --link: #8bb8e8;
   }
 }
 
 @layer components {
-  /*
-   * 聚焦边缘光（Dropbox Dash 风格多层蓝影）。
-   * 激活时边框变品牌蓝，叠加三层半透明蓝阴影，形成"发光"效果。
-   * 无过渡动画 —— 即时响应。
-   */
-  .focus-glow {
-    transition: none;
-  }
-  .focus-glow:focus-within {
-    border-color: rgba(0, 87, 255, 0.35);
-    box-shadow:
-      0 2px 4px 0 rgba(116, 158, 243, 0.02),
-      0 4px 12px 0 rgba(102, 188, 253, 0.04),
-      0 8px 24px 0 rgba(95, 178, 255, 0.17);
+  @keyframes deerflow-bounce {
+    to {
+      opacity: 0.12;
+      transform: translateY(-7px);
+    }
   }
 
-  /* 杀死 InputGroup 自带的边框和聚焦环 —— 聚焦光只由外层 .focus-glow 容器负责 */
+  .focus-glow {
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+  .focus-glow:focus-within {
+    border-color: rgba(20, 20, 20, 0.2);
+    box-shadow:
+      0 1px 2px 0 rgba(0, 0, 0, 0.03),
+      0 12px 34px 0 rgba(0, 0, 0, 0.08);
+  }
+
   .focus-glow [data-slot="input-group"] {
     border-color: transparent !important;
     box-shadow: none !important;

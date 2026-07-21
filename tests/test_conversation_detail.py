@@ -10,21 +10,19 @@ from swarmmind.db import init_db, seed_default_agents
 from swarmmind.models import CreateConversationRequest, SendMessageRequest
 
 
-class FakeDeerFlowRuntimeAdapter:
+class FakeDeerFlowRuntime:
     def __init__(self, *args, **kwargs):
         pass
 
-    def act(self, goal: str, proposal_id: str, ctx=None, runtime_options=None):
-        from types import SimpleNamespace
-
-        return SimpleNamespace(description=f"Fake response for: {goal}")
+    def run_turn(self, goal: str, ctx=None, runtime_options=None):
+        return f"Fake response for: {goal}"
 
 
 @pytest.fixture(autouse=True)
 def setup_db(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
-    monkeypatch.setattr(supervisor, "DeerFlowRuntimeAdapter", FakeDeerFlowRuntimeAdapter, raising=False)
+    monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime, raising=False)
     monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
     init_db()
     seed_default_agents()

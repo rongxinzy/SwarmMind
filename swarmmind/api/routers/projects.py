@@ -9,7 +9,6 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from swarmmind.api.routers.mappers import (
-    db_to_approval_request,
     db_to_artifact,
     db_to_audit_log_entry,
     db_to_project,
@@ -47,7 +46,6 @@ class ProjectsRouterDeps:
     task_repo: object
     run_repo: object
     artifact_repo: object
-    approval_request_repo: object
     audit_log_repo: object
     agent_team_repo: object
     project_team_repo: object
@@ -173,13 +171,10 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
         tasks = deps.task_repo.list_by_project(project_id)
         artifacts = deps.artifact_repo.list_by_project(project_id)
         runs = deps.run_repo.list_by_project(project_id)
-        approvals = deps.approval_request_repo.list_by_project(project_id)
 
         blocked_count = sum(1 for t in tasks if t.status == "blocked")
-        pending_approval_count = sum(1 for a in approvals if a.status == "pending")
         stats = {
             "blocked_count": blocked_count,
-            "pending_approval_count": pending_approval_count,
             "task_count": len(tasks),
             "artifact_count": len(artifacts),
             "run_count": len(runs),
@@ -191,7 +186,6 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
             recent_tasks=[db_to_task(t) for t in tasks[:recent_limit]],
             recent_artifacts=[db_to_artifact(a) for a in artifacts[:recent_limit]],
             recent_runs=[db_to_run(r) for r in runs[:recent_limit]],
-            recent_approvals=[db_to_approval_request(a) for a in approvals[:recent_limit]],
         )
 
     @router.get(

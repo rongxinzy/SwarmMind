@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ["class"],
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     container: {
       center: true,
@@ -13,6 +13,8 @@ export default {
     extend: {
       fontFamily: {
         sans: [
+          '"Inter Variable"',
+          "Inter",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",
@@ -30,9 +32,11 @@ export default {
           '"Noto Sans SC"',
         ],
         serif: [
-          '"Averia Serif Libre"',
-          '"LXGW WenKai"',
-          "serif",
+          '"Inter Variable"',
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
         ],
         mono: [
           '"Maple Mono"',

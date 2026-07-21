@@ -46,7 +46,7 @@ class RunContext:
         project_id: str,
         conversation_id: str,
         *,
-        risk_policy: RiskPolicy = RiskPolicy.MODERATE,
+        risk_policy: RiskPolicy = RiskPolicy.PERMISSIVE,
         approver_role: str | None = None,
     ) -> RunContext:
         """Create a project-scoped run context."""

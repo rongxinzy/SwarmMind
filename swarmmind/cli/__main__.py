@@ -8,7 +8,6 @@ from typing import Annotated
 import typer
 
 from swarmmind import __version__
-from swarmmind.cli.commands.approval import approval_app
 from swarmmind.cli.commands.audit import audit_app
 from swarmmind.cli.commands.auth import auth_app
 from swarmmind.cli.commands.connector import connector_app
@@ -74,7 +73,6 @@ app.add_typer(user_app, name="user")
 app.add_typer(project_app, name="project")
 app.add_typer(run_app, name="run")
 app.add_typer(task_app, name="task")
-app.add_typer(approval_app, name="approval")
 app.add_typer(audit_app, name="audit")
 app.add_typer(memory_app, name="memory")
 app.add_typer(member_app, name="member")

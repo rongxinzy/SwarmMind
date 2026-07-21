@@ -40,8 +40,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "@/components/ai-elements/types";
 import { cn } from "@/lib/utils";
-import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   CornerDownLeftIcon,
   ImageIcon,
@@ -271,6 +271,7 @@ export const PromptInputProvider = ({
     setAttachmentFiles((prev) => [
       ...prev,
       ...incoming.map((file) => ({
+        file,
         filename: file.name,
         id: nanoid(),
         mediaType: file.type,
@@ -614,6 +615,7 @@ export const PromptInput = ({
         const next: (FileUIPart & { id: string })[] = [];
         for (const file of capped) {
           next.push({
+            file,
             filename: file.name,
             id: nanoid(),
             mediaType: file.type,
@@ -1156,7 +1158,7 @@ export const PromptInputButton = ({
 
   return (
     <Tooltip>
-      <TooltipTrigger>{button}</TooltipTrigger>
+      <TooltipTrigger render={button} />
       <TooltipContent side={side}>
         {tooltipContent}
         {shortcut && (
