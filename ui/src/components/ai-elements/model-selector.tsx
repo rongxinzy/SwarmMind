@@ -43,7 +43,7 @@ export const ModelSelectorContent = ({
   <DialogContent
     aria-describedby={undefined}
     className={cn(
-      "max-w-[28rem] rounded-2xl border border-[#e8e8e8] bg-white p-0 shadow-[0_22px_70px_rgba(0,0,0,0.12)]",
+      "max-w-[22rem] rounded-3xl border border-[#e8e8e8] bg-white p-0 shadow-[0_10px_32px_rgba(0,0,0,0.07)] ring-0",
       className
     )}
     {...props}
@@ -67,7 +67,7 @@ export const ModelSelectorInput = ({
   className,
   ...props
 }: ModelSelectorInputProps) => (
-  <CommandInput className={cn("h-11 shrink-0 border-b border-[#f0f0f0] px-4 text-sm", className)} {...props} />
+  <CommandInput className={cn("h-9 shrink-0 border-b border-[#f0f0f0] px-3 text-sm", className)} {...props} />
 );
 
 export type ModelSelectorListProps = ComponentProps<typeof CommandList>;
@@ -76,7 +76,7 @@ export const ModelSelectorList = ({
   className,
   ...props
 }: ModelSelectorListProps) => (
-  <CommandList className={cn("max-h-[18rem] overflow-y-auto p-2", className)} {...props} />
+  <CommandList className={cn("max-h-[16rem] overflow-y-auto p-1.5", className)} {...props} />
 );
 
 export type ModelSelectorEmptyProps = ComponentProps<typeof CommandEmpty>;
@@ -100,7 +100,7 @@ export const ModelSelectorItem = ({
 }: ModelSelectorItemProps) => (
   <CommandItem
     className={cn(
-      "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm aria-selected:bg-[#f6f6f6]",
+      "flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm aria-selected:bg-[#f6f6f6]",
       className
     )}
     {...props}
