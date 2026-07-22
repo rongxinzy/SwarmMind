@@ -359,7 +359,7 @@ export function DeerFlowInputBox({
                 render={
                   <PromptInputButton
                     size="sm"
-                    className="h-7 min-w-[4rem] max-w-[8rem] shrink rounded-lg px-2 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
+                    className="flex h-7 min-w-[4rem] max-w-[8rem] items-center justify-center gap-1.5 rounded-lg px-2 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
                   />
                 }
               >
