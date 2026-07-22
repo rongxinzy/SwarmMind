@@ -63,9 +63,7 @@ def test_create_list_and_get_user() -> None:
 def test_create_user_requires_admin() -> None:
     headers = _admin_headers()
     member = _create_user(headers=headers)
-    member_login = client.post(
-        "/auth/login", json={"email": member["email"], "password": "correct horse"}
-    )
+    member_login = client.post("/auth/login", json={"email": member["email"], "password": "correct horse"})
     assert member_login.status_code == 200
     member_headers = {"Authorization": f"Bearer {member_login.json()['token']}"}
 
@@ -90,9 +88,7 @@ def test_login_me_and_logout_token_cycle() -> None:
     headers = _admin_headers()
     user = _create_user(headers=headers)
 
-    login = client.post(
-        "/auth/login", json={"email": user["email"], "password": "correct horse", "token_name": "cli"}
-    )
+    login = client.post("/auth/login", json={"email": user["email"], "password": "correct horse", "token_name": "cli"})
 
     assert login.status_code == 200
     token_data = login.json()

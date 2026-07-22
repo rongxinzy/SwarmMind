@@ -20,9 +20,7 @@ class TeamRepository:
         """List teams in an organization."""
         with session_scope() as session:
             rows = session.exec(
-                select(TeamDB)
-                .where(TeamDB.organization_id == organization_id)
-                .order_by(TeamDB.created_at.asc())
+                select(TeamDB).where(TeamDB.organization_id == organization_id).order_by(TeamDB.created_at.asc())
             ).all()
             for row in rows:
                 session.expunge(row)
