@@ -22,23 +22,19 @@ def create_user(
     ctx: typer.Context,
     email: Annotated[str, typer.Argument(help="User email.")],
     password: Annotated[str, typer.Option("--password", "-p", prompt=True, hide_input=True, help="Initial password.")],
+    username: Annotated[
+        str | None, typer.Option("--username", "-u", help="Username (defaults to email local-part).")
+    ] = None,
     display_name: Annotated[str | None, typer.Option("--display-name", help="Display name.")] = None,
     role: Annotated[str, typer.Option("--role", help="User role: admin or member.")] = "member",
 ) -> None:
     """Create a local user."""
     run_client_command(
         ctx,
-        lambda client: client.create_user(email=email, password=password, display_name=display_name, role=role),
+        lambda client: client.create_user(
+            email=email, username=username, password=password, display_name=display_name, role=role
+        ),
     )
-
-
-@user_app.command("get")
-def get_user(
-    ctx: typer.Context,
-    user_id: Annotated[str, typer.Argument(help="User ID.")],
-) -> None:
-    """Get a local user."""
-    run_client_command(ctx, lambda client: client.get_user(user_id))
 
 
 @user_app.command("update")
@@ -46,6 +42,7 @@ def update_user(
     ctx: typer.Context,
     user_id: Annotated[str, typer.Argument(help="User ID.")],
     email: Annotated[str | None, typer.Option("--email", help="New email.")] = None,
+    username: Annotated[str | None, typer.Option("--username", "-u", help="New username.")] = None,
     password: Annotated[str | None, typer.Option("--password", "-p", help="New password.")] = None,
     display_name: Annotated[str | None, typer.Option("--display-name", help="Display name.")] = None,
     role: Annotated[str | None, typer.Option("--role", help="User role: admin or member.")] = None,
@@ -57,6 +54,7 @@ def update_user(
         lambda client: client.update_user(
             user_id,
             email=email,
+            username=username,
             password=password,
             display_name=display_name,
             role=role,

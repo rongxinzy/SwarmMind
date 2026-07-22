@@ -256,6 +256,7 @@ class User(BaseModel):
 
     user_id: str
     email: str
+    username: str | None = None
     display_name: str | None = None
     role: UserRole = UserRole.MEMBER
     status: UserStatus = UserStatus.ACTIVE
@@ -275,8 +276,9 @@ class UserCreateRequest(BaseModel):
     """Request to create a local user."""
 
     email: str = Field(..., min_length=3, max_length=320)
+    username: str | None = Field(None, min_length=1, max_length=200)
     display_name: str | None = Field(None, max_length=200)
-    password: str = Field(..., min_length=8, max_length=200)
+    password: str = Field(..., min_length=1, max_length=200)
     role: UserRole = UserRole.MEMBER
     status: UserStatus = UserStatus.ACTIVE
 
@@ -285,8 +287,9 @@ class UserUpdateRequest(BaseModel):
     """Request to update a local user."""
 
     email: str | None = Field(None, min_length=3, max_length=320)
+    username: str | None = Field(None, min_length=1, max_length=200)
     display_name: str | None = Field(None, max_length=200)
-    password: str | None = Field(None, min_length=8, max_length=200)
+    password: str | None = Field(None, min_length=1, max_length=200)
     role: UserRole | None = None
     status: UserStatus | None = None
 
@@ -301,7 +304,12 @@ class DeleteUserResponse(BaseModel):
 class LoginRequest(BaseModel):
     """Request to exchange credentials for an API token."""
 
-    email: str = Field(..., min_length=3, max_length=320)
+    email: str = Field(
+        ...,
+        min_length=1,
+        max_length=320,
+        description="Email or username.",
+    )
     password: str = Field(..., min_length=1, max_length=200)
     token_name: str | None = Field(None, max_length=200)
 
@@ -518,5 +526,6 @@ class AuthSetupRequest(BaseModel):
     """Create the first admin user (only valid when no users exist)."""
 
     email: str
-    password: str = Field(..., min_length=8)
+    username: str | None = Field(None, min_length=1, max_length=200)
+    password: str = Field(..., min_length=1)
     display_name: str | None = None

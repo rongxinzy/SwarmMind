@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 export interface AuthUser {
   user_id: string
   email: string
+  username: string | null
   display_name: string | null
   role: string
   status: string
@@ -27,9 +28,9 @@ interface AuthState {
   isLoading: boolean
   isAuthenticated: boolean
   hasUsers: boolean | null
-  login: (email: string, password: string) => Promise<void>
+  login: (identifier: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  setup: (email: string, password: string, displayName?: string) => Promise<void>
+  setup: (email: string, password: string, username?: string, displayName?: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -79,11 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("auth:logout", handleAuthLogout)
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (identifier: string, password: string) => {
     const data = await apiFetchJson<LoginResponse>("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email: identifier, password }),
     })
     setToken(data.token)
     setUser(data.user)
@@ -99,11 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const setup = async (email: string, password: string, displayName?: string) => {
+  const setup = async (email: string, password: string, username?: string, displayName?: string) => {
     const data = await apiFetchJson<LoginResponse>("/auth/setup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, display_name: displayName ?? null }),
+      body: JSON.stringify({
+        email,
+        username: username || null,
+        password,
+        display_name: displayName ?? null,
+      }),
     })
     setToken(data.token)
     setUser(data.user)

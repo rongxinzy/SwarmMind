@@ -80,6 +80,7 @@ class UserDB(SQLModel, table=True):
 
     user_id: str = Field(primary_key=True)
     email: str
+    username: str | None = Field(default=None, index=True)
     display_name: str | None = None
     password_hash: str | None = None
     role: str = Field(default="member")
@@ -90,6 +91,7 @@ class UserDB(SQLModel, table=True):
 
     __table_args__ = (
         Index("idx_users_email", "email", unique=True),
+        Index("idx_users_username", "username", unique=True),
         Index("idx_users_status", "status"),
         Index("idx_users_role", "role"),
     )

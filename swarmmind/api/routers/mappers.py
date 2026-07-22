@@ -79,6 +79,7 @@ def db_to_user(user) -> User:
     return User(
         user_id=user.user_id,
         email=user.email,
+        username=user.username,
         display_name=user.display_name,
         role=user.role,
         status=user.status,

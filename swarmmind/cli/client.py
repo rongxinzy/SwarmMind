@@ -150,8 +150,8 @@ class SwarmMindClient:
 
     # ---- auth / users ----
 
-    def login(self, email: str, password: str, token_name: str | None = None) -> AuthToken:
-        body = LoginRequest(email=email, password=password, token_name=token_name).model_dump(
+    def login(self, identifier: str, password: str, token_name: str | None = None) -> AuthToken:
+        body = LoginRequest(email=identifier, password=password, token_name=token_name).model_dump(
             mode="json", exclude_none=True
         )
         return self._list(AuthToken, "POST", "/auth/login", json_body=body)

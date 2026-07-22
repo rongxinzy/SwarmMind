@@ -50,20 +50,36 @@ class UserRepository:
             session.expunge(row)
             return row
 
+    def get_by_username_or_email(self, identifier: str) -> UserDB:
+        """Get a user by username (case-insensitive) or normalized email."""
+        normalized_email = normalize_email(identifier)
+        with session_scope() as session:
+            row = session.exec(
+                select(UserDB).where((UserDB.username == identifier.lower()) | (UserDB.email == normalized_email))
+            ).first()
+            if row is None:
+                raise HTTPException(status_code=404, detail="User not found")
+            session.expunge(row)
+            return row
+
     def create(
         self,
         *,
         email: str,
         password: str,
+        username: str | None = None,
         display_name: str | None = None,
         role: str = "member",
         status: str = "active",
     ) -> UserDB:
         """Create a local user."""
+        normalized_email = normalize_email(email)
+        derived_username = username if username is not None else normalized_email.split("@")[0]
         with session_scope() as session:
             row = UserDB(
                 user_id=str(uuid.uuid4()),
-                email=normalize_email(email),
+                email=normalized_email,
+                username=derived_username.lower(),
                 display_name=display_name,
                 password_hash=hash_password(password),
                 role=role,
@@ -74,7 +90,7 @@ class UserRepository:
                 session.commit()
             except IntegrityError as exc:
                 session.rollback()
-                raise HTTPException(status_code=409, detail="User email already exists") from exc
+                raise HTTPException(status_code=409, detail="User email or username already exists") from exc
             session.refresh(row)
             session.expunge(row)
             return row
@@ -84,6 +100,7 @@ class UserRepository:
         user_id: str,
         *,
         email: str | None = None,
+        username: str | None = None,
         password: str | None = None,
         display_name: str | None = None,
         role: str | None = None,
@@ -96,6 +113,8 @@ class UserRepository:
                 raise HTTPException(status_code=404, detail="User not found")
             if email is not None:
                 row.email = normalize_email(email)
+            if username is not None:
+                row.username = username.lower()
             if password is not None:
                 row.password_hash = hash_password(password)
             if display_name is not None:
@@ -109,7 +128,7 @@ class UserRepository:
                 session.commit()
             except IntegrityError as exc:
                 session.rollback()
-                raise HTTPException(status_code=409, detail="User email already exists") from exc
+                raise HTTPException(status_code=409, detail="User email or username already exists") from exc
             session.refresh(row)
             session.expunge(row)
             return row
@@ -127,15 +146,15 @@ class UserRepository:
                 token.status = "revoked"
             session.commit()
 
-    def authenticate(self, *, email: str, password: str) -> UserDB:
+    def authenticate(self, *, identifier: str, password: str) -> UserDB:
         """Validate user credentials and return the user."""
-        normalized = normalize_email(email)
+        user = self.get_by_username_or_email(identifier)
+        if not verify_password(password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid username/email or password")
+        if user.status != "active":
+            raise HTTPException(status_code=403, detail="User is disabled")
         with session_scope() as session:
-            row = session.exec(select(UserDB).where(UserDB.email == normalized)).first()
-            if row is None or not verify_password(password, row.password_hash):
-                raise HTTPException(status_code=401, detail="Invalid email or password")
-            if row.status != "active":
-                raise HTTPException(status_code=403, detail="User is disabled")
+            row = session.get(UserDB, user.user_id)
             row.last_login_at = utc_now()
             row.updated_at = utc_now()
             session.commit()

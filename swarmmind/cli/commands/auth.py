@@ -14,12 +14,12 @@ auth_app = typer.Typer(help="Authenticate against the supervisor API.", no_args_
 @auth_app.command("login")
 def login(
     ctx: typer.Context,
-    email: Annotated[str, typer.Argument(help="User email.")],
+    username_or_email: Annotated[str, typer.Argument(help="Username or email.")],
     password: Annotated[str, typer.Option("--password", "-p", prompt=True, hide_input=True, help="User password.")],
     token_name: Annotated[str | None, typer.Option("--token-name", help="Human label for this API token.")] = None,
 ) -> None:
-    """Exchange email/password for a bearer token."""
-    run_client_command(ctx, lambda client: client.login(email, password, token_name=token_name))
+    """Exchange username/email and password for a bearer token."""
+    run_client_command(ctx, lambda client: client.login(username_or_email, password, token_name=token_name))
 
 
 @auth_app.command("me")
