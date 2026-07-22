@@ -139,11 +139,6 @@ def _summarize_item(item: Any) -> str:
     for fields in (
         ("project_id", "title", "status"),
         ("id", "title", "updated_at"),
-        ("run_id", "status", "goal"),
-        ("task_id", "title", "status"),
-        ("audit_id", "audit_type", "decision"),
-        ("key", "value", "version"),
-        ("agent_id", "status", "action_proposal_id"),
     ):
         present = [(field, item.get(field)) for field in fields if item.get(field) is not None]
         if present:

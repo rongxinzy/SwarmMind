@@ -13,9 +13,9 @@ from swarmmind.services.runtime_event_processing import extract_content_delta, e
 def test_stream_events_yields_async_events_and_returns_final_result() -> None:
     agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
 
-    async def fake_astream_events(goal, ctx=None, runtime_options=None):
+    async def fake_astream_events(goal, conversation_id=None, runtime_options=None):
         assert goal == "investigate"
-        assert ctx.session_id == "conv-1"
+        assert conversation_id == "conv-1"
         yield {"type": "assistant_message", "content": "partial"}
         agent._last_final_text = "final answer"
         agent._last_tool_results = ["tool:done"]
@@ -23,7 +23,7 @@ def test_stream_events_yields_async_events_and_returns_final_result() -> None:
     agent._astream_events = fake_astream_events
 
     stream = agent.stream_events(
-        "investigate", ctx=SimpleNamespace(session_id="conv-1"), runtime_options=SimpleNamespace()
+        "investigate", conversation_id="conv-1", runtime_options=SimpleNamespace()
     )
     events: list[dict] = []
     while True:
@@ -41,14 +41,14 @@ def test_stream_events_yields_async_events_and_returns_final_result() -> None:
 def test_stream_events_reraises_async_failure() -> None:
     agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
 
-    async def fake_astream_events(goal, ctx=None, runtime_options=None):
+    async def fake_astream_events(goal, conversation_id=None, runtime_options=None):
         raise RuntimeError("stream exploded")
         yield  # pragma: no cover
 
     agent._astream_events = fake_astream_events
 
     stream = agent.stream_events(
-        "investigate", ctx=SimpleNamespace(session_id="conv-1"), runtime_options=SimpleNamespace()
+        "investigate", conversation_id="conv-1", runtime_options=SimpleNamespace()
     )
 
     try:
@@ -62,9 +62,9 @@ def test_stream_events_reraises_async_failure() -> None:
 def test_run_deerflow_turn_collects_async_result_without_stream_wrapper() -> None:
     agent = DeerFlowRuntime.__new__(DeerFlowRuntime)
 
-    async def fake_astream_events(goal, ctx=None, runtime_options=None):
+    async def fake_astream_events(goal, conversation_id=None, runtime_options=None):
         assert goal == "investigate"
-        assert ctx.session_id == "conv-1"
+        assert conversation_id == "conv-1"
         yield {"type": "assistant_message", "content": "partial"}
         agent._last_final_text = "final answer"
         agent._last_tool_results = ["tool:done"]
@@ -73,7 +73,7 @@ def test_run_deerflow_turn_collects_async_result_without_stream_wrapper() -> Non
 
     final_text, tool_results = agent._run_deerflow_turn(
         "investigate",
-        ctx=SimpleNamespace(session_id="conv-1"),
+        conversation_id="conv-1",
         runtime_options=SimpleNamespace(),
     )
 

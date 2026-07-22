@@ -6,11 +6,7 @@ const backendUrl = (process.env.SWARMMIND_API_URL ?? "http://localhost:8000").re
 
 const backendProxySources = [
   "/api/chat/:path*",
-  "/pending/:path*",
-  "/reject/:path*",
   "/status/:path*",
-  "/strategy/:path*",
-  "/dispatch/:path*",
   "/health/:path*",
   "/ready/:path*",
   "/models/:path*",
@@ -18,9 +14,6 @@ const backendProxySources = [
   "/chat/:path*",
   "/conversations/:path*",
   "/projects/:path*",
-  "/audit-logs/:path*",
-  "/runs/:path*",
-  "/agent-teams/:path*",
   "/auth/:path*",
   "/llm-providers/:path*",
   "/gateway/:path*",

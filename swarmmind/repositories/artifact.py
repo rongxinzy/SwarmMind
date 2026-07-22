@@ -17,16 +17,13 @@ from swarmmind.services.artifact_content import is_virtual_user_data_path, norma
 class ArtifactRepository:
     """Repository for artifact metadata operations."""
 
-    def create(  # noqa: PLR0913
+    def create(
         self,
+        *,
         conversation_id: str | None = None,
         message_id: str | None = None,
         name: str | None = None,
         artifact_type: str | None = None,
-        project_id: str | None = None,
-        run_id: str | None = None,
-        task_id: str | None = None,
-        author_role: str | None = None,
         path: str | None = None,
         storage_uri: str | None = None,
         mime_type: str | None = None,
@@ -43,11 +40,7 @@ class ArtifactRepository:
             artifact = ArtifactDB(
                 artifact_id=str(uuid.uuid4()),
                 conversation_id=conversation_id,
-                project_id=project_id,
                 message_id=message_id,
-                run_id=run_id,
-                task_id=task_id,
-                author_role=author_role,
                 name=name,
                 path=normalized_path,
                 storage_uri=storage_uri,
@@ -105,17 +98,6 @@ class ArtifactRepository:
                 select(ArtifactDB)
                 .where(ArtifactDB.conversation_id == conversation_id)
                 .order_by(created_at_column.desc()),
-            ).all()
-            for r in results:
-                session.expunge(r)
-            return list(results)
-
-    def list_by_project(self, project_id: str) -> list[ArtifactDB]:
-        """List artifacts for a project ordered by created_at descending."""
-        created_at_column = cast(Any, ArtifactDB.created_at)
-        with session_scope() as session:
-            results = session.exec(
-                select(ArtifactDB).where(ArtifactDB.project_id == project_id).order_by(created_at_column.desc()),
             ).all()
             for r in results:
                 session.expunge(r)

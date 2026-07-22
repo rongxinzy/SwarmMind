@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import text
 
 from swarmmind.api import supervisor
-from swarmmind.db import init_db, seed_default_agents, session_scope
+from swarmmind.db import init_db, session_scope
 from swarmmind.models import CreateConversationRequest
 
 
@@ -19,7 +19,6 @@ def test_clarification_response_persists_as_tool_message_and_is_readable(tmp_pat
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
     init_db()
-    seed_default_agents()
 
     columns = _message_columns()
     assert "tool_call_id" in columns

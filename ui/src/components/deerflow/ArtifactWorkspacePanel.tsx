@@ -57,13 +57,6 @@ import {
   loadCachedArtifactText,
 } from "@/core/deerflow/artifact-cache"
 import {
-  OFFICE_PREVIEW_MAX_BYTES,
-  SPREADSHEET_PREVIEW_MAX_COLUMNS,
-  SPREADSHEET_PREVIEW_MAX_ROWS,
-  spreadsheetCellText,
-  spreadsheetColumnLabel,
-} from "@/core/deerflow/office-preview"
-import {
   type ArtifactMetadata,
   type ArtifactMetadataIndex,
   artifactMetadataForPath,
@@ -87,7 +80,10 @@ import {
   fileExtension,
   fileName,
 } from "./ArtifactFileList"
+import { DocxPreview } from "./DocxPreview"
 import { MarkdownContent } from "./MarkdownContent"
+import { PresentationPreview } from "./PresentationPreview"
+import { SpreadsheetPreview } from "./SpreadsheetPreview"
 
 interface ArtifactWorkspacePanelProps {
   className?: string

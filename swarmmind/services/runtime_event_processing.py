@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import uuid
 from collections.abc import Callable, Generator
 from dataclasses import dataclass, field
@@ -194,30 +194,6 @@ def process_custom_mode_chunk(event: object) -> dict[str, Any] | None:
         "result": event.get("result"),
         "error": event.get("error"),
     }
-
-
-def process_custom_mode_chunk_with_emission(
-    event: object,
-    run_id: str | None,
-    project_id: str | None,
-    task_repo: object | None,
-) -> dict[str, Any] | None:
-    """Normalize a custom event and emit TaskDB rows when run_id/project_id are set."""
-    normalized = process_custom_mode_chunk(event)
-    if normalized is None:
-        return None
-
-    if run_id is not None and project_id is not None and task_repo is not None:
-        from swarmmind.services import task_emitter
-
-        event_type = normalized.get("event_type")
-        if event_type == "plan_steps" and isinstance(event, dict):
-            steps = event.get("steps", [])
-            task_emitter.emit_from_plan_steps(run_id, project_id, steps, task_repo)
-        elif event_type in {"task_started", "task_running", "task_completed", "task_failed"}:
-            task_emitter.update_step_status(run_id, project_id, event_type, normalized.get("task_id"), task_repo)
-
-    return normalized
 
 
 def iter_new_turn_messages(

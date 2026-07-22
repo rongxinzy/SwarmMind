@@ -51,7 +51,7 @@ export function LoginPage() {
             {isSetup ? "初始化 SwarmMind" : "登录 SwarmMind"}
           </h1>
           <p className="mt-3 max-w-[300px] text-sm leading-6 text-[#5d5d5d]">
-            将团队灵感转化为可预览、可追踪、可继续推进的交付成果。
+            Chat / Work 双模式的 Agent 聊天软件。
           </p>
         </div>
 
@@ -123,7 +123,7 @@ export function LoginPage() {
         </form>
 
         <p className="mt-6 text-center text-xs leading-5 text-[#858585]">
-          本地账号用于保护项目记忆、来源证据和团队交付记录。
+          本地账号用于保护会话历史、项目记录和算力配置。
         </p>
       </main>
     </div>

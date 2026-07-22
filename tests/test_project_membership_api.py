@@ -88,16 +88,3 @@ def test_inactive_member_loses_capabilities() -> None:
     assert response.json()["reason"] == "member_inactive"
 
 
-def test_member_changes_write_audit_log() -> None:
-    project_id = _project_id()
-
-    client.post(f"/projects/{project_id}/members", json={"member_id": "user-1", "role": "viewer"})
-    client.patch(f"/projects/{project_id}/members/user-1", json={"role": "editor"})
-    client.delete(f"/projects/{project_id}/members/user-1")
-
-    audit = client.get(f"/projects/{project_id}/audit")
-    assert audit.status_code == 200
-    audit_types = [item["audit_type"] for item in audit.json()["items"]]
-    assert "member.added" in audit_types
-    assert "member.updated" in audit_types
-    assert "member.removed" in audit_types

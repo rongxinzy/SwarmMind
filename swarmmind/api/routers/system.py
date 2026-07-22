@@ -6,9 +6,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter
 
-from swarmmind.models import HealthResponse, ReadyResponse, StatusResponse
+from swarmmind.models import HealthResponse, ReadyResponse
 
 
 @dataclass(frozen=True)
@@ -16,11 +16,10 @@ class SystemRouterDeps:
     """Dependencies for the system router."""
 
     ensure_default_runtime_instance: Callable
-    render_status: Callable
 
 
 def build_system_router(deps: SystemRouterDeps) -> APIRouter:
-    """Return an APIRouter for health, readiness, and status endpoints."""
+    """Return an APIRouter for health and readiness endpoints."""
     router = APIRouter()
 
     @router.get("/health", tags=["system"])
@@ -36,16 +35,5 @@ def build_system_router(deps: SystemRouterDeps) -> APIRouter:
             runtime_profile_id=runtime_instance.runtime_profile_id,
             runtime_instance_id=runtime_instance.runtime_instance_id,
         )
-
-    @router.get("/status", tags=["supervisor"])
-    def get_status(goal: str = Query(..., max_length=2000)) -> StatusResponse:
-        """LLM Status Renderer: given a goal, read shared context and
-        generate a human-readable status summary (Phase 1: prose only).
-        """
-        try:
-            summary = deps.render_status(goal)
-            return StatusResponse(summary=summary, goal=goal)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
 
     return router

@@ -9,7 +9,7 @@ import pytest
 pytestmark = pytest.mark.requires_llm
 
 from swarmmind.api import supervisor
-from swarmmind.db import init_db, seed_default_agents
+from swarmmind.db import dispose_engines, init_db
 from swarmmind.models import ConversationMode, CreateConversationRequest, SendMessageRequest
 
 
@@ -17,12 +17,19 @@ from swarmmind.models import ConversationMode, CreateConversationRequest, SendMe
 def setup_db(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
+    dispose_engines()
     init_db()
-    seed_default_agents()
-    # Materialize DeerFlow config so that title generation and runtime work
-    from swarmmind.runtime.bootstrap import ensure_default_runtime_instance
+    # Avoid needing a real LLM provider during streaming tests.
+    from pathlib import Path
 
-    ensure_default_runtime_instance()
+    class FakeRuntimeInstance:
+        runtime_instance_id = "fake-instance"
+        runtime_profile_id = "fake-profile"
+        config_path = Path(tmp_path / "config.yaml")
+        deer_flow_home = Path(tmp_path / "home")
+        extensions_config_path = Path(tmp_path / "extensions.json")
+
+    supervisor.runtime_support._ensure_default_runtime_instance_fn = lambda: FakeRuntimeInstance()
     yield
 
 
@@ -33,7 +40,7 @@ class FakeDeerFlowRuntime:
     def __init__(self, *args, **kwargs):
         self.__class__.init_calls.append(kwargs)
 
-    def stream_events(self, goal: str, ctx=None, runtime_options=None):
+    def stream_events(self, goal: str, conversation_id=None, runtime_options=None):
         self.__class__.stream_runtime_options.append(runtime_options)
         yield {
             "type": "assistant_reasoning",
@@ -112,7 +119,6 @@ def _conversation_row(conversation_id: str):
 
 def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monkeypatch):
     monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
     monkeypatch.setattr(
         supervisor,
         "_generate_title_with_deerflow",
@@ -149,8 +155,8 @@ def test_streaming_chat_session_emits_runtime_events_and_persists_messages(monke
     assert _conversation_message_count(conversation.id) == 2
     assert FakeDeerFlowRuntime.stream_runtime_options[-1].mode == ConversationMode.ULTRA
     conversation_row = _conversation_row(conversation.id)
-    assert conversation_row.runtime_profile_id == "local-default"
-    assert conversation_row.runtime_instance_id == "local-default-instance"
+    assert conversation_row.runtime_profile_id == "fake-profile"
+    assert conversation_row.runtime_instance_id == "fake-instance"
     assert conversation_row.thread_id == conversation.id
 
 
@@ -218,7 +224,6 @@ def test_resolve_runtime_options(message_request, expected_mode, expected_thinki
 
 def test_flash_mode_suppresses_reasoning_and_team_events(monkeypatch):
     monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
     conversation = supervisor.create_conversation(
         CreateConversationRequest(title="快速给我一版摘要"),
@@ -240,7 +245,6 @@ def test_flash_mode_suppresses_reasoning_and_team_events(monkeypatch):
 
 def test_reasoning_compatibility_uses_thinking_mode_without_team_events(monkeypatch):
     monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
     conversation = supervisor.create_conversation(
         CreateConversationRequest(title="帮我展开分析"),
@@ -261,7 +265,6 @@ def test_reasoning_compatibility_uses_thinking_mode_without_team_events(monkeypa
 
 def test_streaming_messages_api_remains_compatible_when_message_schema_extends(monkeypatch):
     monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
 
     conversation = supervisor.create_conversation(
         CreateConversationRequest(title="验证消息 schema 扩展后的兼容性"),
@@ -291,48 +294,3 @@ def test_streaming_messages_api_remains_compatible_when_message_schema_extends(m
             assert dumped["tool_call_id"] in (None, "")
         if "name" in dumped:
             assert dumped["name"] in (None, "")
-
-
-def test_streaming_user_message_gets_run_id(monkeypatch):
-    monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
-
-    conversation = supervisor.create_conversation(CreateConversationRequest(title="run_id 测试"))
-    list(
-        supervisor._stream_conversation_message(
-            conversation.id,
-            SendMessageRequest(content="第一条", mode=ConversationMode.FLASH),
-        ),
-    )
-
-    response = supervisor.get_conversation_messages(conversation.id)
-    user_msg = next(m for m in response.items if m.role == "user")
-    assert user_msg.run_id is not None
-
-
-def test_retry_generates_different_run_id(monkeypatch):
-    monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
-
-    conversation = supervisor.create_conversation(CreateConversationRequest(title="重试 run_id 测试"))
-
-    # First send
-    list(
-        supervisor._stream_conversation_message(
-            conversation.id,
-            SendMessageRequest(content="same content", mode=ConversationMode.FLASH),
-        ),
-    )
-
-    # Retry with same content
-    list(
-        supervisor._stream_conversation_message(
-            conversation.id,
-            SendMessageRequest(content="same content", mode=ConversationMode.FLASH),
-        ),
-    )
-
-    response = supervisor.get_conversation_messages(conversation.id)
-    user_msgs = [m for m in response.items if m.role == "user"]
-    assert len(user_msgs) == 2
-    assert user_msgs[0].run_id != user_msgs[1].run_id

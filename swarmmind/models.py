@@ -1,230 +1,8 @@
-"""Pydantic models for SwarmMind Phase 1."""
+"""Pydantic models for SwarmMind."""
 
-from datetime import datetime
 from enum import Enum
-from typing import Any, Self
 
-from pydantic import BaseModel, Field, model_validator
-
-
-class AgentStatus(str, Enum):
-    """Agent runtime status."""
-
-    ACTIVE = "active"
-    IDLE = "idle"
-    ERROR = "error"
-
-
-class ProposalStatus(str, Enum):
-    """Status of an action proposal."""
-
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    EXECUTED = "executed"
-
-
-class SupervisorDecision(str, Enum):
-    """Human supervisor's decision on a proposal."""
-
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    TIMEOUT = "timeout"
-
-
-class Agent(BaseModel):
-    """Agent definition stored in the system."""
-
-    agent_id: str
-    domain: str
-    system_prompt: str
-    created_at: datetime
-
-
-class WorkingMemoryEntry(BaseModel):
-    """Single entry in the working memory store."""
-
-    key: str
-    value: str
-    domain_tags: str | None = None
-    last_writer_agent_id: str | None = None
-    updated_at: datetime
-
-
-class StrategyEntry(BaseModel):
-    """Routing strategy for a specific situation."""
-
-    situation_tag: str
-    agent_id: str
-    success_count: int = 0
-    failure_count: int = 0
-
-
-class ActionProposal(BaseModel):
-    """Action proposal awaiting human approval."""
-
-    id: str
-    agent_id: str
-    description: str
-    target_resource: str | None = None
-    preconditions: dict | None = None
-    postconditions: dict | None = None
-    confidence: float = 0.5
-    status: ProposalStatus = ProposalStatus.PENDING
-    created_at: datetime
-
-
-class StrategyChangeProposal(BaseModel):
-    """Proposal to change routing strategy for a situation."""
-
-    id: str
-    situation_tag: str
-    proposed_agent_id: str
-    reason: str | None = None
-    status: ProposalStatus = ProposalStatus.PENDING
-    proposed_at: datetime
-
-
-class EventLogEntry(BaseModel):
-    """Audit log entry for dispatched goals."""
-
-    id: int | None = None
-    timestamp: datetime
-    goal: str
-    situation_tag: str | None = None
-    dispatched_agent_id: str | None = None
-    action_proposal_id: str | None = None
-    supervisor_decision: SupervisorDecision | None = None
-    outcome: str | None = None
-    latency_ms: int | None = None
-
-
-# ---- Layered Memory models ----
-
-
-class MemoryLayer(str, Enum):
-    """Memory storage layers, from most persistent to most temporary."""
-
-    USER_SOUL = "L4_user_soul"
-    PROJECT = "L3_project"
-    TEAM = "L2_team"
-    TMP = "L1_tmp"
-
-
-class MemoryScope(BaseModel):
-    """Identifies a specific memory scope (layer + ID)."""
-
-    layer: MemoryLayer
-    scope_id: str
-
-
-class MemoryEntry(BaseModel):
-    """Single memory entry in the layered memory store."""
-
-    id: str
-    scope: MemoryScope
-    key: str
-    value: str
-    tags: list[str] = []
-    created_at: datetime
-    updated_at: datetime
-    ttl: int | None = None
-    version: int = 1
-    last_writer_agent_id: str | None = None
-
-
-class MemoryListResponse(BaseModel):
-    """Response containing layered-memory entries."""
-
-    items: list[MemoryEntry]
-    total: int
-
-
-class MemoryContext(BaseModel):
-    """Carries scope information through a request lifecycle."""
-
-    user_id: str
-    project_id: str | None = None
-    team_id: str | None = None
-    session_id: str | None = None
-
-    @property
-    def visible_scopes(self) -> list[MemoryScope]:
-        """Return scopes in priority order: L1 > L2 > L3 > L4.
-        More specific layers override more abstract ones.
-        """
-        scopes = []
-        if self.session_id:
-            scopes.append(MemoryScope(layer=MemoryLayer.TMP, scope_id=self.session_id))
-        if self.team_id:
-            scopes.append(MemoryScope(layer=MemoryLayer.TEAM, scope_id=self.team_id))
-        if self.project_id:
-            scopes.append(MemoryScope(layer=MemoryLayer.PROJECT, scope_id=self.project_id))
-        scopes.append(MemoryScope(layer=MemoryLayer.USER_SOUL, scope_id=self.user_id))
-        return scopes
-
-
-class CompactionHint(BaseModel):
-    """Hint for when to compact/merge memory entries."""
-
-    id: str
-    scope_layer: str
-    scope_id: str
-    policy: str
-    trigger_count: int = 0
-    fired_at: datetime | None = None
-    created_at: datetime
-
-
-# ---- API Request/Response models ----
-
-
-class GoalRequest(BaseModel):
-    """Request to dispatch a goal."""
-
-    goal: str = Field(..., max_length=2000)
-
-
-class ApproveRequest(BaseModel):
-    """Request to approve a proposal."""
-
-    id: str
-
-
-class RejectRequest(BaseModel):
-    """Request to reject a proposal."""
-
-    reason: str | None = None
-
-
-class DispatchResponse(BaseModel):
-    """Response from dispatching a goal."""
-
-    action_proposal_id: str
-    agent_id: str
-    status: str
-    memory_ctx: MemoryContext | None = None
-
-
-class PendingResponse(BaseModel):
-    """Response containing pending proposals."""
-
-    items: list[ActionProposal]
-    total: int
-
-
-class StatusResponse(BaseModel):
-    """Status response with LLM-generated summary."""
-
-    summary: str  # LLM-generated prose summary
-    goal: str
-
-
-class StrategyResponse(BaseModel):
-    """Response containing strategy table entries."""
-
-    entries: list[StrategyEntry]
-
+from pydantic import BaseModel, Field
 
 # ---- Conversation models ----
 
@@ -240,7 +18,6 @@ class Conversation(BaseModel):
     runtime_profile_id: str | None = None
     runtime_instance_id: str | None = None
     thread_id: str | None = None
-    promoted_project_id: str | None = None
     created_at: str
     updated_at: str
     messages: list["Message"] | None = None
@@ -251,11 +28,10 @@ class Message(BaseModel):
 
     id: str
     conversation_id: str
-    role: str  # 'user' | 'assistant'
+    role: str  # 'user' | 'assistant' | 'tool'
     content: str
     tool_call_id: str | None = None
     name: str | None = None
-    run_id: str | None = None
     created_at: str
 
 
@@ -328,7 +104,7 @@ class SendMessageRequest(BaseModel):
     mode: ConversationMode | None = None
     model_name: str | None = None
     reasoning: bool = False  # Whether to enable LLM reasoning/thinking mode
-    native_message: dict[str, Any] | None = None
+    native_message: dict[str, object] | None = None
 
 
 class SendMessageResponse(BaseModel):
@@ -353,21 +129,6 @@ class DeleteConversationResponse(BaseModel):
     next_conversation_id: str | None = None
 
 
-class ApproveResponse(BaseModel):
-    """Response after approving a proposal."""
-
-    status: str = "approved"
-    id: str
-
-
-class RejectResponse(BaseModel):
-    """Response after rejecting a proposal."""
-
-    status: str = "rejected"
-    id: str
-    reason: str | None = None
-
-
 class HealthResponse(BaseModel):
     """Health check response."""
 
@@ -383,21 +144,6 @@ class ReadyResponse(BaseModel):
     runtime_instance_id: str
 
 
-class ExtractArtifactsResponse(BaseModel):
-    """Response after extracting artifacts from a conversation."""
-
-    conversation_id: str
-    extracted: int
-    artifacts: list[dict]
-
-
-class ConversationTraceResponse(BaseModel):
-    """Response containing conversation execution trace."""
-
-    conversation_id: str
-    trace: dict | None = None
-
-
 class DeleteProjectResponse(BaseModel):
     """Response after deleting a project."""
 
@@ -405,150 +151,7 @@ class DeleteProjectResponse(BaseModel):
     project_id: str
 
 
-class TaskStatus(str, Enum):
-    """Task Kanban status."""
-
-    TODO = "todo"
-    IN_PROGRESS = "in_progress"
-    BLOCKED = "blocked"
-    DONE = "done"
-
-
-class TaskPriority(str, Enum):
-    """Task priority level."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-
-
-class Task(BaseModel):
-    """Project task for Kanban board."""
-
-    task_id: str
-    project_id: str
-    run_id: str | None = None
-    step_key: str | None = None
-    title: str
-    description: str | None = None
-    status: TaskStatus = TaskStatus.TODO
-    assignee_role: str | None = None
-    source_workstream: str | None = None
-    artifact_ids: list[str] = []
-    priority: TaskPriority = TaskPriority.MEDIUM
-    created_at: str
-    updated_at: str
-
-
-class TaskListResponse(BaseModel):
-    """Response containing list of tasks."""
-
-    items: list[Task]
-    total: int
-
-
-class CreateTaskRequest(BaseModel):
-    """Request to create a new task."""
-
-    title: str = Field(..., max_length=200)
-    description: str | None = Field(None, max_length=2000)
-    status: TaskStatus = TaskStatus.TODO
-    assignee_role: str | None = Field(None, max_length=100)
-    source_workstream: str | None = Field(None, max_length=100)
-    artifact_ids: list[str] = []
-    priority: TaskPriority = TaskPriority.MEDIUM
-
-
-class UpdateTaskRequest(BaseModel):
-    """Request to update a task."""
-
-    title: str | None = Field(None, max_length=200)
-    description: str | None = Field(None, max_length=2000)
-    status: TaskStatus | None = None
-    assignee_role: str | None = Field(None, max_length=100)
-    source_workstream: str | None = Field(None, max_length=100)
-    artifact_ids: list[str] | None = None
-    priority: TaskPriority | None = None
-
-
-class DeleteTaskResponse(BaseModel):
-    """Response after deleting a task."""
-
-    status: str = "deleted"
-    task_id: str
-
-
 # ---- Project models ----
-
-
-class TeamRole(BaseModel):
-    """A role within an agent team."""
-
-    role_id: str
-    name: str
-    description: str | None = None
-    default_skills: list[str] = []
-
-
-class AgentTeamTemplate(BaseModel):
-    """Reusable agent team template."""
-
-    team_id: str
-    name: str
-    description: str | None = None
-    icon: str | None = None
-    roles: list[TeamRole] = []
-    default_skills: list[str] = []
-    runtime_profile_prefs: dict = {}
-    is_builtin: bool = True
-    is_enabled: bool = True
-    created_at: str
-    updated_at: str
-
-
-class AgentTeamTemplateListResponse(BaseModel):
-    """Response containing list of agent team templates."""
-
-    items: list[AgentTeamTemplate]
-    total: int
-
-
-class AgentTeamTemplateCreateRequest(BaseModel):
-    """Request to create an agent team template."""
-
-    name: str = Field(..., max_length=100)
-    description: str | None = Field(None, max_length=500)
-    icon: str | None = Field(None, max_length=50)
-    roles: list[TeamRole] = []
-    default_skills: list[str] = []
-    runtime_profile_prefs: dict = {}
-
-
-class AgentTeamTemplateUpdateRequest(BaseModel):
-    """Request to update an agent team template."""
-
-    name: str | None = Field(None, max_length=100)
-    description: str | None = Field(None, max_length=500)
-    icon: str | None = Field(None, max_length=50)
-    roles: list[TeamRole] | None = None
-    default_skills: list[str] | None = None
-    runtime_profile_prefs: dict | None = None
-    is_enabled: bool | None = None
-
-
-class ProjectAgentTeamInstance(BaseModel):
-    """Team template instantiated inside a project."""
-
-    instance_id: str
-    project_id: str
-    team_template_id: str
-    team_name: str
-    team_description: str | None = None
-    roles: list[TeamRole] = []
-    instance_config: dict = {}
-    status: str = "active"
-    created_at: str
-    updated_at: str
 
 
 class ProjectMemberRole(str, Enum):
@@ -727,20 +330,6 @@ class LogoutResponse(BaseModel):
     token_id: str
 
 
-class AttachTeamRequest(BaseModel):
-    """Request to attach a team template to a project."""
-
-    team_template_id: str
-    instance_config: dict = {}
-
-
-class UpdateTeamInstanceRequest(BaseModel):
-    """Request to update a project team instance."""
-
-    instance_config: dict | None = None
-    status: str | None = Field(None, pattern=r"^(active|paused|detached)$")
-
-
 class ProjectStatus(str, Enum):
     """Project lifecycle status."""
 
@@ -756,13 +345,11 @@ class Project(BaseModel):
     goal: str | None = None
     scope: str | None = None
     constraints: str | None = None
-    source_conversation_id: str | None = None
     conversation_id: str | None = None
     next_step: str | None = None
     phase: str | None = None
     risk_level: str | None = None
     status: ProjectStatus = ProjectStatus.ACTIVE
-    agent_team: ProjectAgentTeamInstance | None = None
     created_at: str
     updated_at: str
 
@@ -774,106 +361,15 @@ class ProjectCreateRequest(BaseModel):
     goal: str | None = Field(None, max_length=2000)
     scope: str | None = Field(None, max_length=2000)
     constraints: str | None = Field(None, max_length=2000)
-    source_conversation_id: str | None = None
     next_step: str | None = Field(None, max_length=1000)
     phase: str | None = Field(None, max_length=100)
     risk_level: str | None = Field(None, max_length=20)
-    team_template_id: str | None = None
 
 
 class ProjectListResponse(BaseModel):
     """Response containing list of projects."""
 
     items: list[Project]
-    total: int
-
-
-class PromoteConversationRequest(BaseModel):
-    """Request to promote a conversation to a project."""
-
-    title: str | None = Field(None, max_length=200)
-    goal: str | None = Field(None, max_length=2000)
-    scope: str | None = Field(None, max_length=2000)
-    constraints: str | None = Field(None, max_length=2000)
-    next_step: str | None = Field(None, max_length=1000)
-    team_template_id: str | None = None
-
-
-class TraceSummaryResponse(BaseModel):
-    """Readable execution trace summary attached to an assistant message."""
-
-    steps_count: int = 0
-    subagent_calls_count: int = 0
-    artifacts_count: int = 0
-    blocked_points: list[str] = []
-    summary: str = ""
-
-
-# ---- Audit log models ----
-
-
-class AuditLogEntry(BaseModel):
-    """Single audit log entry."""
-
-    audit_id: str
-    audit_type: str
-    project_id: str
-    run_id: str | None = None
-    approval_id: str | None = None
-    actor_id: str | None = None
-    actor_type: str = "user"
-    decision: str | None = None
-    reason: str | None = None
-    metadata: dict = {}
-    timestamp: str
-
-
-class AuditLogListResponse(BaseModel):
-    """Response containing list of audit log entries."""
-
-    items: list[AuditLogEntry]
-    total: int
-
-
-class CreateAuditLogEntry(BaseModel):
-    """Request to create a new audit log entry."""
-
-    audit_type: str = Field(default="event")
-    project_id: str
-    run_id: str | None = None
-    actor_id: str | None = None
-    actor_type: str = "user"
-    decision: str | None = Field(None, max_length=50)
-    reason: str | None = Field(None, max_length=2000)
-    metadata: dict = {}
-
-
-# ---- Artifact models ----
-
-
-class Artifact(BaseModel):
-    """Artifact/evidence metadata from a run."""
-
-    artifact_id: str
-    conversation_id: str | None = None
-    project_id: str | None = None
-    message_id: str | None = None
-    run_id: str | None = None
-    task_id: str | None = None
-    author_role: str | None = None
-    name: str | None = None
-    path: str | None = None
-    storage_uri: str | None = None
-    mime_type: str | None = None
-    size_bytes: int | None = None
-    artifact_type: str | None = None
-    created_at: str
-
-
-class ArtifactListResponse(BaseModel):
-    """Response containing list of artifacts."""
-
-    items: list[Artifact]
     total: int
 
 
@@ -890,159 +386,29 @@ class ProjectUpdateRequest(BaseModel):
     status: ProjectStatus | None = None
 
 
-# ---- Run models ----
+# ---- Artifact models ----
 
 
-class RunStatus(str, Enum):
-    """Run lifecycle status."""
+class Artifact(BaseModel):
+    """Artifact/evidence metadata for a conversation."""
 
-    RUNNING = "running"
-    WAITING_APPROVAL = "waiting_approval"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    BLOCKED = "blocked"
-
-
-class Run(BaseModel):
-    """Execution run anchored on project or conversation."""
-
-    run_id: str
-    project_id: str | None = None
+    artifact_id: str
     conversation_id: str | None = None
-    status: RunStatus = RunStatus.RUNNING
-    goal: str | None = None
-    summary: str | None = None
-    started_at: str
-    completed_at: str | None = None
-
-
-class RunListResponse(BaseModel):
-    """Response containing list of runs."""
-
-    items: list[Run]
-    total: int
-
-
-class CreateRunRequest(BaseModel):
-    """Request to create a run."""
-
-    conversation_id: str | None = None
-    project_id: str | None = None
-    goal: str | None = Field(None, max_length=2000)
-    status: RunStatus = RunStatus.RUNNING
-
-    @model_validator(mode="after")
-    def check_conversation_or_project(self) -> Self:
-        """Ensure a run is anchored to a conversation or project."""
-        if self.conversation_id is None and self.project_id is None:
-            raise ValueError("Either conversation_id or project_id must be provided")
-        return self
-
-
-class UpdateRunRequest(BaseModel):
-    """Request to update a run."""
-
-    project_id: str | None = None
-    status: RunStatus | None = None
-    goal: str | None = Field(None, max_length=2000)
-    summary: str | None = Field(None, max_length=2000)
-
-
-# ---- Approval Request models ----
-
-
-class RiskTier(str, Enum):
-    """Risk tier for approval requests."""
-
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-
-
-class ApprovalStatus(str, Enum):
-    """Status of an approval request."""
-
-    PENDING = "pending"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    SUPPLEMENT_REQUESTED = "supplement_requested"
-
-
-class ApprovalRequest(BaseModel):
-    """Product-layer approval request."""
-
-    approval_id: str
-    project_id: str
-    run_id: str | None = None
-    action_proposal_id: str | None = None
-    title: str
-    description: str | None = None
-    risk_tier: RiskTier = RiskTier.MEDIUM
-    requested_capability: str | None = None
-    evidence: str | None = None
-    impact: str | None = None
-    approver_role: str | None = None
-    recovery_behavior: str | None = None
-    status: ApprovalStatus = ApprovalStatus.PENDING
-    decision_reason: str | None = None
+    message_id: str | None = None
+    name: str | None = None
+    path: str | None = None
+    storage_uri: str | None = None
+    mime_type: str | None = None
+    size_bytes: int | None = None
+    artifact_type: str | None = None
     created_at: str
-    updated_at: str
 
 
-class ApprovalRequestListResponse(BaseModel):
-    """Response containing list of approval requests."""
+class ArtifactListResponse(BaseModel):
+    """Response containing list of artifacts."""
 
-    items: list[ApprovalRequest]
+    items: list[Artifact]
     total: int
-
-
-class CreateApprovalRequest(BaseModel):
-    """Request to create a new approval request."""
-
-    project_id: str
-    run_id: str | None = None
-    title: str = Field(..., max_length=200)
-    description: str | None = Field(None, max_length=2000)
-    risk_tier: RiskTier = RiskTier.MEDIUM
-    requested_capability: str | None = Field(None, max_length=100)
-    evidence: str | None = Field(None, max_length=2000)
-    impact: str | None = Field(None, max_length=2000)
-    approver_role: str | None = Field(None, max_length=100)
-    recovery_behavior: str | None = Field(None, max_length=1000)
-
-
-class UpdateApprovalRequest(BaseModel):
-    """Request to update an approval request."""
-
-    status: ApprovalStatus | None = None
-    decision_reason: str | None = Field(None, max_length=2000)
-    title: str | None = Field(None, max_length=200)
-    description: str | None = Field(None, max_length=2000)
-    risk_tier: RiskTier | None = None
-
-
-class DeleteApprovalResponse(BaseModel):
-    """Response after deleting an approval request."""
-
-    status: str = "deleted"
-    approval_id: str
-
-
-class ProjectOverviewResponse(BaseModel):
-    """Aggregated project overview."""
-
-    project: Project
-    stats: dict
-    recent_tasks: list[Task]
-    recent_artifacts: list[Artifact]
-    recent_runs: list[Run]
-
-
-class DeleteAuditLogResponse(BaseModel):
-    """Response after deleting an audit log entry."""
-
-    status: str = "deleted"
-    audit_id: str
 
 
 # ---- LLM Provider models ----
@@ -1139,90 +505,7 @@ class GatewayStatusResponse(BaseModel):
     config: dict
 
 
-# ── Connector models ──────────────────────────────────────────────────────────
-
-
-class ConnectorCreateRequest(BaseModel):
-    """Request to register a new connector."""
-
-    connector_id: str | None = None
-    name: str
-    connector_type: str
-    config: dict = Field(default_factory=dict)
-
-
-class ConnectorUpdateRequest(BaseModel):
-    """Request to update connector configuration."""
-
-    name: str | None = None
-    config: dict | None = None
-
-
-class ConnectorHeartbeatRequest(BaseModel):
-    """Connector reports its runtime status to the control plane."""
-
-    status: str
-    mcp_url: str | None = None
-
-
-class ConnectorResponse(BaseModel):
-    """Connector metadata response (secrets masked)."""
-
-    connector_id: str
-    name: str
-    connector_type: str
-    version: str
-    status: str
-    config: dict
-    mcp_url: str | None
-    last_heartbeat: datetime | None
-    created_at: datetime
-    updated_at: datetime
-
-
-class ConnectorListResponse(BaseModel):
-    """List of connectors."""
-
-    items: list[ConnectorResponse]
-    total: int
-
-
-class DeleteConnectorResponse(BaseModel):
-    """Response after deleting a connector."""
-
-    connector_id: str
-    deleted: bool
-
-
-class ConnectorConfigFieldInfo(BaseModel):
-    """A single field descriptor from a connector manifest's config schema."""
-
-    name: str
-    description: str
-    required: bool
-    secret: bool
-    default: str | None = None
-
-
-class ConnectorTypeInfo(BaseModel):
-    """Describes a registered connector type and its configuration schema."""
-
-    name: str
-    version: str
-    description: str
-    capabilities: list[str]
-    transport: str
-    config_schema: list[ConnectorConfigFieldInfo]
-
-
-class ConnectorTypesResponse(BaseModel):
-    """Response listing all available connector types."""
-
-    items: list[ConnectorTypeInfo]
-    total: int
-
-
-# ── Auth setup / status models ────────────────────────────────────────────────
+# ---- Auth setup / status models ----
 
 
 class AuthStatusResponse(BaseModel):

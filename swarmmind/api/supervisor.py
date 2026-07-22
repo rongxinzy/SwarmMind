@@ -11,52 +11,34 @@ from swarmmind.api.conversation_routes import (
     ClarificationResponseRequest as ConversationClarificationResponseRequest,
 )
 from swarmmind.api.conversation_routes import ConversationRouteDeps, build_conversation_router
-from swarmmind.api.routers.agent_teams import AgentTeamsRouterDeps, build_agent_teams_router
-from swarmmind.api.routers.audit_logs import AuditLogsRouterDeps, build_audit_logs_router
-from swarmmind.api.routers.legacy_supervisor import LegacySupervisorRouterDeps, build_legacy_supervisor_router
-from swarmmind.api.routers.memory import MemoryRouterDeps, build_memory_router
 from swarmmind.api.routers.project_memberships import (
     ProjectMembershipRouterDeps,
     build_project_membership_router,
 )
 from swarmmind.api.routers.projects import ProjectsRouterDeps, build_projects_router
-from swarmmind.api.routers.promotions import PromotionsRouterDeps, build_promotions_router
-from swarmmind.api.routers.runs import RunsRouterDeps, build_runs_router
 from swarmmind.api.routers.runtime_models import (
     build_runtime_models_router,
     list_runtime_models,  # noqa: F401  (re-export for tests)
 )
 from swarmmind.api.routers.system import SystemRouterDeps, build_system_router
 from swarmmind.api.routers.users import UsersRouterDeps, build_users_router
-from swarmmind.config import ACTION_TIMEOUT_SECONDS, API_HOST, API_PORT
-from swarmmind.context_broker import derive_situation_tag, dispatch, record_supervisor_decision
-from swarmmind.db import init_db, seed_builtin_agent_teams, seed_default_agents
+from swarmmind.config import API_HOST, API_PORT
+from swarmmind.db import init_db
 from swarmmind.models import (
     Conversation,
     ConversationListResponse,
     ConversationRuntimeOptions,
-    ConversationTraceResponse,
     DeleteConversationResponse,
     Message,
     MessageListResponse,
     RecentConversationResponse,
     SendMessageRequest,
-    SupervisorDecision,
 )
-from swarmmind.renderer import render_status
-from swarmmind.repositories.action_proposal import ActionProposalRepository
-from swarmmind.repositories.agent_team import AgentTeamRepository
 from swarmmind.repositories.artifact import ArtifactRepository
-from swarmmind.repositories.audit_log import AuditLogRepository
 from swarmmind.repositories.conversation import ConversationRepository
-from swarmmind.repositories.memory import MemoryRepository
 from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.project import ProjectRepository
 from swarmmind.repositories.project_membership import ProjectMembershipRepository
-from swarmmind.repositories.project_team import ProjectTeamInstanceRepository
-from swarmmind.repositories.run import RunRepository
-from swarmmind.repositories.strategy import StrategyRepository
-from swarmmind.repositories.task import TaskRepository
 from swarmmind.repositories.user import UserRepository
 from swarmmind.runtime import ensure_default_runtime_instance
 from swarmmind.runtime.catalog import sync_env_runtime_model
@@ -65,15 +47,14 @@ from swarmmind.services.conversation_support import (
     ConversationSupportService,
     generate_title_with_deerflow,
 )
-from swarmmind.services.conversation_trace_service import ConversationTraceService
-from swarmmind.services.lifecycle import run_cleanup_scanner
-from swarmmind.services.message_trace_service import _default_message_trace_service
-from swarmmind.services.run_context import RunContext
-from swarmmind.services.run_lifecycle import RunLifecycleService
 from swarmmind.services.runtime_support import RuntimeSupportService
 from swarmmind.services.stream_events import (
     deerflow_runtime_status_labels as _svc_deerflow_runtime_status_labels,
+)
+from swarmmind.services.stream_events import (
     serialize_stream_event as _svc_serialize_stream_event,
+)
+from swarmmind.services.stream_events import (
     translate_deerflow_runtime_event as _svc_translate_deerflow_runtime_event,
 )
 
@@ -86,17 +67,9 @@ DeerFlowRuntime = None
 
 conversation_repo = ConversationRepository()
 message_repo = MessageRepository()
-action_proposal_repo = ActionProposalRepository()
-strategy_repo = StrategyRepository()
-memory_repo = MemoryRepository()
 project_repo = ProjectRepository()
 project_membership_repo = ProjectMembershipRepository()
 artifact_repo = ArtifactRepository()
-run_repo = RunRepository()
-agent_team_repo = AgentTeamRepository()
-project_team_repo = ProjectTeamInstanceRepository()
-task_repo = TaskRepository()
-audit_log_repo = AuditLogRepository()
 user_repo = UserRepository()
 
 conversation_support = ConversationSupportService(
@@ -104,31 +77,11 @@ conversation_support = ConversationSupportService(
     message_repo=message_repo,
     title_generator=generate_title_with_deerflow,
 )
-from swarmmind.services.audit_writer import AuditWriter
-
-audit_writer = AuditWriter(audit_log_repo=audit_log_repo)
-run_lifecycle_service = RunLifecycleService(run_repo=run_repo, audit_writer=audit_writer)
 runtime_support = RuntimeSupportService(conversation_repo=conversation_repo)
-conversation_trace_service = ConversationTraceService(conversation_repo=conversation_repo)
-message_trace_service = _default_message_trace_service()
 
 
 def _generate_title_with_deerflow(user_msg: str, assistant_msg: str) -> tuple[str, str]:
     return generate_title_with_deerflow(user_msg, assistant_msg)
-
-
-# ---- Cleanup scanner ----
-
-
-def _cleanup_scanner():
-    run_cleanup_scanner(
-        action_proposal_repo=action_proposal_repo,
-        memory_repo=memory_repo,
-        action_timeout_seconds=ACTION_TIMEOUT_SECONDS,
-        record_supervisor_decision=record_supervisor_decision,
-        supervisor_timeout_decision=SupervisorDecision.TIMEOUT,
-        lifecycle_logger=logger,
-    )
 
 
 # ---- FastAPI app ----
@@ -136,20 +89,13 @@ def _cleanup_scanner():
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    """Bootstrap API dependencies and launch background cleanup workers."""
-    import threading
-
+    """Bootstrap API dependencies."""
     logger.info("SwarmMind API startup: init_db")
     init_db()
-    logger.info("SwarmMind API startup: seed_default_agents")
-    seed_default_agents()
-    logger.info("SwarmMind API startup: seed_builtin_agent_teams")
-    seed_builtin_agent_teams()
     logger.info("SwarmMind API startup: sync_env_runtime_model")
     sync_env_runtime_model()
     logger.info("SwarmMind API startup: ensure_default_runtime_instance")
     ensure_default_runtime_instance()
-    threading.Thread(target=_cleanup_scanner, daemon=True).start()
     logger.info("SwarmMind API startup complete")
     yield
 
@@ -187,9 +133,7 @@ def _conversation_execution_service() -> ConversationExecutionService:
         conversation_repo=conversation_repo,
         message_repo=message_repo,
         runtime_cls=DeerFlowRuntime,
-        persist_user_message_fn=lambda cid, content, run_id=None: conversation_support.persist_user_message(
-            cid, content, run_id=run_id
-        ),
+        persist_user_message_fn=lambda cid, content: conversation_support.persist_user_message(cid, content),
         persist_assistant_message_fn=conversation_support.persist_assistant_message,
         maybe_generate_conversation_title_fn=lambda cid: conversation_support.maybe_generate_conversation_title(
             cid, _generate_title_with_deerflow
@@ -202,7 +146,6 @@ def _conversation_execution_service() -> ConversationExecutionService:
         serialize_stream_event_fn=_svc_serialize_stream_event,
         db_to_message_fn=conversation_support.db_to_message,
         execution_logger=logger,
-        run_lifecycle_service=run_lifecycle_service,
         artifact_repo=artifact_repo,
     )
 
@@ -211,18 +154,13 @@ def _stream_conversation_message(conversation_id: str, body: SendMessageRequest)
     yield from _conversation_execution_service().stream_message(conversation_id, body)
 
 
-def _stream_project_message(project_id: str, conversation_id: str, body: SendMessageRequest):
-    run_context = RunContext.for_project(project_id, conversation_id)
-    yield from _conversation_execution_service().stream_message(conversation_id, body, run_context=run_context)
-
-
 def _stream_native_conversation_message(conversation_id: str, body: SendMessageRequest):
     yield from _conversation_execution_service().stream_native_message(conversation_id, body)
 
 
-def _stream_native_project_message(project_id: str, conversation_id: str, body: SendMessageRequest):
-    run_context = RunContext.for_project(project_id, conversation_id)
-    yield from _conversation_execution_service().stream_native_message(conversation_id, body, run_context=run_context)
+def _stream_native_project_message(_project_id: str, conversation_id: str, body: SendMessageRequest):
+    # Project-scoped chat reuses the same execution path; project_id is resolved upstream.
+    yield from _conversation_execution_service().stream_native_message(conversation_id, body)
 
 
 def _respond_to_clarification(conversation_id: str, tool_call_id: str, response: str) -> Message:
@@ -281,13 +219,6 @@ def _delete_conversation(conversation_id: str) -> DeleteConversationResponse:
         status="deleted",
         id=conversation_id,
         next_conversation_id=next_conv.id if next_conv is not None else None,
-    )
-
-
-def _get_conversation_trace(conversation_id: str) -> ConversationTraceResponse:
-    return ConversationTraceResponse(
-        conversation_id=conversation_id,
-        trace=conversation_trace_service.get_trace(conversation_id),
     )
 
 
@@ -358,7 +289,6 @@ conversation_router, conversation_handlers = build_conversation_router(
         get_conversation_messages=_get_conversation_messages,
         send_message=_send_message,
         delete_conversation=_delete_conversation,
-        get_conversation_trace=_get_conversation_trace,
         stream_conversation_message=_stream_conversation_message,
         respond_to_clarification=_respond_to_clarification,
         search_conversations=_search_conversations,
@@ -375,7 +305,6 @@ get_recent_conversation = conversation_handlers.get_recent_conversation
 get_conversation_messages = conversation_handlers.get_conversation_messages
 send_message = conversation_handlers.send_message
 delete_conversation = conversation_handlers.delete_conversation
-get_conversation_trace = conversation_handlers.get_conversation_trace
 send_message_stream = conversation_handlers.send_message_stream
 respond_to_clarification = conversation_handlers.respond_to_clarification
 search_conversations = conversation_handlers.search_conversations
@@ -405,18 +334,6 @@ app.include_router(
     build_system_router(
         SystemRouterDeps(
             ensure_default_runtime_instance=ensure_default_runtime_instance,
-            render_status=render_status,
-        )
-    )
-)
-
-app.include_router(
-    build_legacy_supervisor_router(
-        LegacySupervisorRouterDeps(
-            action_proposal_repo=action_proposal_repo,
-            strategy_repo=strategy_repo,
-            record_supervisor_decision=record_supervisor_decision,
-            dispatch=dispatch,
         )
     )
 )
@@ -427,70 +344,15 @@ app.include_router(
     build_projects_router(
         ProjectsRouterDeps(
             project_repo=project_repo,
-            task_repo=task_repo,
-            run_repo=run_repo,
-            artifact_repo=artifact_repo,
-            audit_log_repo=audit_log_repo,
-            agent_team_repo=agent_team_repo,
-            project_team_repo=project_team_repo,
-            conversation_repo=conversation_repo,
-            stream_conversation_message=_stream_conversation_message,
-            stream_project_message=_stream_project_message,
         )
     )
 )
-
-app.include_router(
-    build_runs_router(
-        RunsRouterDeps(
-            run_repo=run_repo,
-            project_repo=project_repo,
-            conversation_repo=conversation_repo,
-        )
-    )
-)
-
-app.include_router(
-    build_audit_logs_router(
-        AuditLogsRouterDeps(
-            audit_log_repo=audit_log_repo,
-            project_repo=project_repo,
-            run_repo=run_repo,
-        )
-    )
-)
-
-app.include_router(build_memory_router(MemoryRouterDeps(memory_repo=memory_repo)))
 
 app.include_router(
     build_project_membership_router(
         ProjectMembershipRouterDeps(
             project_repo=project_repo,
             membership_repo=project_membership_repo,
-            audit_writer=audit_writer,
-        )
-    )
-)
-
-app.include_router(
-    build_agent_teams_router(
-        AgentTeamsRouterDeps(
-            agent_team_repo=agent_team_repo,
-        )
-    )
-)
-
-app.include_router(
-    build_promotions_router(
-        PromotionsRouterDeps(
-            conversation_repo=conversation_repo,
-            message_repo=message_repo,
-            project_repo=project_repo,
-            project_team_repo=project_team_repo,
-            agent_team_repo=agent_team_repo,
-            artifact_repo=artifact_repo,
-            message_trace_service_fn=lambda: message_trace_service,
-            runtime_support=runtime_support,
         )
     )
 )
@@ -499,11 +361,9 @@ app.include_router(
 
 from swarmmind.api.llm_gateway_routes import router as _gateway_router
 from swarmmind.api.llm_provider_routes import router as _provider_router
-from swarmmind.api.routers.connectors import router as _connectors_router
 
 app.include_router(_gateway_router)
 app.include_router(_provider_router)
-app.include_router(_connectors_router)
 
 # ---- Run ----
 

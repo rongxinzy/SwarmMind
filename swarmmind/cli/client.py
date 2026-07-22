@@ -10,36 +10,17 @@ import httpx
 from pydantic import BaseModel
 
 from swarmmind.models import (
-    AuditLogEntry,
-    AuditLogListResponse,
     AuthToken,
-    ConnectorCreateRequest,
-    ConnectorHeartbeatRequest,
-    ConnectorListResponse,
-    ConnectorResponse,
-    ConnectorTypesResponse,
-    ConnectorUpdateRequest,
     Conversation,
     ConversationListResponse,
-    ConversationTraceResponse,
-    CreateAuditLogEntry,
     CreateConversationRequest,
-    CreateRunRequest,
-    CreateTaskRequest,
     CurrentUserResponse,
-    DeleteAuditLogResponse,
-    DeleteConnectorResponse,
     DeleteConversationResponse,
     DeleteProjectResponse,
-    DeleteTaskResponse,
     DeleteUserResponse,
-    DispatchResponse,
-    GoalRequest,
     HealthResponse,
     LoginRequest,
     LogoutResponse,
-    MemoryEntry,
-    MemoryListResponse,
     Project,
     ProjectCapability,
     ProjectCreateRequest,
@@ -49,18 +30,11 @@ from swarmmind.models import (
     ProjectMembershipDeleteResponse,
     ProjectMembershipListResponse,
     ProjectMembershipUpdateRequest,
-    ProjectOverviewResponse,
     ProjectPermissionCheckResponse,
     ProjectUpdateRequest,
     ReadyResponse,
-    Run,
-    RunListResponse,
     SendMessageRequest,
     SendMessageResponse,
-    Task,
-    TaskListResponse,
-    UpdateRunRequest,
-    UpdateTaskRequest,
     User,
     UserCreateRequest,
     UserListResponse,
@@ -205,12 +179,6 @@ class SwarmMindClient:
     def delete_user(self, user_id: str) -> DeleteUserResponse:
         return self._list(DeleteUserResponse, "DELETE", f"/users/{user_id}")
 
-    # ---- dispatch ----
-
-    def dispatch(self, goal: str) -> DispatchResponse:
-        body = GoalRequest(goal=goal).model_dump(mode="json")
-        return self._list(DispatchResponse, "POST", "/dispatch", json_body=body)
-
     # ---- conversations / chat ----
 
     def list_conversations(self) -> ConversationListResponse:
@@ -271,9 +239,6 @@ class SwarmMindClient:
     def delete_conversation(self, conversation_id: str) -> DeleteConversationResponse:
         return self._list(DeleteConversationResponse, "DELETE", f"/conversations/{conversation_id}")
 
-    def get_conversation_trace(self, conversation_id: str) -> ConversationTraceResponse:
-        return self._list(ConversationTraceResponse, "GET", f"/conversations/{conversation_id}/trace")
-
     def export_conversation(self, conversation_id: str, export_format: str = "markdown") -> str:
         data = self._request("GET", f"/conversations/{conversation_id}/export", params={"format": export_format})
         if isinstance(data, (dict, list)):
@@ -298,21 +263,6 @@ class SwarmMindClient:
 
     def delete_project(self, project_id: str) -> DeleteProjectResponse:
         return self._list(DeleteProjectResponse, "DELETE", f"/projects/{project_id}")
-
-    def project_overview(self, project_id: str) -> ProjectOverviewResponse:
-        return self._list(ProjectOverviewResponse, "GET", f"/projects/{project_id}/overview")
-
-    def stream_project_message(
-        self,
-        project_id: str,
-        content: str,
-        *,
-        mode: str | None = None,
-        model_name: str | None = None,
-        reasoning: bool = False,
-    ) -> Iterator[dict[str, Any]]:
-        body = _message_body(content, mode=mode, model_name=model_name, reasoning=reasoning)
-        yield from self._stream("POST", f"/projects/{project_id}/messages/stream", json_body=body)
 
     # ---- project members ----
 
@@ -345,146 +295,6 @@ class SwarmMindClient:
             "GET",
             f"/projects/{project_id}/members/{member_id}/permissions/{checked.value}",
         )
-
-    # ---- runs ----
-
-    def list_runs(self, *, project_id: str | None = None, conversation_id: str | None = None) -> RunListResponse:
-        if project_id:
-            return self._list(RunListResponse, "GET", f"/projects/{project_id}/runs")
-        if conversation_id:
-            return self._list(RunListResponse, "GET", f"/conversations/{conversation_id}/runs")
-        raise SwarmMindCLIError("run list requires --project-id or --conversation-id")
-
-    def get_run(self, run_id: str) -> Run:
-        return self._list(Run, "GET", f"/runs/{run_id}")
-
-    def create_run(self, **fields) -> Run:
-        body = CreateRunRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
-        return self._list(Run, "POST", "/runs", json_body=body)
-
-    def update_run(self, run_id: str, **fields) -> Run:
-        body = UpdateRunRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
-        return self._list(Run, "PATCH", f"/runs/{run_id}", json_body=body)
-
-    # ---- tasks ----
-
-    def list_tasks(self, project_id: str) -> TaskListResponse:
-        return self._list(TaskListResponse, "GET", f"/projects/{project_id}/tasks")
-
-    def create_task(self, project_id: str, **fields) -> Task:
-        body = CreateTaskRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
-        return self._list(Task, "POST", f"/projects/{project_id}/tasks", json_body=body)
-
-    def get_task(self, project_id: str, task_id: str) -> Task:
-        return self._list(Task, "GET", f"/projects/{project_id}/tasks/{task_id}")
-
-    def update_task(self, project_id: str, task_id: str, **fields) -> Task:
-        body = UpdateTaskRequest(**_compact(fields)).model_dump(mode="json", exclude_none=True)
-        return self._list(Task, "PATCH", f"/projects/{project_id}/tasks/{task_id}", json_body=body)
-
-    def delete_task(self, project_id: str, task_id: str) -> DeleteTaskResponse:
-        return self._list(DeleteTaskResponse, "DELETE", f"/projects/{project_id}/tasks/{task_id}")
-
-    # ---- audit logs ----
-
-    def list_audit_logs(
-        self,
-        *,
-        project_id: str | None = None,
-        run_id: str | None = None,
-    ) -> AuditLogListResponse:
-        return self._list(
-            AuditLogListResponse,
-            "GET",
-            "/audit-logs",
-            params={"project_id": project_id, "run_id": run_id},
-        )
-
-    def create_audit_log(self, **fields) -> AuditLogEntry:
-        body = CreateAuditLogEntry(**_compact(fields)).model_dump(mode="json", exclude_none=True)
-        return self._list(AuditLogEntry, "POST", "/audit-logs", json_body=body)
-
-    def get_audit_log(self, audit_id: str) -> AuditLogEntry:
-        return self._list(AuditLogEntry, "GET", f"/audit-logs/{audit_id}")
-
-    def delete_audit_log(self, audit_id: str) -> DeleteAuditLogResponse:
-        return self._list(DeleteAuditLogResponse, "DELETE", f"/audit-logs/{audit_id}")
-
-    # ---- memory ----
-
-    def list_memory(
-        self,
-        *,
-        layer: str | None = None,
-        scope_id: str | None = None,
-        tags: list[str] | None = None,
-        limit: int = 100,
-    ) -> MemoryListResponse:
-        return self._list(
-            MemoryListResponse,
-            "GET",
-            "/memory",
-            params={"layer": layer, "scope_id": scope_id, "tag": tags, "limit": limit},
-        )
-
-    def get_memory(self, key: str, *, layer: str, scope_id: str) -> MemoryEntry:
-        return self._list(MemoryEntry, "GET", f"/memory/{key}", params={"layer": layer, "scope_id": scope_id})
-
-    # ---- stream ----
-
-    # ---- connectors ----
-
-    def list_connectors(self) -> ConnectorListResponse:
-        """List all registered connectors."""
-        return self._list(ConnectorListResponse, "GET", "/connectors")
-
-    def create_connector(
-        self,
-        connector_type: str,
-        name: str,
-        config: dict[str, Any] | None = None,
-        connector_id: str | None = None,
-    ) -> ConnectorResponse:
-        """Register a new connector."""
-        body = ConnectorCreateRequest(
-            connector_id=connector_id,
-            name=name,
-            connector_type=connector_type,
-            config=config or {},
-        ).model_dump(mode="json", exclude_none=True)
-        return self._list(ConnectorResponse, "POST", "/connectors", json_body=body)
-
-    def get_connector(self, connector_id: str) -> ConnectorResponse:
-        """Get connector details."""
-        return self._list(ConnectorResponse, "GET", f"/connectors/{connector_id}")
-
-    def update_connector(
-        self,
-        connector_id: str,
-        name: str | None = None,
-        config: dict[str, Any] | None = None,
-    ) -> ConnectorResponse:
-        """Update connector name or config."""
-        body = ConnectorUpdateRequest(name=name, config=config).model_dump(mode="json", exclude_none=True)
-        return self._list(ConnectorResponse, "PATCH", f"/connectors/{connector_id}", json_body=body)
-
-    def delete_connector(self, connector_id: str) -> DeleteConnectorResponse:
-        """Delete a connector."""
-        return self._list(DeleteConnectorResponse, "DELETE", f"/connectors/{connector_id}")
-
-    def connector_heartbeat(
-        self,
-        connector_id: str,
-        status: str,
-        mcp_url: str | None = None,
-    ) -> ConnectorResponse:
-        """Report connector health to the control plane."""
-        body = ConnectorHeartbeatRequest(status=status, mcp_url=mcp_url).model_dump(mode="json", exclude_none=True)
-        return self._list(ConnectorResponse, "POST", f"/connectors/{connector_id}/heartbeat", json_body=body)
-
-    def list_connector_types(self) -> ConnectorTypesResponse:
-        """List all registered connector types with their config schemas."""
-        return self._list(ConnectorTypesResponse, "GET", "/connectors/types")
 
     # ---- stream ----
 

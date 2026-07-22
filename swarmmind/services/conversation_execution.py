@@ -7,22 +7,19 @@ import json
 import logging
 import uuid
 from collections.abc import Callable, Generator
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from fastapi import HTTPException
 
 from swarmmind.models import (
     ConversationRuntimeOptions,
-    MemoryContext,
     Message,
     SendMessageRequest,
     SendMessageResponse,
 )
 from swarmmind.services.artifact_content import is_virtual_user_data_path, normalize_virtual_path
 
-if TYPE_CHECKING:
-    from swarmmind.services.run_context import RunContext
-    from swarmmind.services.run_lifecycle import RunLifecycleService
+logger = logging.getLogger(__name__)
 
 
 def _is_client_disconnect_error(exc: BaseException) -> bool:
@@ -51,7 +48,7 @@ class ConversationExecutionService:
         conversation_repo: Any,
         message_repo: Any,
         runtime_cls: type | None = None,
-        persist_user_message_fn: Callable[[str, str, str | None], Message],
+        persist_user_message_fn: Callable[[str, str], Message],
         persist_assistant_message_fn: Callable[..., Message],
         maybe_generate_conversation_title_fn: Callable[[str], None],
         bind_conversation_runtime_fn: Callable[[str], tuple[object, str]],
@@ -62,7 +59,6 @@ class ConversationExecutionService:
         serialize_stream_event_fn: Callable[..., str],
         db_to_message_fn: Callable[[Any], Message],
         execution_logger: logging.Logger,
-        run_lifecycle_service: RunLifecycleService | None = None,
         artifact_repo: Any | None = None,
     ) -> None:
         self._conversation_repo = conversation_repo
@@ -81,14 +77,11 @@ class ConversationExecutionService:
         self._serialize_stream_event = serialize_stream_event_fn
         self._db_to_message = db_to_message_fn
         self._logger = execution_logger
-        self._run_lifecycle = run_lifecycle_service
         self._artifact_repo = artifact_repo
 
     def send_message(self, conversation_id: str, body: SendMessageRequest) -> SendMessageResponse:
         """Run a non-streaming conversation turn."""
-        run_id = str(uuid.uuid4())
-        user_msg = self._persist_user_message(conversation_id, body.content, run_id)
-        memory_ctx = MemoryContext(user_id="supervisor", session_id=conversation_id)
+        user_msg = self._persist_user_message(conversation_id, body.content)
         runtime_options = self._resolve_runtime_options(body)
 
         try:
@@ -96,7 +89,7 @@ class ConversationExecutionService:
             runtime = self._build_runtime(runtime_instance, runtime_options)
             ai_response = runtime.run_turn(
                 body.content,
-                ctx=memory_ctx,
+                conversation_id=conversation_id,
                 runtime_options=runtime_options,
             )
         except Exception as exc:  # pragma: no cover - exercised via supervisor tests
@@ -111,20 +104,9 @@ class ConversationExecutionService:
         self,
         conversation_id: str,
         body: SendMessageRequest,
-        *,
-        run_context: RunContext | None = None,
     ) -> Generator[str, None, None]:
-        """Stream a conversation turn with runtime-status events.
-
-        When run_context is provided and has a project_id, lifecycle events are
-        persisted via RunLifecycleService. ChatSession-only calls pass no
-        run_context and are unaffected.
-        """
-        run_id = run_context.run_id if run_context is not None else str(uuid.uuid4())
-        artifact_run_id = run_context.run_id if run_context is not None else None
-
-        if self._run_lifecycle is not None and run_context is not None:
-            self._run_lifecycle.start(run_context)
+        """Stream a conversation turn with runtime-status events."""
+        run_id = str(uuid.uuid4())
 
         user_message, native_user_payload = self._persist_user_turn(conversation_id, body, run_id)
         yield self._serialize_stream_event("status", phase="accepted", label="消息已加入当前会话")
@@ -140,7 +122,6 @@ class ConversationExecutionService:
             },
         )
 
-        memory_ctx = MemoryContext(user_id="supervisor", session_id=conversation_id)
         runtime_options = self._resolve_runtime_options(body)
         routing_label, running_label = self._deerflow_runtime_status_labels(runtime_options)
 
@@ -156,7 +137,7 @@ class ConversationExecutionService:
             yield self._serialize_stream_event("status", phase="running", label=running_label)
 
             stream_kwargs = {
-                "ctx": memory_ctx,
+                "conversation_id": conversation_id,
                 "runtime_options": runtime_options,
             }
             if "native_messages" in inspect.signature(runtime.stream_events).parameters:
@@ -189,7 +170,6 @@ class ConversationExecutionService:
                             self._register_native_message_artifacts(
                                 conversation_id,
                                 native_message,
-                                run_id=artifact_run_id,
                                 message_id=persisted.id,
                             )
                             if persisted.role == "assistant" and persisted.content.strip():
@@ -200,7 +180,6 @@ class ConversationExecutionService:
                             conversation_id,
                             event.get("artifacts"),
                             artifact_type="present_files",
-                            run_id=artifact_run_id,
                         )
                     for line in self._translate_deerflow_runtime_event(event, runtime_options):
                         yield line
@@ -217,20 +196,13 @@ class ConversationExecutionService:
                 self._logger.info("Client disconnected from stream: %s", exc)
                 return
             self._logger.error("Conversation stream error: %s", exc, exc_info=True)
-            if self._run_lifecycle is not None and run_context is not None:
-                error_class = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
-                self._run_lifecycle.fail(run_context, error_class, str(exc))
             ai_response = self._format_runtime_error(exc)
             error_code = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
             yield self._serialize_stream_event("error", code=error_code, message=ai_response)
 
-        if self._run_lifecycle is not None and run_context is not None:
-            summary = ai_response[:500] if ai_response else None
-            self._run_lifecycle.finish(run_context, summary)
-
         assistant_message = native_assistant_message
         if assistant_message is None:
-            assistant_message = self._persist_assistant_message(conversation_id, ai_response, run_id=run_id)
+            assistant_message = self._persist_assistant_message(conversation_id, ai_response)
         self._maybe_generate_conversation_title(conversation_id)
         conversation = self._conversation_repo.get_by_id(conversation_id)
         serialized_conversation = {
@@ -261,20 +233,9 @@ class ConversationExecutionService:
         self,
         conversation_id: str,
         body: SendMessageRequest,
-        *,
-        run_context: RunContext | None = None,
     ) -> Generator[str, None, None]:
-        """Stream a turn for the Next.js DeerFlow-native chat path.
-
-        This path emits persisted LangGraph/DeerFlow message payloads directly.
-        The older runtime-status and auxiliary semantic events stay confined to
-        stream_message(), which is still used by legacy conversation APIs and CLI.
-        """
-        run_id = run_context.run_id if run_context is not None else str(uuid.uuid4())
-        artifact_run_id = run_context.run_id if run_context is not None else None
-
-        if self._run_lifecycle is not None and run_context is not None:
-            self._run_lifecycle.start(run_context)
+        """Stream a turn for the Next.js DeerFlow-native chat path."""
+        run_id = str(uuid.uuid4())
 
         user_message, native_user_payload = self._persist_user_turn(conversation_id, body, run_id)
         yield self._serialize_stream_event(
@@ -289,7 +250,6 @@ class ConversationExecutionService:
             },
         )
 
-        memory_ctx = MemoryContext(user_id="supervisor", session_id=conversation_id)
         runtime_options = self._resolve_runtime_options(body)
         native_assistant_message: Message | None = None
         ai_response = ""
@@ -299,7 +259,7 @@ class ConversationExecutionService:
             runtime = self._build_runtime(runtime_instance, runtime_options)
 
             stream_kwargs = {
-                "ctx": memory_ctx,
+                "conversation_id": conversation_id,
                 "runtime_options": runtime_options,
             }
             if "native_messages" in inspect.signature(runtime.stream_events).parameters:
@@ -333,7 +293,6 @@ class ConversationExecutionService:
                         self._register_native_message_artifacts(
                             conversation_id,
                             native_message,
-                            run_id=artifact_run_id,
                             message_id=persisted.id,
                         )
                         if persisted.role == "assistant" and persisted.content.strip():
@@ -348,7 +307,6 @@ class ConversationExecutionService:
                         conversation_id,
                         event.get("artifacts"),
                         artifact_type="present_files",
-                        run_id=artifact_run_id,
                     )
 
             if not ai_response.strip():
@@ -360,20 +318,13 @@ class ConversationExecutionService:
                 self._logger.info("Client disconnected from native stream: %s", exc)
                 return
             self._logger.error("Native conversation stream error: %s", exc, exc_info=True)
-            if self._run_lifecycle is not None and run_context is not None:
-                error_class = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
-                self._run_lifecycle.fail(run_context, error_class, str(exc))
             ai_response = self._format_runtime_error(exc)
             error_code = "TIMEOUT" if isinstance(exc, TimeoutError) else "RUNTIME_ERROR"
             yield self._serialize_stream_event("error", code=error_code, message=ai_response)
 
-        if self._run_lifecycle is not None and run_context is not None:
-            summary = ai_response[:500] if ai_response else None
-            self._run_lifecycle.finish(run_context, summary)
-
         assistant_message = native_assistant_message
         if assistant_message is None:
-            assistant_message = self._persist_assistant_message(conversation_id, ai_response, run_id=run_id)
+            assistant_message = self._persist_assistant_message(conversation_id, ai_response)
             yield self._serialize_stream_event(
                 "deerflow.message",
                 message={
@@ -410,7 +361,7 @@ class ConversationExecutionService:
         """Persist the user's turn, preserving native LangGraph metadata when provided."""
         native_message = body.native_message if isinstance(body.native_message, dict) else None
         if not native_message or native_message.get("type") != "human":
-            return self._persist_user_message(conversation_id, body.content, run_id), None
+            return self._persist_user_message(conversation_id, body.content), None
 
         message_id = str(uuid.uuid4())
         additional_kwargs = native_message.get("additional_kwargs")
@@ -427,7 +378,6 @@ class ConversationExecutionService:
             conversation_id=conversation_id,
             role="user",
             content=body.content,
-            run_id=run_id,
             native_payload=payload,
             message_id=message_id,
         )
@@ -454,7 +404,6 @@ class ConversationExecutionService:
                 else None
             ),
             name=(str(native_message["name"]) if native_message.get("name") is not None else None),
-            run_id=run_id,
             native_payload=native_message,
         )
         self._conversation_repo.touch(conversation_id)
@@ -465,7 +414,6 @@ class ConversationExecutionService:
         conversation_id: str,
         native_message: dict[str, Any],
         *,
-        run_id: str | None,
         message_id: str | None,
     ) -> None:
         if native_message.get("type") != "ai":
@@ -481,7 +429,6 @@ class ConversationExecutionService:
                     conversation_id,
                     args.get("filepaths"),
                     artifact_type="present_files",
-                    run_id=run_id,
                     message_id=message_id,
                 )
             elif tool_name in {"write_file", "str_replace"}:
@@ -489,7 +436,6 @@ class ConversationExecutionService:
                     conversation_id,
                     [args.get("path")],
                     artifact_type=tool_name,
-                    run_id=run_id,
                     message_id=message_id,
                 )
 
@@ -499,7 +445,6 @@ class ConversationExecutionService:
         paths: Any,
         *,
         artifact_type: str,
-        run_id: str | None,
         message_id: str | None = None,
     ) -> None:
         if self._artifact_repo is None or not isinstance(paths, list):
@@ -523,7 +468,6 @@ class ConversationExecutionService:
                 name=normalized,
                 path=normalized,
                 artifact_type=artifact_type,
-                run_id=run_id,
             )
 
     @staticmethod

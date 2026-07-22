@@ -50,9 +50,9 @@ export function ChatEmptyState({ onSuggestion }: ChatEmptyStateProps) {
   return (
     <section className="flex w-full flex-col items-center text-center">
       <h1 className="max-w-[820px] text-[42px] font-normal leading-[1.07] tracking-normal text-[#101010] sm:text-[56px]">
-        What should
+        开始一个
         <br />
-        SwarmMind deliver?
+        新任务
       </h1>
 
       {onSuggestion && (

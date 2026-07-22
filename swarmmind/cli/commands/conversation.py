@@ -61,14 +61,6 @@ def list_messages(
     run_client_command(ctx, lambda client: client.list_messages(conversation_id))
 
 
-@conversation_app.command("trace")
-def conversation_trace(
-    ctx: typer.Context,
-    conversation_id: Annotated[str, typer.Argument(help="Conversation ID.")],
-) -> None:
-    run_client_command(ctx, lambda client: client.get_conversation_trace(conversation_id))
-
-
 @conversation_app.command("export")
 def export_conversation(
     ctx: typer.Context,

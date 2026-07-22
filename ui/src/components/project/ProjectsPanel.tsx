@@ -162,7 +162,7 @@ export function ProjectsPanel({ projectId, onOpenProject }: ProjectsPanelProps) 
                   <FolderKanban />
                 </EmptyMedia>
                 <EmptyTitle>暂无项目</EmptyTitle>
-                <EmptyDescription>在一次有价值的任务完成后，点击“升级为项目”即可沉淀结果。</EmptyDescription>
+                <EmptyDescription>项目列表会在这里展示，后续可从任务会话沉淀成果。</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </div>

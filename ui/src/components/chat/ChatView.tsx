@@ -11,8 +11,6 @@ import {
 import { ArtifactWorkspacePanel } from "@/components/deerflow/ArtifactWorkspacePanel"
 import { TokenUsageIndicator } from "@/components/deerflow/TokenUsageIndicator"
 import { TodoList } from "@/components/deerflow/TodoList"
-import { TrendingUp } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { useSwarmChat } from "@/hooks/useSwarmChat"
 import { MessageRenderer } from "./MessageRenderer"
@@ -40,7 +38,6 @@ import type { ChatMessage } from "@/types/chat"
 interface ChatViewProps {
   conversationId?: string
   onConversationCreated: (id: string, title: string) => void
-  onOpenProject: (id: string) => void
   isLoadingConversations?: boolean
 }
 
@@ -52,7 +49,6 @@ interface ArtifactListResponse {
 export function ChatView({
   conversationId,
   onConversationCreated,
-  onOpenProject,
   isLoadingConversations,
 }: ChatViewProps) {
   const handleConversationCreated = useCallback(
@@ -71,7 +67,6 @@ export function ChatView({
     modelName,
     onConversationCreated: handleConversationCreated,
   })
-  const [isPromoting, setIsPromoting] = useState(false)
   const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null)
   const [artifactPanelOpen, setArtifactPanelOpen] = useState(false)
   const [artifactMetadataByPath, setArtifactMetadataByPath] = useState<ArtifactMetadataIndex>({})
@@ -98,24 +93,6 @@ export function ChatView({
     },
     [sendMessage],
   )
-
-  const handlePromote = useCallback(async () => {
-    if (!conversationId || isPromoting) return
-    setIsPromoting(true)
-    try {
-      const data = (await apiFetchJson<{ project_id: string }>(`/conversations/${conversationId}/promote`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      }))
-      toast.success("已升级为项目")
-      onOpenProject(data.project_id)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "升级失败")
-    } finally {
-      setIsPromoting(false)
-    }
-  }, [conversationId, isPromoting, onOpenProject])
 
   const isStreaming = status === "streaming"
   const isSubmitted = status === "submitted"
@@ -311,20 +288,6 @@ export function ChatView({
       {conversationId && (
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
           <TokenUsageIndicator messages={messages} />
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isPromoting}
-            className="rounded-full border-[#e6e6e6] bg-white/90 text-[#242424] shadow-[0_1px_3px_rgba(0,0,0,0.04)] backdrop-blur hover:bg-white"
-            onClick={() => void handlePromote()}
-          >
-            {isPromoting ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <TrendingUp data-icon="inline-start" />
-            )}
-            升级为项目
-          </Button>
         </div>
       )}
 

@@ -6,8 +6,6 @@ import pytest
 from fastapi import HTTPException
 
 from swarmmind.db import dispose_engines, init_db
-from swarmmind.repositories.conversation import ConversationRepository
-from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.project import ProjectRepository
 
 
@@ -73,15 +71,3 @@ class TestProjectRepository:
             repo.get_by_id(proj.project_id)
         assert exc.value.status_code == 404
 
-    def test_link_conversation(self):
-        conv_repo = ConversationRepository()
-        msg_repo = MessageRepository()
-        proj_repo = ProjectRepository()
-
-        conv = conv_repo.create("Chat Session", "pending")
-        msg_repo.create(conv.id, "user", "Hello")
-        proj = proj_repo.create(title="Promoted")
-        proj_repo.link_conversation(proj.project_id, conv.id)
-
-        conv_refreshed = conv_repo.get_by_id(conv.id)
-        assert conv_refreshed.promoted_project_id == proj.project_id

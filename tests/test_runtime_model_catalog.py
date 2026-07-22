@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from swarmmind.api import supervisor
-from swarmmind.db import init_db, seed_default_agents
+from swarmmind.db import init_db
 from swarmmind.models import SendMessageRequest
 from swarmmind.runtime.catalog import (
     ANONYMOUS_SUBJECT_ID,
@@ -26,7 +26,6 @@ def setup_db(tmp_path, monkeypatch):
     monkeypatch.setenv("LLM_MODEL", "qwen3.5-plus")
     monkeypatch.setenv("OPENAI_API_KEY", "test-openai-key")
     init_db()
-    seed_default_agents()
     yield
 
 

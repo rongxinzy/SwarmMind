@@ -8,17 +8,12 @@ from typing import Annotated
 import typer
 
 from swarmmind import __version__
-from swarmmind.cli.commands.audit import audit_app
 from swarmmind.cli.commands.auth import auth_app
-from swarmmind.cli.commands.connector import connector_app
 from swarmmind.cli.commands.conversation import chat_app, conversation_app
 from swarmmind.cli.commands.mcp import mcp_app
 from swarmmind.cli.commands.member import member_app
-from swarmmind.cli.commands.memory import memory_app
 from swarmmind.cli.commands.project import project_app
-from swarmmind.cli.commands.run import run_app
 from swarmmind.cli.commands.system import register_system_commands
-from swarmmind.cli.commands.task import task_app
 from swarmmind.cli.commands.user import user_app
 from swarmmind.cli.config import CLIState, resolve_api_token, resolve_api_url
 
@@ -65,16 +60,11 @@ def _version() -> str:
 
 
 register_system_commands(app)
-app.add_typer(connector_app, name="connector")
 app.add_typer(conversation_app, name="conversation")
 app.add_typer(chat_app, name="chat")
 app.add_typer(auth_app, name="auth")
 app.add_typer(user_app, name="user")
 app.add_typer(project_app, name="project")
-app.add_typer(run_app, name="run")
-app.add_typer(task_app, name="task")
-app.add_typer(audit_app, name="audit")
-app.add_typer(memory_app, name="memory")
 app.add_typer(member_app, name="member")
 app.add_typer(mcp_app, name="mcp")
 

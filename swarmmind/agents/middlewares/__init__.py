@@ -1,6 +1,5 @@
-"""Agent middlewares for SwarmMind."""
+"""SwarmMind agent middlewares."""
 
-from .clarification_middleware import ClarificationMiddleware
-from .identity_middleware import SwarmMindIdentityMiddleware
+from swarmmind.agents.middlewares.identity_middleware import SwarmMindIdentityMiddleware
 
-__all__ = ["ClarificationMiddleware", "SwarmMindIdentityMiddleware"]
+__all__ = ["SwarmMindIdentityMiddleware"]

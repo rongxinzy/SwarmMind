@@ -7,7 +7,6 @@ from langchain_core.messages import SystemMessage
 
 from swarmmind.agents.deerflow_runtime import _SwarmMindDeerFlowClientMixin
 from swarmmind.agents.middlewares.identity_middleware import SwarmMindIdentityMiddleware
-from swarmmind.db import init_db, seed_default_agents
 from swarmmind.prompting import SWARMMIND_PRODUCT_IDENTITY_PROMPT, rewrite_swarmmind_identity_prompt
 
 
@@ -63,30 +62,3 @@ def test_client_mixin_does_not_replace_native_deerflow_runtime_methods():
     assert "astream" not in _SwarmMindDeerFlowClientMixin.__dict__
 
 
-def test_seed_default_agents_updates_swarmmind_identity_prompt(tmp_path, monkeypatch):
-    db_path = str(tmp_path / "test.db")
-    monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
-    init_db()
-
-    from swarmmind.db import get_session
-    from swarmmind.db_models import AgentDB
-
-    session = get_session()
-    try:
-        session.add(AgentDB(agent_id="general", domain="general", system_prompt="legacy prompt"))
-        session.commit()
-    finally:
-        session.close()
-
-    seed_default_agents()
-
-    session = get_session()
-    try:
-        row = session.get(AgentDB, "general")
-    finally:
-        session.close()
-
-    assert row is not None
-    assert "SwarmMind" in row.system_prompt
-    assert "北京容芯致远科技有限公司" in row.system_prompt
-    assert "有什么我可以帮你的吗？" in row.system_prompt

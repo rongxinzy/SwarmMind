@@ -6,11 +6,11 @@ from typing import Annotated
 
 import typer
 
-from swarmmind.cli.commands._common import joined_message, run_client_command
+from swarmmind.cli.commands._common import run_client_command
 
 
 def register_system_commands(app: typer.Typer) -> None:
-    """Register system and dispatch commands on the root app."""
+    """Register system commands on the root app."""
 
     @app.command("health")
     def health(ctx: typer.Context) -> None:
@@ -19,13 +19,6 @@ def register_system_commands(app: typer.Typer) -> None:
     @app.command("ready")
     def ready(ctx: typer.Context) -> None:
         run_client_command(ctx, lambda client: client.ready())
-
-    @app.command("dispatch")
-    def dispatch(
-        ctx: typer.Context,
-        goal: Annotated[list[str], typer.Argument(help="Goal text.")],
-    ) -> None:
-        run_client_command(ctx, lambda client: client.dispatch(joined_message(goal)))
 
     @app.command("serve")
     def serve(

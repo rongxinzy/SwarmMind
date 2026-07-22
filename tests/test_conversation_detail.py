@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 
 from swarmmind.api import supervisor
-from swarmmind.db import init_db, seed_default_agents
+from swarmmind.db import init_db
 from swarmmind.models import CreateConversationRequest, SendMessageRequest
 
 
@@ -14,7 +14,7 @@ class FakeDeerFlowRuntime:
     def __init__(self, *args, **kwargs):
         pass
 
-    def run_turn(self, goal: str, ctx=None, runtime_options=None):
+    def run_turn(self, goal: str, conversation_id=None, runtime_options=None):
         return f"Fake response for: {goal}"
 
 
@@ -23,9 +23,7 @@ def setup_db(tmp_path, monkeypatch):
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
     monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime, raising=False)
-    monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "unknown")
     init_db()
-    seed_default_agents()
     yield
 
 

@@ -4,9 +4,8 @@ import pytest
 
 pytestmark = pytest.mark.requires_llm
 
-from swarmmind import context_broker
 from swarmmind.api import supervisor
-from swarmmind.db import init_db, seed_default_agents
+from swarmmind.db import dispose_engines, init_db
 from swarmmind.models import CreateConversationRequest, SendMessageRequest
 
 
@@ -15,12 +14,19 @@ def setup_db(tmp_path, monkeypatch):
     """Use a temporary DB for each test."""
     db_path = str(tmp_path / "test.db")
     monkeypatch.setenv("SWARMMIND_DATABASE_URL", f"sqlite:///{db_path}")
+    dispose_engines()
     init_db()
-    seed_default_agents()
-    # Materialize DeerFlow config so that title generation works
-    from swarmmind.runtime.bootstrap import ensure_default_runtime_instance
+    # Avoid needing a real LLM provider during title tests.
+    from pathlib import Path
 
-    ensure_default_runtime_instance()
+    class FakeRuntimeInstance:
+        runtime_instance_id = "fake-instance"
+        runtime_profile_id = "fake-profile"
+        config_path = Path(tmp_path / "config.yaml")
+        deer_flow_home = Path(tmp_path / "home")
+        extensions_config_path = Path(tmp_path / "extensions.json")
+
+    supervisor.runtime_support._ensure_default_runtime_instance_fn = lambda: FakeRuntimeInstance()
     yield
 
 
@@ -28,7 +34,7 @@ class FakeDeerFlowRuntime:
     def __init__(self, *args, **kwargs):
         pass
 
-    def run_turn(self, goal: str, ctx=None, runtime_options=None):
+    def run_turn(self, goal: str, conversation_id=None, runtime_options=None):
         return f"Stub DeerFlow response for: {goal}"
 
 
@@ -56,8 +62,6 @@ class TestConversationTitles:
 
     def test_first_complete_exchange_generates_title(self, monkeypatch):
         monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-        monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "finance")
-        monkeypatch.setattr(context_broker, "derive_situation_tag", lambda _: "finance")
         monkeypatch.setattr(
             supervisor,
             "_generate_title_with_deerflow",
@@ -83,8 +87,6 @@ class TestConversationTitles:
         calls: list[tuple[str, str]] = []
 
         monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-        monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "finance")
-        monkeypatch.setattr(context_broker, "derive_situation_tag", lambda _: "finance")
 
         def fake_title_generator(user_message: str, assistant_message: str):
             calls.append((user_message, assistant_message))
@@ -116,8 +118,6 @@ class TestConversationTitles:
 
     def test_title_generation_falls_back_when_llm_fails(self, monkeypatch):
         monkeypatch.setattr(supervisor, "DeerFlowRuntime", FakeDeerFlowRuntime)
-        monkeypatch.setattr(supervisor, "derive_situation_tag", lambda _: "finance")
-        monkeypatch.setattr(context_broker, "derive_situation_tag", lambda _: "finance")
 
         def fake_title_generator(user_message: str, assistant_message: str):
             return "请分析 CRM MVP 的模块边界", "fallback"

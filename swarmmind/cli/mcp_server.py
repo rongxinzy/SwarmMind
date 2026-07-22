@@ -28,11 +28,6 @@ def build_mcp_server(api_url: str):
         return _client_call(lambda client: client.health())
 
     @mcp.tool()
-    def dispatch(goal: str) -> dict[str, Any]:
-        """Dispatch a goal through the SwarmMind supervisor router."""
-        return _client_call(lambda client: client.dispatch(goal))
-
-    @mcp.tool()
     def conversation_create(title: str | None = None) -> dict[str, Any]:
         """Create a ChatSession."""
         return _client_call(lambda client: client.create_conversation(title=title))
@@ -51,10 +46,5 @@ def build_mcp_server(api_url: str):
     def project_create(title: str, goal: str | None = None) -> dict[str, Any]:
         """Create a governed project."""
         return _client_call(lambda client: client.create_project(title=title, goal=goal))
-
-    @mcp.tool()
-    def memory_get(key: str, layer: str, scope_id: str) -> dict[str, Any]:
-        """Read one layered-memory entry."""
-        return _client_call(lambda client: client.get_memory(key, layer=layer, scope_id=scope_id))
 
     return mcp

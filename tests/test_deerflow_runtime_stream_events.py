@@ -94,7 +94,7 @@ def test_stream_events_skips_history_messages_before_current_turn(monkeypatch):
     events = list(
         agent.stream_events(
             "这一轮问题",
-            ctx=SimpleNamespace(session_id="conversation-1"),
+            conversation_id="conversation-1",
             runtime_options=SimpleNamespace(),
         ),
     )
@@ -133,7 +133,7 @@ def test_stream_events_can_emit_native_deerflow_messages(monkeypatch):
     events = list(
         agent.stream_events(
             "这一轮问题",
-            ctx=SimpleNamespace(session_id="conversation-1"),
+            conversation_id="conversation-1",
             runtime_options=SimpleNamespace(),
             native_messages=True,
         ),

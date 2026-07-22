@@ -9,7 +9,7 @@ from sqlalchemy import func
 from sqlmodel import select
 
 from swarmmind.db import session_scope
-from swarmmind.db_models import ConversationDB, ProjectDB
+from swarmmind.db_models import ProjectDB
 from swarmmind.time_utils import utc_now
 
 
@@ -48,7 +48,6 @@ class ProjectRepository:
         goal: str | None = None,
         scope: str | None = None,
         constraints: str | None = None,
-        source_conversation_id: str | None = None,
         next_step: str | None = None,
         phase: str | None = None,
         risk_level: str | None = None,
@@ -61,7 +60,6 @@ class ProjectRepository:
                 goal=goal,
                 scope=scope,
                 constraints=constraints,
-                source_conversation_id=source_conversation_id,
                 next_step=next_step,
                 phase=phase,
                 risk_level=risk_level,
@@ -118,10 +116,3 @@ class ProjectRepository:
             proj = session.get(ProjectDB, project_id)
             if proj is not None:
                 session.delete(proj)
-
-    def link_conversation(self, project_id: str, conversation_id: str) -> None:
-        """Link a conversation to a project via promoted_project_id."""
-        with session_scope() as session:
-            conv = session.get(ConversationDB, conversation_id)
-            if conv is not None:
-                conv.promoted_project_id = project_id

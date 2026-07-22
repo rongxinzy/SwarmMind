@@ -22,17 +22,17 @@ from typing import Any
 from urllib.parse import quote
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from swarmmind.models import ConversationMode, SendMessageRequest
 from swarmmind.services.artifact_content import (
     VIRTUAL_PATH_PREFIX,
+    build_artifact_file_response,
     is_virtual_user_data_path,
     normalize_virtual_path,
     resolve_virtual_artifact_path,
 )
-
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 _SAFE_UPLOAD_FILENAME_RE = re.compile(r"[^A-Za-z0-9._ -]+")
@@ -575,7 +575,7 @@ def build_chat_router(deps: ChatRouterDeps) -> APIRouter:
         files = [
             _uploaded_file_info(
                 thread_id,
-                Path((artifact.path or artifact.name or "")).name,
+                Path(artifact.path or artifact.name or "").name,
                 artifact.path or artifact.name,
                 int(artifact.size_bytes or 0),
                 artifact.mime_type,
@@ -590,5 +590,35 @@ def build_chat_router(deps: ChatRouterDeps) -> APIRouter:
         """Generate DeerFlow-native follow-up suggestions for the current thread."""
         deps.conversation_repo.get_by_id(thread_id)
         return await _generate_followup_suggestions(thread_id, body)
+
+    @router.get(
+        "/conversations/{conversation_id}/artifacts/{artifact_path:path}",
+        tags=["chat"],
+        responses={
+            400: {"description": "Invalid artifact path"},
+            403: {"description": "Artifact path escapes the conversation sandbox"},
+            404: {"description": "Conversation or artifact not found"},
+        },
+    )
+    def get_conversation_artifact_file(
+        conversation_id: str,
+        artifact_path: str,
+        download: bool = False,
+    ) -> Response:
+        """Return a file from the conversation's DeerFlow user-data sandbox."""
+        conversation = deps.conversation_repo.get_by_id(conversation_id)
+        try:
+            artifact = deps.artifact_repo.get_by_conversation_path(conversation_id, artifact_path)
+            virtual_path = artifact.path or artifact.name or artifact_path
+        except HTTPException as exc:
+            if exc.status_code != 404:
+                raise
+            normalized = normalize_virtual_path(artifact_path)
+            if not normalized or not is_virtual_user_data_path(normalized):
+                raise HTTPException(status_code=404, detail="Artifact not found") from None
+            virtual_path = normalized
+        thread_id = conversation.thread_id or conversation_id
+        actual_path = resolve_virtual_artifact_path(thread_id, virtual_path)
+        return build_artifact_file_response(actual_path, download=download)
 
     return router

@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from swarmmind.models import (
     Conversation,
     ConversationListResponse,
-    ConversationTraceResponse,
     CreateConversationRequest,
     DeleteConversationResponse,
     Message,
@@ -43,7 +42,6 @@ class ConversationRouteHandlers:
     get_conversation_messages: Callable[[str], MessageListResponse]
     send_message: Callable[[str, SendMessageRequest], object]
     delete_conversation: Callable[[str], DeleteConversationResponse]
-    get_conversation_trace: Callable[[str], dict]
     stream_conversation_message: Callable[[str, SendMessageRequest], object]
     send_message_stream: Callable[[str, SendMessageRequest], StreamingResponse]
     respond_to_clarification: Callable[[str, ClarificationResponseRequest], Message]
@@ -62,7 +60,6 @@ class ConversationRouteDeps:
     get_conversation_messages: Callable[[str], MessageListResponse]
     send_message: Callable[[str, SendMessageRequest], object]
     delete_conversation: Callable[[str], DeleteConversationResponse]
-    get_conversation_trace: Callable[[str], ConversationTraceResponse]
     stream_conversation_message: Callable[[str, SendMessageRequest], object]
     respond_to_clarification: Callable[[str, str, str], Message]
     search_conversations: SearchConversationsCallable
@@ -134,15 +131,6 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         """Delete a conversation and all its messages."""
         return deps.delete_conversation(conversation_id)
 
-    @router.get(
-        "/conversations/{conversation_id}/trace",
-        tags=["conversations"],
-        responses={404: {"description": "Conversation not found"}},
-    )
-    def get_conversation_trace(conversation_id: str) -> ConversationTraceResponse:
-        """Return the collaboration trace for a conversation."""
-        return deps.get_conversation_trace(conversation_id)
-
     def _stream_conversation_message(conversation_id: str, body: SendMessageRequest):
         """Stream a ChatSession turn with SwarmMind runtime semantics."""
         yield from deps.stream_conversation_message(conversation_id, body)
@@ -193,7 +181,6 @@ def build_conversation_router(*, deps: ConversationRouteDeps) -> tuple[APIRouter
         get_conversation_messages=get_conversation_messages,
         send_message=send_message,
         delete_conversation=delete_conversation,
-        get_conversation_trace=get_conversation_trace,
         stream_conversation_message=_stream_conversation_message,
         send_message_stream=send_message_stream,
         respond_to_clarification=respond_to_clarification,

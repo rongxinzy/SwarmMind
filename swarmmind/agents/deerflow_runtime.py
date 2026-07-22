@@ -15,9 +15,9 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from swarmmind.agents.base import BaseAgent
 from swarmmind.agents.middlewares.identity_middleware import SwarmMindIdentityMiddleware
-from swarmmind.models import ConversationRuntimeOptions, MemoryContext
+from swarmmind.models import ConversationRuntimeOptions
+from swarmmind.prompting import SWARMMIND_PRODUCT_IDENTITY_PROMPT
 from swarmmind.runtime import ensure_default_runtime_instance
 from swarmmind.runtime.models import RuntimeInstance
 from swarmmind.services.runtime_bridge import iter_async_generator_in_thread, run_coroutine_blocking
@@ -68,7 +68,7 @@ class SwarmMindDeerFlowClient:
         return _get_swarmmind_deerflow_client_impl()(*args, **kwargs)
 
 
-class DeerFlowRuntime(BaseAgent):
+class DeerFlowRuntime:
     """SwarmMind DeerFlow runtime boundary.
 
     Uses DeerFlow's full tool ecosystem (web search, file I/O, bash, etc.)
@@ -84,15 +84,13 @@ class DeerFlowRuntime(BaseAgent):
         plan_mode: bool = False,
         middlewares: list | None = None,
     ) -> None:
-        # Initialize BaseAgent (sets self.memory, loads system_prompt from DB)
-        super().__init__(agent_id="general", domain="general")
-
         self._runtime_instance = runtime_instance or ensure_default_runtime_instance()
         self._config_path = str(self._runtime_instance.config_path)
         self._default_model = default_model
         self._thinking_enabled = thinking_enabled
         self._subagent_enabled = subagent_enabled
         self._plan_mode = plan_mode
+        self._system_prompt = SWARMMIND_PRODUCT_IDENTITY_PROMPT
 
         self._client: Any = SwarmMindDeerFlowClient(
             config_path=self._config_path,
@@ -112,7 +110,7 @@ class DeerFlowRuntime(BaseAgent):
     def run_turn(
         self,
         goal: str,
-        ctx: MemoryContext | None = None,
+        conversation_id: str | None = None,
         runtime_options: ConversationRuntimeOptions | None = None,
     ) -> str:
         """Execute a DeerFlow turn and return the final text response."""
@@ -120,7 +118,7 @@ class DeerFlowRuntime(BaseAgent):
 
         final_text, _tool_results = self._run_deerflow_turn(
             goal,
-            ctx=ctx,
+            conversation_id=conversation_id,
             runtime_options=runtime_options,
         )
 
@@ -134,7 +132,7 @@ class DeerFlowRuntime(BaseAgent):
     async def _astream_events(
         self,
         goal: str,
-        ctx: MemoryContext | None = None,
+        conversation_id: str | None = None,
         runtime_options: ConversationRuntimeOptions | None = None,
         *,
         native_messages: bool = False,
@@ -143,7 +141,7 @@ class DeerFlowRuntime(BaseAgent):
 
         Uses async stream mode to properly handle async tools like task_tool.
         """
-        thread_id = ctx.session_id if ctx and ctx.session_id else str(uuid.uuid4())
+        thread_id = conversation_id or str(uuid.uuid4())
         effective_runtime = self._resolve_runtime_options(runtime_options)
         logger.info("[DEBUG] astream_events: subagent_enabled=%s", effective_runtime.subagent_enabled)
         config = self._client._get_runnable_config(
@@ -204,7 +202,7 @@ class DeerFlowRuntime(BaseAgent):
     def stream_events(
         self,
         goal: str,
-        ctx: MemoryContext | None = None,
+        conversation_id: str | None = None,
         runtime_options: ConversationRuntimeOptions | None = None,
         *,
         native_messages: bool = False,
@@ -219,14 +217,13 @@ class DeerFlowRuntime(BaseAgent):
         in the caller while preserving the synchronous generator API.
         """
         async_kwargs: dict[str, Any] = {
-            "ctx": ctx,
             "runtime_options": runtime_options,
         }
         if "native_messages" in inspect.signature(self._astream_events).parameters:
             async_kwargs["native_messages"] = native_messages
 
         yield from iter_async_generator_in_thread(
-            lambda: self._astream_events(goal, **async_kwargs),
+            lambda: self._astream_events(goal, conversation_id=conversation_id, **async_kwargs),
             thread_name="deerflow-stream",
             join_timeout=5.0,
             bridge_logger=logger,
@@ -237,11 +234,11 @@ class DeerFlowRuntime(BaseAgent):
     def _run_deerflow_turn(
         self,
         goal: str,
-        ctx: MemoryContext | None = None,
+        conversation_id: str | None = None,
         runtime_options: ConversationRuntimeOptions | None = None,
     ) -> tuple[str, list[str]]:
         return run_coroutine_blocking(
-            lambda: self._acollect_turn(goal, ctx=ctx, runtime_options=runtime_options),
+            lambda: self._acollect_turn(goal, conversation_id=conversation_id, runtime_options=runtime_options),
             thread_name="deerflow-act",
             join_timeout=5.0,
             bridge_logger=logger,
@@ -250,10 +247,10 @@ class DeerFlowRuntime(BaseAgent):
     async def _acollect_turn(
         self,
         goal: str,
-        ctx: MemoryContext | None = None,
+        conversation_id: str | None = None,
         runtime_options: ConversationRuntimeOptions | None = None,
     ) -> tuple[str, list[str]]:
-        async for _ in self._astream_events(goal, ctx=ctx, runtime_options=runtime_options):
+        async for _ in self._astream_events(goal, conversation_id=conversation_id, runtime_options=runtime_options):
             pass
         return self._last_final_text, self._last_tool_results
 

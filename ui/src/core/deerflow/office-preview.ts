@@ -30,8 +30,14 @@ export function spreadsheetCellText(value: unknown): string {
   if (Array.isArray(value)) {
     return value.map(spreadsheetCellText).filter(Boolean).join(", ")
   }
-  if (typeof value !== "object") {
-    return String(value)
+  if (typeof value === "symbol") {
+    return value.toString()
+  }
+  if (typeof value === "bigint") {
+    return `${value}`
+  }
+  if (typeof value === "function") {
+    return ""
   }
 
   const record = value as Record<string, unknown>
