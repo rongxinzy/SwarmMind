@@ -287,11 +287,11 @@ export function DeerFlowInputBox({
         className={cn(
           "focus-glow flex w-full flex-col border border-[#dfdfdf] bg-white/95 p-3 backdrop-blur-sm transition-all",
           placement === "empty"
-            ? "rounded-[26px] shadow-[0_22px_70px_rgba(0,0,0,0.09)]"
-            : "rounded-[24px] shadow-[0_12px_42px_rgba(0,0,0,0.07)]",
+            ? "rounded-[1.625rem] shadow-[0_22px_70px_rgba(0,0,0,0.09)]"
+            : "rounded-[1.5rem] shadow-[0_12px_42px_rgba(0,0,0,0.07)]",
           className,
         )}
-        style={{ minHeight: placement === "empty" ? 136 : 132, maxHeight: 320 }}
+        style={{ minHeight: placement === "empty" ? "8.5rem" : "8.25rem", maxHeight: "20rem" }}
       >
         <PromptInputBody>
           <PromptInputTextarea

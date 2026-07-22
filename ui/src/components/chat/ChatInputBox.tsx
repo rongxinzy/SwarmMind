@@ -123,17 +123,17 @@ export function ChatInputBox({
       className={cn(
         "focus-glow flex w-full flex-col border border-[#dfdfdf] bg-white/95 p-3 backdrop-blur-sm transition-all",
         placement === "empty"
-          ? "rounded-[26px] shadow-[0_22px_70px_rgba(0,0,0,0.09)]"
-          : "rounded-[24px] shadow-[0_12px_42px_rgba(0,0,0,0.07)]",
+          ? "rounded-[1.625rem] shadow-[0_22px_70px_rgba(0,0,0,0.09)]"
+          : "rounded-[1.5rem] shadow-[0_12px_42px_rgba(0,0,0,0.07)]",
       )}
-      style={{ minHeight: placement === "empty" ? 136 : 132, maxHeight: 320 }}
+      style={{ minHeight: placement === "empty" ? "8.5rem" : "8.25rem", maxHeight: "20rem" }}
     >
       <PromptInputBody>
         <PromptInputTextarea
           value={value}
           onChange={(event) => onValueChange(event.currentTarget.value)}
           placeholder="有什么可以帮你的？"
-          className="min-h-[108px] text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
+          className="min-h-[6.75rem] text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
           disabled={isStreaming}
           autoFocus={autoFocus}
         />
