@@ -289,7 +289,13 @@ def test_chat_stream_injects_registered_artifacts_before_done():
         yield json.dumps(
             {
                 "type": "deerflow.message",
-                "message": {"type": "ai", "id": "a1", "content": "done", "additional_kwargs": {}, "response_metadata": {}},
+                "message": {
+                    "type": "ai",
+                    "id": "a1",
+                    "content": "done",
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                },
             }
         )
         yield json.dumps({"type": "done"})

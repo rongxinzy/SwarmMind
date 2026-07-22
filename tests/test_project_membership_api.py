@@ -86,5 +86,3 @@ def test_inactive_member_loses_capabilities() -> None:
     response = client.get(f"/projects/{project_id}/members/editor-1/permissions/run_project")
     assert response.json()["allowed"] is False
     assert response.json()["reason"] == "member_inactive"
-
-

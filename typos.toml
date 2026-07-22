@@ -28,6 +28,7 @@ extend-exclude = [
 [default]
 extend-ignore-identifiers-re = [
     # Add project-specific identifiers to ignore here
+    "BA",
 ]
 
 [default.extend-words]

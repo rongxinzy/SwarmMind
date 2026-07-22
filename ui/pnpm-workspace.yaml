@@ -1,4 +1,0 @@
-allowBuilds:
-  sharp: set this to true or false
-minimumReleaseAgeExclude:
-  - '@aiden0z/pptx-renderer@1.2.4'

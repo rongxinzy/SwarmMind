@@ -60,5 +60,3 @@ You are DeerFlow 2.0, an open-source super agent.
 def test_client_mixin_does_not_replace_native_deerflow_runtime_methods():
     assert "_ensure_agent" not in _SwarmMindDeerFlowClientMixin.__dict__
     assert "astream" not in _SwarmMindDeerFlowClientMixin.__dict__
-
-

@@ -60,7 +60,9 @@ def _serialize_tool_call(tool_call: Any) -> dict[str, Any]:
     }
 
 
-def serialize_deerflow_message(message: object, extract_text: Callable[[object], str] | None = None) -> dict[str, Any] | None:
+def serialize_deerflow_message(
+    message: object, extract_text: Callable[[object], str] | None = None
+) -> dict[str, Any] | None:
     """Serialize a LangChain message into the flat LangGraph SDK Message shape."""
     if isinstance(message, HumanMessage):
         return {

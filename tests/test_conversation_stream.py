@@ -29,7 +29,7 @@ def setup_db(tmp_path, monkeypatch):
         deer_flow_home = Path(tmp_path / "home")
         extensions_config_path = Path(tmp_path / "extensions.json")
 
-    supervisor.runtime_support._ensure_default_runtime_instance_fn = lambda: FakeRuntimeInstance()
+    supervisor.runtime_support._ensure_default_runtime_instance_fn = FakeRuntimeInstance
     yield
 
 

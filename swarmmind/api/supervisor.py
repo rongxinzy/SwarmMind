@@ -123,7 +123,7 @@ def _resolve_runtime_options(body: SendMessageRequest) -> ConversationRuntimeOpt
 
 
 def _conversation_execution_service() -> ConversationExecutionService:
-    global DeerFlowRuntime
+    global DeerFlowRuntime  # noqa: PLW0603
     if DeerFlowRuntime is None:
         from swarmmind.agents.deerflow_runtime import DeerFlowRuntime as _DeerFlowRuntime
 
@@ -133,7 +133,7 @@ def _conversation_execution_service() -> ConversationExecutionService:
         conversation_repo=conversation_repo,
         message_repo=message_repo,
         runtime_cls=DeerFlowRuntime,
-        persist_user_message_fn=lambda cid, content: conversation_support.persist_user_message(cid, content),
+        persist_user_message_fn=conversation_support.persist_user_message,
         persist_assistant_message_fn=conversation_support.persist_assistant_message,
         maybe_generate_conversation_title_fn=lambda cid: conversation_support.maybe_generate_conversation_title(
             cid, _generate_title_with_deerflow

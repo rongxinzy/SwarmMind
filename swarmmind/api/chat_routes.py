@@ -243,7 +243,9 @@ def _artifact_url(thread_id: str, virtual_path: str) -> str:
     return f"/conversations/{quote(thread_id)}/artifacts/{encoded_path}"
 
 
-def _uploaded_file_info(thread_id: str, filename: str, virtual_path: str, size: int, mime_type: str | None = None) -> UploadedFileInfo:
+def _uploaded_file_info(
+    thread_id: str, filename: str, virtual_path: str, size: int, mime_type: str | None = None
+) -> UploadedFileInfo:
     resolved_path = resolve_virtual_artifact_path(thread_id, virtual_path)
     extension = Path(filename).suffix.removeprefix(".") or None
     modified = resolved_path.stat().st_mtime if resolved_path.exists() else None
@@ -330,10 +332,7 @@ def _parse_json_string_list(text: str) -> list[str] | None:
         return None
     if not isinstance(data, list):
         return None
-    suggestions: list[str] = []
-    for item in data:
-        if isinstance(item, str) and item.strip():
-            suggestions.append(item.strip())
+    suggestions = [item.strip() for item in data if isinstance(item, str) and item.strip()]
     return suggestions
 
 
@@ -413,7 +412,9 @@ async def _generate_followup_suggestions(thread_id: str, request: SuggestionsReq
 
 
 def _message_type(message: ChatMessage) -> str | None:
-    return message.type or ("human" if message.role == "user" else "ai" if message.role == "assistant" else message.role)
+    return message.type or (
+        "human" if message.role == "user" else "ai" if message.role == "assistant" else message.role
+    )
 
 
 def _extract_text_from_content(content: Any) -> str:
@@ -555,7 +556,10 @@ def build_chat_router(deps: ChatRouterDeps) -> APIRouter:
         )
 
     @router.post("/threads/{thread_id}/uploads", tags=["chat"])
-    def upload_thread_files(thread_id: str, files: list[UploadFile] = File(...)) -> UploadResponse:
+    def upload_thread_files(
+        thread_id: str,
+        files: list[UploadFile] = File(...),  # noqa: B008
+    ) -> UploadResponse:
         """Upload files into a DeerFlow thread user-data directory."""
         deps.conversation_repo.get_by_id(thread_id)
         if not files:

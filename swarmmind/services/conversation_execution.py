@@ -275,7 +275,9 @@ class ConversationExecutionService:
                         self._logger.info("Native stream event #%d: type=%s", event_count, event.get("type"))
                 except StopIteration as stop:
                     ai_response, _tool_results = stop.value
-                    self._logger.info("Native stream completed: events=%d, response_length=%d", event_count, len(ai_response))
+                    self._logger.info(
+                        "Native stream completed: events=%d, response_length=%d", event_count, len(ai_response)
+                    )
                     break
                 except Exception as stream_error:
                     self._logger.error("Native stream event error: %s", stream_error, exc_info=True)
@@ -393,15 +395,15 @@ class ConversationExecutionService:
     ) -> Message:
         """Persist a complete LangGraph/DeerFlow message without flattening it."""
         message_type = native_message.get("type")
-        role = {"human": "user", "ai": "assistant", "tool": "tool"}.get(str(message_type), str(message_type or "assistant"))
+        role = {"human": "user", "ai": "assistant", "tool": "tool"}.get(
+            str(message_type), str(message_type or "assistant")
+        )
         row = self._message_repo.create(
             conversation_id=conversation_id,
             role=role,
             content=self._native_message_text(native_message.get("content")),
             tool_call_id=(
-                str(native_message["tool_call_id"])
-                if native_message.get("tool_call_id") is not None
-                else None
+                str(native_message["tool_call_id"]) if native_message.get("tool_call_id") is not None else None
             ),
             name=(str(native_message["name"]) if native_message.get("name") is not None else None),
             native_payload=native_message,

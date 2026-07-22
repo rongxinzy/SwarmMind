@@ -70,4 +70,3 @@ class TestProjectRepository:
         with pytest.raises(HTTPException) as exc:
             repo.get_by_id(proj.project_id)
         assert exc.value.status_code == 404
-
