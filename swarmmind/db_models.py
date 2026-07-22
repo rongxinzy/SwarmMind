@@ -262,3 +262,78 @@ class ProjectMemoryDB(SQLModel, table=True):
     updated_at: datetime | None = Field(default_factory=utc_now)
 
     __table_args__ = (Index("idx_project_memory_project", "project_id"),)
+
+
+class OrganizationDB(SQLModel, table=True):
+    """Organization tenant boundary."""
+
+    __tablename__ = "organizations"
+
+    organization_id: str = Field(primary_key=True)
+    name: str
+    owner_user_id: str = Field(foreign_key="users.user_id")
+    status: str = Field(default="active")
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_organizations_status", "status"),
+        Index("idx_organizations_owner", "owner_user_id"),
+    )
+
+
+class TeamDB(SQLModel, table=True):
+    """Team within an organization."""
+
+    __tablename__ = "teams"
+
+    team_id: str = Field(primary_key=True)
+    organization_id: str = Field(foreign_key="organizations.organization_id")
+    name: str
+    status: str = Field(default="active")
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_teams_organization", "organization_id"),
+        Index("idx_teams_status", "status"),
+    )
+
+
+class TeamMembershipDB(SQLModel, table=True):
+    """User membership in a team."""
+
+    __tablename__ = "team_memberships"
+
+    membership_id: str = Field(primary_key=True)
+    team_id: str = Field(foreign_key="teams.team_id")
+    user_id: str = Field(foreign_key="users.user_id")
+    role: str = Field(default="member")
+    status: str = Field(default="active")
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_team_memberships_team", "team_id"),
+        Index("idx_team_memberships_user", "user_id"),
+        sa.Index("idx_team_memberships_team_user", "team_id", "user_id", unique=True),
+    )
+
+
+class UserAllocationDB(SQLModel, table=True):
+    """Per-user resource allocation: model or MCP permission."""
+
+    __tablename__ = "user_allocations"
+
+    allocation_id: str = Field(primary_key=True)
+    user_id: str = Field(foreign_key="users.user_id")
+    resource_type: str  # "model" or "mcp"
+    resource_name: str
+    is_allowed: int = Field(default=1)
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (
+        Index("idx_user_allocations_user", "user_id"),
+        sa.Index("idx_user_allocations_user_resource", "user_id", "resource_type", "resource_name", unique=True),
+    )
