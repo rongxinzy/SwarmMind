@@ -133,12 +133,12 @@ export function ChatInputBox({
           value={value}
           onChange={(event) => onValueChange(event.currentTarget.value)}
           placeholder="有什么可以帮你的？"
-          className="min-h-[88px] text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
+          className="min-h-[108px] text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
           disabled={isStreaming}
           autoFocus={autoFocus}
         />
       </PromptInputBody>
-      <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-[#f0f0f0] pt-2 sm:flex-nowrap">
+      <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-t border-[#f0f0f0] pt-1.5 sm:flex-nowrap">
         <PromptInputTools className="flex-1" />
         <PromptInputTools className="ml-auto max-w-full shrink-0 justify-end">
           <ModelSelector open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
@@ -146,7 +146,7 @@ export function ChatInputBox({
               render={
                 <PromptInputButton
                   size="sm"
-                  className="h-9 min-w-[4.5rem] max-w-[8rem] shrink rounded-xl px-2.5 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
+                  className="h-8 min-w-[4.5rem] max-w-[8rem] shrink rounded-xl px-2.5 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
                 />
               }
             >
@@ -197,7 +197,7 @@ export function ChatInputBox({
             status={status === "streaming" ? "streaming" : "ready"}
             onStop={onStop}
             disabled={isStreaming ? false : !value.trim()}
-            className="size-9 rounded-full border border-[#68686878] bg-[#111111] text-white shadow-[0_2px_8px_rgba(0,0,0,0.14)] hover:bg-[#232323] disabled:border-transparent disabled:bg-[#d9d9d9] disabled:text-white disabled:shadow-none"
+            className="size-8 rounded-full border border-[#68686878] bg-[#111111] text-white shadow-[0_2px_8px_rgba(0,0,0,0.14)] hover:bg-[#232323] disabled:border-transparent disabled:bg-[#d9d9d9] disabled:text-white disabled:shadow-none"
           />
         </PromptInputTools>
       </PromptInputFooter>
