@@ -47,15 +47,26 @@ def build_users_router(deps: UsersRouterDeps) -> APIRouter:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
         return deps.user_repo.resolve_token(credentials.credentials)
 
+    def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)) -> Any:  # noqa: B008
+        if credentials is None or credentials.scheme.lower() != "bearer":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing bearer token")
+        user, _token = deps.user_repo.resolve_token(credentials.credentials)
+        return user
+
+    def require_admin(user: Any = Depends(current_user)) -> Any:  # noqa: B008
+        if user.role != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+        return user
+
     @router.get("/users", tags=["users"])
-    def list_users() -> UserListResponse:
-        """List local users."""
+    def list_users(_admin: Any = Depends(require_admin)) -> UserListResponse:  # noqa: B008
+        """List local users (admin only)."""
         rows = deps.user_repo.list_all()
         return UserListResponse(items=[db_to_user(row) for row in rows], total=len(rows))
 
     @router.post("/users", response_model=User, tags=["users"], status_code=status.HTTP_201_CREATED)
-    def create_user(body: UserCreateRequest) -> User:
-        """Create a local user."""
+    def create_user(body: UserCreateRequest, _admin: Any = Depends(require_admin)) -> User:  # noqa: B008
+        """Create a local user (admin only)."""
         row = deps.user_repo.create(
             email=body.email,
             username=body.username,
@@ -67,13 +78,13 @@ def build_users_router(deps: UsersRouterDeps) -> APIRouter:
         return db_to_user(row)
 
     @router.get("/users/{user_id}", tags=["users"])
-    def get_user(user_id: str) -> User:
-        """Get a local user."""
+    def get_user(user_id: str, _admin: Any = Depends(require_admin)) -> User:  # noqa: B008
+        """Get a local user (admin only)."""
         return db_to_user(deps.user_repo.get(user_id))
 
     @router.patch("/users/{user_id}", tags=["users"])
-    def update_user(user_id: str, body: UserUpdateRequest) -> User:
-        """Update a local user."""
+    def update_user(user_id: str, body: UserUpdateRequest, _admin: Any = Depends(require_admin)) -> User:  # noqa: B008
+        """Update a local user (admin only)."""
         row = deps.user_repo.update(
             user_id,
             email=body.email,
@@ -86,8 +97,8 @@ def build_users_router(deps: UsersRouterDeps) -> APIRouter:
         return db_to_user(row)
 
     @router.delete("/users/{user_id}", tags=["users"])
-    def disable_user(user_id: str) -> DeleteUserResponse:
-        """Disable a local user and revoke its tokens."""
+    def disable_user(user_id: str, _admin: Any = Depends(require_admin)) -> DeleteUserResponse:  # noqa: B008
+        """Disable a local user and revoke its tokens (admin only)."""
         deps.user_repo.disable(user_id)
         return DeleteUserResponse(user_id=user_id)
 

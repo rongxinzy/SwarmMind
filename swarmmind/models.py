@@ -598,3 +598,159 @@ class AuthSetupRequest(BaseModel):
     username: str | None = Field(None, min_length=1, max_length=200)
     password: str = Field(..., min_length=1)
     display_name: str | None = None
+
+
+# ---- Organization / Team / Membership models ----
+
+
+class OrganizationStatus(str, Enum):
+    """Organization lifecycle status."""
+
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class Organization(BaseModel):
+    """Organization tenant boundary."""
+
+    organization_id: str
+    name: str
+    owner_user_id: str
+    status: OrganizationStatus = OrganizationStatus.ACTIVE
+    created_at: str
+    updated_at: str
+
+
+class OrganizationCreateRequest(BaseModel):
+    """Request to create an organization."""
+
+    name: str = Field(..., max_length=200)
+    owner_user_id: str = Field(..., min_length=1, max_length=200)
+
+
+class OrganizationUpdateRequest(BaseModel):
+    """Request to update an organization."""
+
+    name: str | None = Field(None, max_length=200)
+    owner_user_id: str | None = Field(None, min_length=1, max_length=200)
+    status: OrganizationStatus | None = None
+
+
+class OrganizationListResponse(BaseModel):
+    """Response containing organizations."""
+
+    items: list[Organization]
+    total: int
+
+
+class TeamStatus(str, Enum):
+    """Team lifecycle status."""
+
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+
+class TeamRole(str, Enum):
+    """Team member role."""
+
+    ADMIN = "admin"
+    MEMBER = "member"
+
+
+class Team(BaseModel):
+    """Team within an organization."""
+
+    team_id: str
+    organization_id: str
+    name: str
+    status: TeamStatus = TeamStatus.ACTIVE
+    created_at: str
+    updated_at: str
+
+
+class TeamCreateRequest(BaseModel):
+    """Request to create a team."""
+
+    name: str = Field(..., max_length=200)
+
+
+class TeamUpdateRequest(BaseModel):
+    """Request to update a team."""
+
+    name: str | None = Field(None, max_length=200)
+    status: TeamStatus | None = None
+
+
+class TeamListResponse(BaseModel):
+    """Response containing teams."""
+
+    items: list[Team]
+    total: int
+
+
+class TeamMembership(BaseModel):
+    """User membership in a team."""
+
+    membership_id: str
+    team_id: str
+    user_id: str
+    role: TeamRole = TeamRole.MEMBER
+    status: UserStatus = UserStatus.ACTIVE
+    created_at: str
+    updated_at: str
+
+
+class TeamMembershipCreateRequest(BaseModel):
+    """Request to add a user to a team."""
+
+    user_id: str = Field(..., min_length=1, max_length=200)
+    role: TeamRole = TeamRole.MEMBER
+    status: UserStatus = UserStatus.ACTIVE
+
+
+class TeamMembershipUpdateRequest(BaseModel):
+    """Request to update a team membership."""
+
+    role: TeamRole | None = None
+    status: UserStatus | None = None
+
+
+class TeamMembershipListResponse(BaseModel):
+    """Response containing team memberships."""
+
+    items: list[TeamMembership]
+    total: int
+
+
+class ResourceType(str, Enum):
+    """Type of user allocation."""
+
+    MODEL = "model"
+    MCP = "mcp"
+
+
+class UserAllocation(BaseModel):
+    """A resource allocation entry for a user."""
+
+    allocation_id: str
+    user_id: str
+    resource_type: ResourceType
+    resource_name: str
+    is_allowed: bool = True
+    created_at: str
+    updated_at: str
+
+
+class UserAllocationCreateRequest(BaseModel):
+    """Request to grant a resource to a user."""
+
+    resource_type: ResourceType
+    resource_name: str = Field(..., min_length=1, max_length=200)
+    is_allowed: bool = True
+
+
+class UserAllocationListResponse(BaseModel):
+    """Response containing user allocations."""
+
+    items: list[UserAllocation]
+    total: int

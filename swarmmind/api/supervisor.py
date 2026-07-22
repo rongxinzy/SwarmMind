@@ -12,6 +12,11 @@ from swarmmind.api.conversation_routes import (
     ClarificationResponseRequest as ConversationClarificationResponseRequest,
 )
 from swarmmind.api.conversation_routes import ConversationRouteDeps, build_conversation_router
+from swarmmind.api.routers.admin import AdminRouterDeps, build_admin_router
+from swarmmind.api.routers.organizations import (
+    OrganizationsRouterDeps,
+    build_organizations_router,
+)
 from swarmmind.api.routers.project_memberships import (
     ProjectMembershipRouterDeps,
     build_project_membership_router,
@@ -38,10 +43,14 @@ from swarmmind.models import (
 from swarmmind.repositories.artifact import ArtifactRepository
 from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.message import MessageRepository
+from swarmmind.repositories.organization import OrganizationRepository
 from swarmmind.repositories.project import ProjectRepository
 from swarmmind.repositories.project_membership import ProjectMembershipRepository
 from swarmmind.repositories.project_memory import ProjectMemoryRepository
+from swarmmind.repositories.team import TeamRepository
+from swarmmind.repositories.team_membership import TeamMembershipRepository
 from swarmmind.repositories.user import UserRepository
+from swarmmind.repositories.user_allocation import UserAllocationRepository
 from swarmmind.runtime import ensure_default_runtime_instance
 from swarmmind.runtime.catalog import sync_env_runtime_model
 from swarmmind.services.conversation_execution import ConversationExecutionService
@@ -74,6 +83,10 @@ project_membership_repo = ProjectMembershipRepository()
 project_memory_repo = ProjectMemoryRepository()
 artifact_repo = ArtifactRepository()
 user_repo = UserRepository()
+organization_repo = OrganizationRepository()
+team_repo = TeamRepository()
+team_membership_repo = TeamMembershipRepository()
+user_allocation_repo = UserAllocationRepository()
 
 conversation_support = ConversationSupportService(
     conversation_repo=conversation_repo,
@@ -374,6 +387,26 @@ app.include_router(
         ProjectMembershipRouterDeps(
             project_repo=project_repo,
             membership_repo=project_membership_repo,
+        )
+    )
+)
+
+app.include_router(
+    build_organizations_router(
+        OrganizationsRouterDeps(
+            org_repo=organization_repo,
+            team_repo=team_repo,
+            membership_repo=team_membership_repo,
+            user_repo=user_repo,
+        )
+    )
+)
+
+app.include_router(
+    build_admin_router(
+        AdminRouterDeps(
+            user_repo=user_repo,
+            allocation_repo=user_allocation_repo,
         )
     )
 )
