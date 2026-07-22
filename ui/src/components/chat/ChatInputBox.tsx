@@ -133,12 +133,12 @@ export function ChatInputBox({
           value={value}
           onChange={(event) => onValueChange(event.currentTarget.value)}
           placeholder="有什么可以帮你的？"
-          className="min-h-16 text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
+          className="min-h-[88px] text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
           disabled={isStreaming}
           autoFocus={autoFocus}
         />
       </PromptInputBody>
-      <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-[#f0f0f0] pt-3 sm:flex-nowrap">
+      <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-[#f0f0f0] pt-2 sm:flex-nowrap">
         <PromptInputTools className="flex-1" />
         <PromptInputTools className="ml-auto max-w-full shrink-0 justify-end">
           <ModelSelector open={modelDialogOpen} onOpenChange={setModelDialogOpen}>

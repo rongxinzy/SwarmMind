@@ -113,7 +113,7 @@ export function DirectChatView({ conversationId, onConversationCreated }: Direct
       </div>
 
       {!isEmpty && (
-        <div className="border-t border-[#e8e8e8] bg-white px-4 pb-4 pt-3">
+        <div className="px-4 pb-4 pt-3">
           <div className="mx-auto w-full max-w-3xl">
             <ChatInputBox
               value={input}
