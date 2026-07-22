@@ -138,7 +138,7 @@ export function ChatInputBox({
           autoFocus={autoFocus}
         />
       </PromptInputBody>
-      <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-0.5 border-t border-[#f0f0f0] pt-1.5 sm:flex-nowrap">
+      <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-0 border-t border-[#f0f0f0] pt-1 pb-1 sm:flex-nowrap">
         <PromptInputTools className="flex-1" />
         <PromptInputTools className="ml-auto max-w-full shrink-0 justify-end">
           <ModelSelector open={modelDialogOpen} onOpenChange={setModelDialogOpen}>
@@ -146,7 +146,7 @@ export function ChatInputBox({
               render={
                 <PromptInputButton
                   size="sm"
-                  className="h-8 min-w-[4.5rem] max-w-[8rem] shrink rounded-xl px-2.5 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
+                  className="h-7 min-w-[4rem] max-w-[8rem] shrink rounded-lg px-2 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
                 />
               }
             >
@@ -197,7 +197,7 @@ export function ChatInputBox({
             status={status === "streaming" ? "streaming" : "ready"}
             onStop={onStop}
             disabled={isStreaming ? false : !value.trim()}
-            className="size-8 rounded-full border border-[#68686878] bg-[#111111] text-white shadow-[0_2px_8px_rgba(0,0,0,0.14)] hover:bg-[#232323] disabled:border-transparent disabled:bg-[#d9d9d9] disabled:text-white disabled:shadow-none"
+            className="size-7 rounded-full border border-[#68686878] bg-[#111111] text-white shadow-[0_2px_8px_rgba(0,0,0,0.14)] hover:bg-[#232323] disabled:border-transparent disabled:bg-[#d9d9d9] disabled:text-white disabled:shadow-none"
           />
         </PromptInputTools>
       </PromptInputFooter>
