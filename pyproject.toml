@@ -1,6 +1,6 @@
 [project]
 name = "swarmmind"
-version = "0.1.1"
+version = "0.2.0"
 description = "AI Agent Team Operating System"
 readme = "README.md"
 license = "AGPL-3.0-or-later"

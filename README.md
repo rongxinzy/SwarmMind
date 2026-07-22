@@ -6,7 +6,7 @@
 > Chat directly with models, run agent tasks, organize work into projects, and manage your org's accounts, models, and MCP permissions.
 
 [![CI](https://github.com/rongxinzy/SwarmMind/actions/workflows/ci.yml/badge.svg)](https://github.com/rongxinzy/SwarmMind/actions)
-[![Version](https://img.shields.io/badge/version-v0.1.1-blue.svg)](https://github.com/rongxinzy/SwarmMind/releases)
+[![Version](https://img.shields.io/badge/version-v0.2.0-blue.svg)](https://github.com/rongxinzy/SwarmMind/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 
@@ -87,13 +87,13 @@ See [CLI documentation](docs/cli.md) for commands, JSON/NDJSON output, exit code
 
 ## Project Status
 
-SwarmMind is **v0.1.1**: early stage and actively developed.
+SwarmMind is **v0.2.0**: early stage and actively developed.
 
 Current milestones:
 
-- **M0**: prune legacy surfaces down to the four product faces.
-- **M1**: Chat mode — direct model chat over the Vercel AI SDK.
-- **M2**: task sessions on the DeerFlow runtime.
+- **M0**: prune legacy surfaces down to the four product faces. ✅
+- **M1**: Chat mode — direct model chat over the Vercel AI SDK. ✅
+- **M2**: task sessions on the DeerFlow runtime. ✅
 - **M3**: projects — workspace folders, multiple sessions, shared project memory.
 - **M4**: org admin — teams, accounts, quota, model allocation, MCP grants.
 

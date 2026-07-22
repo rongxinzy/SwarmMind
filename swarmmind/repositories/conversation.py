@@ -26,6 +26,18 @@ class ConversationRepository:
                 session.expunge(r)
             return list(results)
 
+    def list_by_session_type(self, session_type: str) -> list[ConversationDB]:
+        """List conversations of a given session_type ordered by updated_at descending."""
+        with session_scope() as session:
+            results = session.exec(
+                select(ConversationDB)
+                .where(ConversationDB.session_type == session_type)
+                .order_by(ConversationDB.updated_at.desc()),
+            ).all()
+            for r in results:
+                session.expunge(r)
+            return list(results)
+
     def get_by_id(self, conversation_id: str) -> ConversationDB:
         """Get a conversation by ID or raise 404."""
         with session_scope() as session:
@@ -35,11 +47,17 @@ class ConversationRepository:
             session.expunge(conv)
             return conv
 
-    def create(self, title: str, title_status: str) -> ConversationDB:
+    def create(
+        self,
+        title: str,
+        title_status: str,
+        session_type: str = "task",
+    ) -> ConversationDB:
         """Create a new conversation."""
         with session_scope() as session:
             conv = ConversationDB(
                 id=str(uuid.uuid4()),
+                session_type=session_type,
                 title=title,
                 title_status=title_status,
             )

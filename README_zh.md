@@ -6,7 +6,7 @@
 > 直连模型聊天、跑 Agent 任务、用项目组织工作，并管理组织的账户、模型和 MCP 权限。
 
 [![CI](https://github.com/rongxinzy/SwarmMind/actions/workflows/ci.yml/badge.svg)](https://github.com/rongxinzy/SwarmMind/actions)
-[![Version](https://img.shields.io/badge/version-v0.1.1-blue.svg)](https://github.com/rongxinzy/SwarmMind/releases)
+[![Version](https://img.shields.io/badge/version-v0.2.0-blue.svg)](https://github.com/rongxinzy/SwarmMind/releases)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 
@@ -87,13 +87,13 @@ swarmmind project list --json
 
 ## 项目状态
 
-SwarmMind 当前版本 **v0.1.1**：早期阶段，持续迭代。
+SwarmMind 当前版本 **v0.2.0**：早期阶段，持续迭代。
 
 当前里程碑：
 
-- **M0**：把历史遗留表面裁剪到只剩四个产品面。
-- **M1**：Chat 模式 —— 基于 Vercel AI SDK 的直连模型对话。
-- **M2**：任务会话 —— 运行在 DeerFlow runtime 上。
+- **M0**：把历史遗留表面裁剪到只剩四个产品面。✅
+- **M1**：Chat 模式 —— 基于 Vercel AI SDK 的直连模型对话。✅
+- **M2**：任务会话 —— 运行在 DeerFlow runtime 上。✅
 - **M3**：项目 —— workspace 文件夹、多会话、共享项目记忆。
 - **M4**：组织管理 —— 团队、账户、配额、模型分配、MCP 授权。
 

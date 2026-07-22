@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@ai-sdk/openai':
+        specifier: ^4.0.16
+        version: 4.0.16(zod@3.25.76)
       '@aiden0z/pptx-renderer':
         specifier: 1.2.4
         version: 1.2.4(pdfjs-dist@5.7.284)
@@ -32,6 +35,9 @@ importers:
       '@streamdown/mermaid':
         specifier: ^1.0.2
         version: 1.0.2(react@19.2.7)
+      ai:
+        specifier: ^7.0.32
+        version: 7.0.32(zod@3.25.76)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -122,6 +128,28 @@ importers:
         version: 5.9.3
 
 packages:
+
+  '@ai-sdk/gateway@4.0.24':
+    resolution: {integrity: sha512-RRNCwwYSMxN1SOskxqjyA9LZMuOs3J/fjP8jiB/akWG21jRdUkCcnO9paoiTFVjqnoJMIazrcqbeRfbSGG/PSQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/openai@4.0.16':
+    resolution: {integrity: sha512-Yh+PsXaf9NbN7oA3oKwOuyjTiHMPD75phf3SqGbDNNKQ3Yj3oTntp/WhO3nCHIPA6gr5/1lyridQokmOpPf9oQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/provider-utils@5.0.11':
+    resolution: {integrity: sha512-7/96wE+ZsKB35iS9ASyllrE4Ym/EolXEB7AkuJ5FI++fmS85BVTAs77890C+1Z2jwHfBKjBQSBmsliOsAh0iFQ==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/provider@4.0.3':
+    resolution: {integrity: sha512-e0CpNWJUY7OxAFAnCZkw+ri9QOHWwTs1tXP42782KFGCU07qt8NiXCrCVowyCB5dP2r5/Uls+g2oPd8kOJn9dw==}
+    engines: {node: '>=22'}
 
   '@aiden0z/pptx-renderer@1.2.4':
     resolution: {integrity: sha512-/4X/BApiknc/JM4nAWQRp5zrnA2GKSMv5r1u3XLsMvySw9DTQjyXIKRtltRsmIYfoN32tHGFnrSlGok7nFS60w==}
@@ -1033,6 +1061,13 @@ packages:
   '@upsetjs/venn.js@2.0.0':
     resolution: {integrity: sha512-WbBhLrooyePuQ1VZxrJjtLvTc4NVfpOyKx0sKqioq9bX1C1m7Jgykkn8gLrtwumBioXIqam8DLxp88Adbue6Hw==}
 
+  '@vercel/oidc@3.2.0':
+    resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
+    engines: {node: '>= 20'}
+
+  '@workflow/serde@4.1.0':
+    resolution: {integrity: sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ==}
+
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
     peerDependencies:
@@ -1042,6 +1077,12 @@ packages:
     resolution: {integrity: sha512-xRQbDb9BnwDafYNn6Vwl839DYVjqXYb1XVGtWAZ1kcDc6iwAL4hg3B1dZlRiuENFeO2H53gFG3in621AdERVAg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  ai@7.0.32:
+    resolution: {integrity: sha512-EO2a9fv/a9upaabhgFNeoOzOzbWQufhG4Edl6bsVXlftO6Tens+Q/vijEIf6AP1mQMNaAJXxmSX1xR3Su+2jXw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
 
   ajv@6.15.0:
     resolution: {integrity: sha512-fgFx7Hfoq60ytK2c7DhnF8jIvzYgOMxfugjLOSMHjLIPgenqa7S7oaagATUq99mV6IYvN2tRmC0wnTYX6iPbMw==}
@@ -1568,6 +1609,10 @@ packages:
   eventemitter3@5.0.4:
     resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
 
+  eventsource-parser@3.1.0:
+    resolution: {integrity: sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==}
+    engines: {node: '>=18.0.0'}
+
   exceljs@4.4.0:
     resolution: {integrity: sha512-XctvKaEMaj1Ii9oDOqbW/6e1gXknSY4g/aLCDicOXqBE4M0nRWkUu0PTp++UPNzoFY12BNHMfs/VadKIS6llvg==}
     engines: {node: '>=8.3.0'}
@@ -1860,6 +1905,9 @@ packages:
 
   json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
+
+  json-schema@0.4.0:
+    resolution: {integrity: sha512-es94M3nTIfsEPisRafak+HDLfHXnKBhV3vU5eqPcS3flIWqcxJWgXHXiey3YrpaNsanY5ei1VoYEbOzijuq9BA==}
 
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
@@ -2943,6 +2991,31 @@ packages:
 
 snapshots:
 
+  '@ai-sdk/gateway@4.0.24(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.11(zod@3.25.76)
+      '@vercel/oidc': 3.2.0
+      zod: 3.25.76
+
+  '@ai-sdk/openai@4.0.16(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.11(zod@3.25.76)
+      zod: 3.25.76
+
+  '@ai-sdk/provider-utils@5.0.11(zod@3.25.76)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.1.0
+      zod: 3.25.76
+
+  '@ai-sdk/provider@4.0.3':
+    dependencies:
+      json-schema: 0.4.0
+
   '@aiden0z/pptx-renderer@1.2.4(pdfjs-dist@5.7.284)':
     dependencies:
       echarts: 6.1.0
@@ -3818,11 +3891,22 @@ snapshots:
       d3-selection: 3.0.0
       d3-transition: 3.0.1(d3-selection@3.0.0)
 
+  '@vercel/oidc@3.2.0': {}
+
+  '@workflow/serde@4.1.0': {}
+
   acorn-jsx@5.3.2(acorn@8.17.0):
     dependencies:
       acorn: 8.17.0
 
   acorn@8.17.0: {}
+
+  ai@7.0.32(zod@3.25.76):
+    dependencies:
+      '@ai-sdk/gateway': 4.0.24(zod@3.25.76)
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.11(zod@3.25.76)
+      zod: 3.25.76
 
   ajv@6.15.0:
     dependencies:
@@ -4403,6 +4487,8 @@ snapshots:
 
   eventemitter3@5.0.4: {}
 
+  eventsource-parser@3.1.0: {}
+
   exceljs@4.4.0:
     dependencies:
       archiver: 5.3.2
@@ -4743,6 +4829,8 @@ snapshots:
   json-buffer@3.0.1: {}
 
   json-schema-traverse@0.4.1: {}
+
+  json-schema@0.4.0: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 

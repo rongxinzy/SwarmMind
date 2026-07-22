@@ -174,7 +174,7 @@ def _ensure_project_conversation(project_id: str, deps: ChatRouterDeps) -> str:
     if proj.conversation_id:
         deps.conversation_repo.mark_project_bound(proj.conversation_id)
         return proj.conversation_id
-    conv = deps.conversation_repo.create(title=proj.title, title_status="pending")
+    conv = deps.conversation_repo.create(title=proj.title, title_status="pending", session_type="task")
     deps.conversation_repo.mark_project_bound(conv.id)
     with session_scope() as session:
         proj_db = session.get(ProjectDB, project_id)
@@ -475,7 +475,7 @@ def _stream_chat(deps: ChatRouterDeps, body: ChatRequest) -> Generator[str, None
                     break
         title_text = _strip_uploaded_files_tag(last_user_text)
         title = (title_text[:50] + "...") if len(title_text) > 50 else (title_text or "New Chat")
-        conv = deps.conversation_repo.create(title=title, title_status="pending")
+        conv = deps.conversation_repo.create(title=title, title_status="pending", session_type="task")
         conversation_id = conv.id
 
     if conversation_id is None:

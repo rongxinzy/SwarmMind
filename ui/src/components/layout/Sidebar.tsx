@@ -4,10 +4,10 @@ import {
   Building2,
   FolderKanban,
   LogOut,
+  MessageSquare,
   MessageSquareText,
   PenSquare,
   Plus,
-  Settings,
   Trash2,
 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -288,7 +288,7 @@ function ModeSwitch({ mode, onChange }: { mode: AppMode; onChange: (mode: AppMod
   return (
     <div className="flex items-center rounded-full bg-[#ededed] p-0.5">
       <ModePill active={mode === "work"} onClick={() => onChange("work")} icon={MessageSquareText} label="Work" />
-      <ModePill active={mode === "chat"} onClick={() => onChange("chat")} icon={Settings} label="Chat" />
+      <ModePill active={mode === "chat"} onClick={() => onChange("chat")} icon={MessageSquare} label="Chat" />
     </div>
   )
 }

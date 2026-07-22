@@ -86,6 +86,7 @@ class ConversationSupportService:
         """Convert a conversation ORM row into the API model."""
         return Conversation(
             id=conv.id,
+            session_type=conv.session_type,
             title=conv.title,
             title_status=conv.title_status,
             title_source=conv.title_source,

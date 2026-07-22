@@ -18,6 +18,7 @@ class ConversationDB(SQLModel, table=True):
     __tablename__ = "conversations"
 
     id: str = Field(primary_key=True)
+    session_type: str = Field(default="task")  # "chat" or "task"
     title: str
     title_status: str = Field(default="pending")
     title_source: str | None = None

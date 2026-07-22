@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from swarmmind.api.chat_direct_routes import ChatDirectRouterDeps, build_chat_direct_router
 from swarmmind.api.chat_routes import ChatRouterDeps, build_chat_router
 from swarmmind.api.conversation_routes import (
     ClarificationResponseRequest as ConversationClarificationResponseRequest,
@@ -176,7 +177,11 @@ def _list_conversations() -> ConversationListResponse:
 
 
 def _create_conversation(body) -> Conversation:
-    conv = conversation_repo.create(body.title or NEW_CONVERSATION_TITLE, "pending")
+    conv = conversation_repo.create(
+        body.title or NEW_CONVERSATION_TITLE,
+        "pending",
+        session_type=body.session_type.value if body.session_type else "task",
+    )
     return conversation_support.db_to_conversation(conv)
 
 
@@ -324,6 +329,16 @@ app.include_router(
             stream_native_conversation_message=_stream_native_conversation_message,
             stream_native_project_message=_stream_native_project_message,
             resolve_runtime_options=_resolve_runtime_options,
+        )
+    )
+)
+
+app.include_router(
+    build_chat_direct_router(
+        ChatDirectRouterDeps(
+            conversation_repo=conversation_repo,
+            message_repo=message_repo,
+            conversation_support=conversation_support,
         )
     )
 )

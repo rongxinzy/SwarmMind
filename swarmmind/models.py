@@ -7,10 +7,18 @@ from pydantic import BaseModel, Field
 # ---- Conversation models ----
 
 
+class SessionType(str, Enum):
+    """Conversation session type."""
+
+    CHAT = "chat"
+    TASK = "task"
+
+
 class Conversation(BaseModel):
     """Conversation record."""
 
     id: str
+    session_type: SessionType = SessionType.TASK
     title: str
     title_status: str = "pending"
     title_source: str | None = None
@@ -95,16 +103,30 @@ class CreateConversationRequest(BaseModel):
     """Request to create a new conversation."""
 
     title: str | None = Field(None, max_length=200)
+    session_type: SessionType = SessionType.TASK
+
+
+class ChatMessageRequest(BaseModel):
+    """Request to persist a single chat message."""
+
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str
 
 
 class SendMessageRequest(BaseModel):
-    """Request to send a message in a conversation."""
+    """Request to send a message in a Task/DeerFlow conversation."""
 
     content: str
     mode: ConversationMode | None = None
     model_name: str | None = None
     reasoning: bool = False  # Whether to enable LLM reasoning/thinking mode
     native_message: dict[str, object] | None = None
+
+
+class ChatTurnRequest(BaseModel):
+    """Request to persist Chat-mode messages after a Vercel AI SDK turn."""
+
+    messages: list[ChatMessageRequest] = Field(..., min_length=1, max_length=2)
 
 
 class SendMessageResponse(BaseModel):
@@ -329,6 +351,29 @@ class CurrentUserResponse(BaseModel):
     user: User
     token_id: str | None = None
     authenticated: bool = True
+
+
+class ChatModelInfo(BaseModel):
+    """Model available for direct Chat mode via Vercel AI SDK."""
+
+    id: str
+    name: str
+    provider: str
+    model: str
+    display_name: str
+    description: str | None = None
+    supports_vision: bool = False
+    supports_thinking: bool = False
+    base_url: str
+    api_key: str
+    is_default: bool = False
+
+
+class ChatModelListResponse(BaseModel):
+    """List of models available for Chat mode."""
+
+    models: list[ChatModelInfo]
+    default_model: str | None = None
 
 
 class LogoutResponse(BaseModel):

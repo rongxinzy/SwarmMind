@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { AppSidebar, type AppMode, type WorkView } from "./Sidebar"
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { ChatView } from "@/components/chat/ChatView"
+import { DirectChatView } from "@/components/chat/DirectChatView"
 import { ProjectsPanel } from "@/components/project/ProjectsPanel"
 import { ProvidersPanel } from "@/components/admin/ProvidersPanel"
 import { apiFetch, apiFetchJson } from "@/lib/api"
@@ -9,6 +10,7 @@ import { toast } from "sonner"
 
 interface Conversation {
   id: string
+  session_type: string
   title: string
   updated_at: string
 }
@@ -27,6 +29,15 @@ export function AppShell() {
   const [activeProjectId, setActiveProjectId] = useState<string | undefined>(undefined)
   const [isLoadingConversations, setIsLoadingConversations] = useState(true)
   const [showAdmin, setShowAdmin] = useState(false)
+
+  const chatConversations = useMemo(
+    () => conversations.filter((c) => c.session_type === "chat"),
+    [conversations],
+  )
+  const taskConversations = useMemo(
+    () => conversations.filter((c) => c.session_type === "task"),
+    [conversations],
+  )
 
   const fetchConversations = useCallback(async () => {
     try {
@@ -78,7 +89,6 @@ export function AppShell() {
     setActiveConversationId(id)
     setActiveProjectId(undefined)
     setWorkView("tasks")
-    setMode("work")
     setShowAdmin(false)
     window.history.replaceState(null, "", `/?conversation=${id}`)
   }, [])
@@ -133,7 +143,7 @@ export function AppShell() {
     [activeConversationId, handleNewTask, handleSelectConversation],
   )
 
-  const handleConversationCreated = useCallback((id: string, title: string) => {
+  const handleTaskConversationCreated = useCallback((id: string, title: string) => {
     setActiveConversationId(id)
     setWorkView("tasks")
     setMode("work")
@@ -141,7 +151,18 @@ export function AppShell() {
     window.history.replaceState(null, "", `/?conversation=${id}`)
     setConversations((prev) => {
       const filtered = prev.filter((c) => c.id !== id)
-      return [{ id, title, updated_at: new Date().toISOString() }, ...filtered]
+      return [{ id, session_type: "task", title, updated_at: new Date().toISOString() }, ...filtered]
+    })
+  }, [])
+
+  const handleChatConversationCreated = useCallback((id: string, title: string) => {
+    setActiveConversationId(id)
+    setMode("chat")
+    setShowAdmin(false)
+    window.history.replaceState(null, "", `/?conversation=${id}`)
+    setConversations((prev) => {
+      const filtered = prev.filter((c) => c.id !== id)
+      return [{ id, session_type: "chat", title, updated_at: new Date().toISOString() }, ...filtered]
     })
   }, [])
 
@@ -152,17 +173,15 @@ export function AppShell() {
 
   const handleModeChange = useCallback((next: AppMode) => {
     setMode(next)
+    setActiveConversationId(undefined)
+    setActiveProjectId(undefined)
     if (next === "work") {
-      setActiveConversationId(undefined)
-      setActiveProjectId(undefined)
       setWorkView("tasks")
-      window.history.replaceState(null, "", "/")
-    } else {
-      setActiveConversationId(undefined)
-      setActiveProjectId(undefined)
-      window.history.replaceState(null, "", "/")
     }
+    window.history.replaceState(null, "", "/")
   }, [])
+
+  const sidebarConversations = mode === "chat" ? chatConversations : taskConversations
 
   return (
     <SidebarProvider defaultOpen>
@@ -171,7 +190,7 @@ export function AppShell() {
         workView={workView}
         onModeChange={handleModeChange}
         onWorkViewChange={setWorkView}
-        conversations={conversations}
+        conversations={sidebarConversations}
         projects={projects}
         activeConversationId={activeConversationId}
         activeProjectId={activeProjectId}
@@ -190,11 +209,14 @@ export function AppShell() {
         {showAdmin ? (
           <ProvidersPanel />
         ) : mode === "chat" ? (
-          <ChatPlaceholder />
+          <DirectChatView
+            conversationId={activeConversationId}
+            onConversationCreated={handleChatConversationCreated}
+          />
         ) : workView === "tasks" ? (
           <ChatView
             conversationId={activeConversationId}
-            onConversationCreated={handleConversationCreated}
+            onConversationCreated={handleTaskConversationCreated}
             isLoadingConversations={isLoadingConversations}
           />
         ) : (
@@ -202,18 +224,5 @@ export function AppShell() {
         )}
       </main>
     </SidebarProvider>
-  )
-}
-
-function ChatPlaceholder() {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-[#fbfbfa] px-6 text-center">
-      <div className="max-w-md">
-        <h1 className="text-2xl font-medium text-[#1a1a1a]">Chat mode placeholder</h1>
-        <p className="mt-3 text-sm leading-6 text-[#5d5d5d]">
-          Chat 直连模型功能将在 M1 接入。当前可先通过 Work 模式使用任务会话。
-        </p>
-      </div>
-    </div>
   )
 }
