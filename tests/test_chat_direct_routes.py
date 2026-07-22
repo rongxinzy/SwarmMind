@@ -91,7 +91,7 @@ class TestChatDirectRoutes:
         data = response.json()
         assert len(data["items"]) == 2
 
-    def test_persist_chat_title_generated(self):
+    def test_persist_chat_title_from_first_user_message(self):
         conv_resp = client.post("/chat/conversations")
         conv_id = conv_resp.json()["id"]
 
@@ -109,8 +109,8 @@ class TestChatDirectRoutes:
         response = client.get(f"/conversations/{conv_id}")
         assert response.status_code == 200
         data = response.json()
-        # Title may be fallback or generated, but should no longer be the default pending title.
-        assert data["title_status"] != "pending"
+        assert data["title_status"] == "fallback"
+        assert data["title"] == "tell me about python"
 
     def test_persist_chat_messages_rejects_invalid_role(self):
         conv_resp = client.post("/chat/conversations")

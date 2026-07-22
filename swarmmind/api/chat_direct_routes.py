@@ -136,9 +136,23 @@ def build_chat_direct_router(deps: ChatDirectRouterDeps) -> APIRouter:
 
         deps.conversation_repo.touch(conversation_id)
 
-        # Generate a title on the first complete user+assistant exchange.
-        if len(body.messages) >= 2:
-            deps.conversation_support.maybe_generate_conversation_title(conversation_id)
+        # Update the title from the first user message if it is still pending.
+        conv = deps.conversation_repo.get_by_id(conversation_id)
+        if conv.title_status == "pending":
+            first_user_text = next(
+                (msg.content for msg in body.messages if msg.role == "user"),
+                None,
+            )
+            if first_user_text:
+                title = first_user_text.strip()
+                if len(title) > 50:
+                    title = title[:47].rstrip() + "..."
+                deps.conversation_repo.update_title(
+                    conversation_id,
+                    title or DEFAULT_CHAT_TITLE,
+                    "fallback",
+                    "fallback",
+                )
 
         return {"messages": persisted}
 
