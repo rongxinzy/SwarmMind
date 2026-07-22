@@ -172,20 +172,19 @@ def build_projects_router(deps: ProjectsRouterDeps) -> APIRouter:
         """List artifact files across all project sessions."""
         deps.project_repo.get_by_id(project_id)
         rows = deps.conversation_repo.list_by_project(project_id)
-        files: list[dict[str, object]] = []
-        for conv in rows:
-            for artifact in deps.artifact_repo.list_by_conversation(conv.id):
-                files.append(
-                    {
-                        "artifact_id": artifact.artifact_id,
-                        "conversation_id": artifact.conversation_id,
-                        "name": artifact.name,
-                        "path": artifact.path,
-                        "mime_type": artifact.mime_type,
-                        "size_bytes": artifact.size_bytes,
-                        "created_at": str(artifact.created_at) if artifact.created_at else "",
-                    }
-                )
+        files: list[dict[str, object]] = [
+            {
+                "artifact_id": artifact.artifact_id,
+                "conversation_id": artifact.conversation_id,
+                "name": artifact.name,
+                "path": artifact.path,
+                "mime_type": artifact.mime_type,
+                "size_bytes": artifact.size_bytes,
+                "created_at": str(artifact.created_at) if artifact.created_at else "",
+            }
+            for conv in rows
+            for artifact in deps.artifact_repo.list_by_conversation(conv.id)
+        ]
         return {"files": files}
 
     return router

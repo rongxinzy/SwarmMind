@@ -6,8 +6,8 @@ from swarmmind.models import (
     Artifact,
     Project,
     ProjectCapability,
-    ProjectMemoryEntry,
     ProjectMembership,
+    ProjectMemoryEntry,
     User,
 )
 from swarmmind.services.artifact_content import (
