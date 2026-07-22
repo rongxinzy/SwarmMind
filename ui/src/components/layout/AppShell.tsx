@@ -5,7 +5,7 @@ import { ChatView } from "@/components/chat/ChatView"
 import { DirectChatView } from "@/components/chat/DirectChatView"
 import { ProjectsPanel } from "@/components/project/ProjectsPanel"
 import { ProjectWorkspace } from "@/components/project/ProjectWorkspace"
-import { ProvidersPanel } from "@/components/admin/ProvidersPanel"
+import { AdminPanel } from "@/components/admin/AdminPanel"
 import { apiFetch, apiFetchJson } from "@/lib/api"
 import { toast } from "sonner"
 
@@ -208,7 +208,7 @@ export function AppShell() {
           <SidebarTrigger className="size-9 rounded-full border border-[#e8e8e8] bg-white shadow-sm" />
         </div>
         {showAdmin ? (
-          <ProvidersPanel />
+          <AdminPanel />
         ) : mode === "chat" ? (
           <DirectChatView
             conversationId={activeConversationId}

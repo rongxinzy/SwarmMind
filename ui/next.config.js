@@ -17,6 +17,10 @@ const backendProxySources = [
   "/auth/:path*",
   "/llm-providers/:path*",
   "/gateway/:path*",
+  "/users/:path*",
+  "/organizations/:path*",
+  "/teams/:path*",
+  "/admin/:path*",
 ]
 
 /** @type {import("next").NextConfig} */
