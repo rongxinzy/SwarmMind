@@ -19,6 +19,7 @@ class Conversation(BaseModel):
 
     id: str
     session_type: SessionType = SessionType.TASK
+    project_id: str | None = None
     title: str
     title_status: str = "pending"
     title_source: str | None = None
@@ -437,6 +438,29 @@ class ProjectUpdateRequest(BaseModel):
     phase: str | None = Field(None, max_length=100)
     risk_level: str | None = Field(None, max_length=20)
     status: ProjectStatus | None = None
+
+
+class ProjectMemoryEntry(BaseModel):
+    """A single project-scoped memory key-value entry."""
+
+    project_id: str
+    key: str
+    value: str
+    created_at: str
+    updated_at: str
+
+
+class ProjectMemoryListResponse(BaseModel):
+    """Response containing project memory entries."""
+
+    items: list[ProjectMemoryEntry]
+    total: int
+
+
+class ProjectMemorySetRequest(BaseModel):
+    """Request to set a project memory entry."""
+
+    value: str = Field(..., max_length=10000)
 
 
 # ---- Artifact models ----

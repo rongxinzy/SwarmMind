@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { ChatView } from "@/components/chat/ChatView"
 import { DirectChatView } from "@/components/chat/DirectChatView"
 import { ProjectsPanel } from "@/components/project/ProjectsPanel"
+import { ProjectWorkspace } from "@/components/project/ProjectWorkspace"
 import { ProvidersPanel } from "@/components/admin/ProvidersPanel"
 import { apiFetch, apiFetchJson } from "@/lib/api"
 import { toast } from "sonner"
@@ -219,8 +220,16 @@ export function AppShell() {
             onConversationCreated={handleTaskConversationCreated}
             isLoadingConversations={isLoadingConversations}
           />
+        ) : activeProjectId ? (
+          <ProjectWorkspace
+            projectId={activeProjectId}
+            onBack={() => {
+              setActiveProjectId(undefined)
+              window.history.replaceState(null, "", "/")
+            }}
+          />
         ) : (
-          <ProjectsPanel projectId={activeProjectId} onOpenProject={handleSelectProject} />
+          <ProjectsPanel onOpenProject={handleSelectProject} />
         )}
       </main>
     </SidebarProvider>

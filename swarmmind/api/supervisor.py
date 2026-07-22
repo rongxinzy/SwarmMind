@@ -40,6 +40,7 @@ from swarmmind.repositories.conversation import ConversationRepository
 from swarmmind.repositories.message import MessageRepository
 from swarmmind.repositories.project import ProjectRepository
 from swarmmind.repositories.project_membership import ProjectMembershipRepository
+from swarmmind.repositories.project_memory import ProjectMemoryRepository
 from swarmmind.repositories.user import UserRepository
 from swarmmind.runtime import ensure_default_runtime_instance
 from swarmmind.runtime.catalog import sync_env_runtime_model
@@ -70,6 +71,7 @@ conversation_repo = ConversationRepository()
 message_repo = MessageRepository()
 project_repo = ProjectRepository()
 project_membership_repo = ProjectMembershipRepository()
+project_memory_repo = ProjectMemoryRepository()
 artifact_repo = ArtifactRepository()
 user_repo = UserRepository()
 
@@ -359,6 +361,10 @@ app.include_router(
     build_projects_router(
         ProjectsRouterDeps(
             project_repo=project_repo,
+            conversation_repo=conversation_repo,
+            conversation_support=conversation_support,
+            memory_repo=project_memory_repo,
+            artifact_repo=artifact_repo,
         )
     )
 )

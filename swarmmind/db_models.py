@@ -19,6 +19,7 @@ class ConversationDB(SQLModel, table=True):
 
     id: str = Field(primary_key=True)
     session_type: str = Field(default="task")  # "chat" or "task"
+    project_id: str | None = Field(default=None, foreign_key="projects.project_id")
     title: str
     title_status: str = Field(default="pending")
     title_source: str | None = None
@@ -30,7 +31,10 @@ class ConversationDB(SQLModel, table=True):
     created_at: datetime | None = Field(default_factory=utc_now)
     updated_at: datetime | None = Field(default_factory=utc_now)
 
-    __table_args__ = (Index("idx_conversations_updated_at", "updated_at"),)
+    __table_args__ = (
+        Index("idx_conversations_updated_at", "updated_at"),
+        Index("idx_conversations_project", "project_id"),
+    )
 
 
 class MessageDB(SQLModel, table=True):
@@ -244,3 +248,17 @@ class ProjectMembershipDB(SQLModel, table=True):
         Index("idx_project_memberships_role", "role"),
         sa.Index("idx_project_memberships_project_member", "project_id", "member_id", unique=True),
     )
+
+
+class ProjectMemoryDB(SQLModel, table=True):
+    """Project-scoped shared memory key-value store."""
+
+    __tablename__ = "project_memory"
+
+    project_id: str = Field(foreign_key="projects.project_id", primary_key=True)
+    key: str = Field(primary_key=True)
+    value: str
+    created_at: datetime | None = Field(default_factory=utc_now)
+    updated_at: datetime | None = Field(default_factory=utc_now)
+
+    __table_args__ = (Index("idx_project_memory_project", "project_id"),)

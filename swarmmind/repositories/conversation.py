@@ -38,6 +38,19 @@ class ConversationRepository:
                 session.expunge(r)
             return list(results)
 
+    def list_by_project(self, project_id: str) -> list[ConversationDB]:
+        """List task conversations bound to a project ordered by updated_at descending."""
+        with session_scope() as session:
+            results = session.exec(
+                select(ConversationDB)
+                .where(ConversationDB.project_id == project_id)
+                .where(ConversationDB.session_type == "task")
+                .order_by(ConversationDB.updated_at.desc()),
+            ).all()
+            for r in results:
+                session.expunge(r)
+            return list(results)
+
     def get_by_id(self, conversation_id: str) -> ConversationDB:
         """Get a conversation by ID or raise 404."""
         with session_scope() as session:
@@ -52,12 +65,14 @@ class ConversationRepository:
         title: str,
         title_status: str,
         session_type: str = "task",
+        project_id: str | None = None,
     ) -> ConversationDB:
         """Create a new conversation."""
         with session_scope() as session:
             conv = ConversationDB(
                 id=str(uuid.uuid4()),
                 session_type=session_type,
+                project_id=project_id,
                 title=title,
                 title_status=title_status,
             )

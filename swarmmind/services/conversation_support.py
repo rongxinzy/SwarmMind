@@ -87,6 +87,7 @@ class ConversationSupportService:
         return Conversation(
             id=conv.id,
             session_type=conv.session_type,
+            project_id=conv.project_id,
             title=conv.title,
             title_status=conv.title_status,
             title_source=conv.title_source,

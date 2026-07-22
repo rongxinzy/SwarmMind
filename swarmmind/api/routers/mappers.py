@@ -6,6 +6,7 @@ from swarmmind.models import (
     Artifact,
     Project,
     ProjectCapability,
+    ProjectMemoryEntry,
     ProjectMembership,
     User,
 )
@@ -104,4 +105,15 @@ def db_to_project(proj) -> Project:
         status=proj.status,
         created_at=proj.created_at.isoformat() if proj.created_at else "",
         updated_at=proj.updated_at.isoformat() if proj.updated_at else "",
+    )
+
+
+def db_to_project_memory(entry) -> ProjectMemoryEntry:
+    """Map a ProjectMemoryDB row to a ProjectMemoryEntry model."""
+    return ProjectMemoryEntry(
+        project_id=entry.project_id,
+        key=entry.key,
+        value=entry.value,
+        created_at=entry.created_at.isoformat() if entry.created_at else "",
+        updated_at=entry.updated_at.isoformat() if entry.updated_at else "",
     )

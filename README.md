@@ -94,7 +94,7 @@ Current milestones:
 - **M0**: prune legacy surfaces down to the four product faces. ✅
 - **M1**: Chat mode — direct model chat over the Vercel AI SDK. ✅
 - **M2**: task sessions on the DeerFlow runtime. ✅
-- **M3**: projects — workspace folders, multiple sessions, shared project memory.
+- **M3**: projects — workspace folders, multiple sessions, shared project memory. ✅
 - **M4**: org admin — teams, accounts, quota, model allocation, MCP grants.
 
 → [Full roadmap](docs/roadmap.md)
