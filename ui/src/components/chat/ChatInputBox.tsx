@@ -172,13 +172,13 @@ export function ChatInputBox({
                     value={model.id}
                     onSelect={() => handleModelSelect(model.id)}
                   >
-                    <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <ModelSelectorName>{model.display_name ?? model.name}</ModelSelectorName>
                       <span className="truncate text-[10px] text-muted-foreground">
                         {model.provider} · {model.model}
                       </span>
                       {model.description && (
-                        <span className="truncate text-[10px] text-muted-foreground/80">
+                        <span className="truncate text-[10px] leading-4 text-muted-foreground/70">
                           {model.description}
                         </span>
                       )}
