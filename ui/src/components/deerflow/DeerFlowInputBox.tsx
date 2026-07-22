@@ -298,17 +298,17 @@ export function DeerFlowInputBox({
             value={value}
             onChange={(event) => onValueChange(event.currentTarget.value)}
             placeholder="Ask SwarmMind to create, research, analyze, or ship something..."
-            className="min-h-16 text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
+            className="min-h-[6.75rem] text-[15px] leading-6 text-[#171717] placeholder:text-[#8a8a8a]"
             disabled={disabled === true || isGenerating}
             autoFocus={autoFocus}
           />
           <AttachmentPreview disabled={disabled === true || isGenerating} />
         </PromptInputBody>
-        <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t border-[#f0f0f0] pt-3 sm:flex-nowrap">
+        <PromptInputFooter className="flex-wrap items-center justify-between gap-x-2 gap-y-0 border-t border-[#f0f0f0] py-1 sm:flex-nowrap">
           <PromptInputTools className="flex-1">
             <AttachmentButton disabled={disabled === true || isGenerating} />
             <PromptInputActionMenu>
-              <PromptInputActionMenuTrigger className="h-9 gap-1.5 rounded-xl px-2.5 text-[#242424] hover:bg-[#f6f6f6]">
+              <PromptInputActionMenuTrigger className="h-7 gap-1.5 rounded-lg px-2 text-[#242424] hover:bg-[#f6f6f6]">
                 <ModeIcon className={cn("size-3.5", activeMode === "ultra" && "text-[#dabb5e]")} />
                 <span className={cn("text-xs font-normal", activeMode === "ultra" && "text-[#8a6d18]")}>
                   {modeConfig.label}
@@ -359,7 +359,7 @@ export function DeerFlowInputBox({
                 render={
                   <PromptInputButton
                     size="sm"
-                    className="h-9 min-w-[4.5rem] max-w-[8rem] shrink rounded-xl px-2.5 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
+                    className="h-7 min-w-[4rem] max-w-[8rem] shrink rounded-lg px-2 hover:bg-[#f6f6f6] sm:max-w-[14rem]"
                   />
                 }
               >
@@ -402,7 +402,7 @@ export function DeerFlowInputBox({
               status={status}
               onStop={onStop}
               disabled={disabled === true || (!isGenerating && !value.trim())}
-              className="size-9 rounded-full border border-[#68686878] bg-[#111111] text-white shadow-[0_2px_8px_rgba(0,0,0,0.14)] hover:bg-[#232323] disabled:border-transparent disabled:bg-[#d9d9d9] disabled:text-white disabled:shadow-none"
+              className="size-7 rounded-full border border-[#68686878] bg-[#111111] text-white shadow-[0_2px_8px_rgba(0,0,0,0.14)] hover:bg-[#232323] disabled:border-transparent disabled:bg-[#d9d9d9] disabled:text-white disabled:shadow-none"
             />
           </PromptInputTools>
         </PromptInputFooter>
@@ -417,7 +417,7 @@ function AttachmentButton({ disabled }: { disabled?: boolean }) {
   return (
     <PromptInputButton
       type="button"
-      className="h-9 rounded-xl px-2 text-[#5f5f5f] hover:bg-[#f6f6f6]"
+      className="h-7 rounded-lg px-2 text-[#5f5f5f] hover:bg-[#f6f6f6]"
       tooltip="添加文件"
       disabled={disabled}
       onClick={() => attachments.openFileDialog()}
