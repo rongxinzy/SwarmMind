@@ -10,27 +10,27 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { ComponentProps, ReactNode } from "react";
 
-export type ModelSelectorProps = ComponentProps<typeof Sheet>;
+export type ModelSelectorProps = ComponentProps<typeof Popover>;
 
 export const ModelSelector = (props: ModelSelectorProps) => (
-  <Sheet {...props} />
+  <Popover {...props} />
 );
 
-export type ModelSelectorTriggerProps = ComponentProps<typeof SheetTrigger>;
+export type ModelSelectorTriggerProps = ComponentProps<typeof PopoverTrigger>;
 
 export const ModelSelectorTrigger = (props: ModelSelectorTriggerProps) => (
-  <SheetTrigger {...props} />
+  <PopoverTrigger {...props} />
 );
 
-export type ModelSelectorContentProps = ComponentProps<typeof SheetContent> & {
+export type ModelSelectorContentProps = ComponentProps<typeof PopoverContent> & {
   title?: ReactNode;
 };
 
@@ -40,20 +40,22 @@ export const ModelSelectorContent = ({
   title = "Model Selector",
   ...props
 }: ModelSelectorContentProps) => (
-  <SheetContent
+  <PopoverContent
+    align="end"
     side="bottom"
+    sideOffset={8}
     aria-describedby={undefined}
     className={cn(
-      "mx-auto max-w-[26rem] rounded-t-3xl border-x-0 border-t border-[#e8e8e8] bg-white p-0 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] ring-0 gap-0",
+      "w-80 rounded-2xl border border-[#e8e8e8] bg-white p-0 shadow-[0_10px_32px_rgba(0,0,0,0.08)] ring-0",
       className
     )}
     {...props}
   >
-    <SheetTitle className="sr-only">{title}</SheetTitle>
+    <PopoverTitle className="sr-only">{title}</PopoverTitle>
     <Command className="overflow-hidden bg-white **:data-[slot=command-input-wrapper]:h-auto">
       {children}
     </Command>
-  </SheetContent>
+  </PopoverContent>
 );
 
 export type ModelSelectorDialogProps = ComponentProps<typeof CommandDialog>;
@@ -68,7 +70,7 @@ export const ModelSelectorInput = ({
   className,
   ...props
 }: ModelSelectorInputProps) => (
-  <CommandInput className={cn("mx-3 mt-3 h-9 shrink-0 rounded-lg border-0 bg-[#f5f5f5] px-3 text-sm", className)} {...props} />
+  <CommandInput className={cn("m-2 h-9 shrink-0 rounded-lg border-0 bg-[#f5f5f5] px-3 text-sm", className)} {...props} />
 );
 
 export type ModelSelectorListProps = ComponentProps<typeof CommandList>;
@@ -77,7 +79,7 @@ export const ModelSelectorList = ({
   className,
   ...props
 }: ModelSelectorListProps) => (
-  <CommandList className={cn("max-h-[20rem] overflow-y-auto p-2", className)} {...props} />
+  <CommandList className={cn("max-h-[16rem] overflow-y-auto p-1.5", className)} {...props} />
 );
 
 export type ModelSelectorEmptyProps = ComponentProps<typeof CommandEmpty>;
@@ -101,7 +103,7 @@ export const ModelSelectorItem = ({
 }: ModelSelectorItemProps) => (
   <CommandItem
     className={cn(
-      "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-base aria-selected:bg-[#f6f6f6]",
+      "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-2.5 text-sm aria-selected:bg-[#f6f6f6]",
       className
     )}
     {...props}
@@ -116,7 +118,7 @@ export const ModelSelectorTitle = ({
   className,
   ...props
 }: ModelSelectorTitleProps) => (
-  <span className={cn("block truncate text-left text-base font-medium text-[#171717]", className)} {...props} />
+  <span className={cn("block truncate text-left text-sm font-medium text-[#171717]", className)} {...props} />
 );
 
 export type ModelSelectorDescriptionProps = ComponentProps<"span">;
@@ -125,7 +127,7 @@ export const ModelSelectorDescription = ({
   className,
   ...props
 }: ModelSelectorDescriptionProps) => (
-  <span className={cn("block truncate text-left text-sm text-[#8a8a8a]", className)} {...props} />
+  <span className={cn("block truncate text-left text-xs text-[#8a8a8a]", className)} {...props} />
 );
 
 export type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;
