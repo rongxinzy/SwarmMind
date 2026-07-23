@@ -42,7 +42,7 @@ export const ModelSelectorContent = ({
 }: ModelSelectorContentProps) => (
   <PopoverContent
     align="end"
-    side="bottom"
+    side="top"
     sideOffset={8}
     aria-describedby={undefined}
     className={cn(
