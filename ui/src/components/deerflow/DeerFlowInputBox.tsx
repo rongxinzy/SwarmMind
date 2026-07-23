@@ -15,10 +15,12 @@ import { toast } from "sonner"
 import {
   ModelSelector,
   ModelSelectorContent,
+  ModelSelectorDescription,
   ModelSelectorInput,
   ModelSelectorItem,
   ModelSelectorList,
   ModelSelectorName,
+  ModelSelectorTitle,
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector"
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion"
@@ -384,15 +386,15 @@ export function DeerFlowInputBox({
                       onSelect={() => handleModelSelect(model.name)}
                     >
                       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <ModelSelectorName>{model.display_name ?? model.name}</ModelSelectorName>
-                        <span className="truncate text-[10px] text-muted-foreground">
+                        <ModelSelectorTitle>{model.display_name ?? model.name}</ModelSelectorTitle>
+                        <ModelSelectorDescription>
                           {model.provider} · {model.model}
-                        </span>
-                        <span className="truncate text-[10px] leading-4 text-muted-foreground/70">
-                          {model.capability_tags.join(" / ")}
-                        </span>
+                          {model.capability_tags.length > 0 ? ` · ${model.capability_tags.join(" / ")}` : ""}
+                        </ModelSelectorDescription>
                       </div>
-                      {model.name === selectedModel?.name ? <CheckIcon className="ml-auto size-4" /> : <div className="ml-auto size-4" />}
+                      {model.name === selectedModel?.name && (
+                        <CheckIcon className="ml-auto size-5 shrink-0 text-[#2d7fff]" />
+                      )}
                     </ModelSelectorItem>
                   ))}
                 </ModelSelectorList>

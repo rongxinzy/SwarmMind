@@ -10,27 +10,27 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { ComponentProps, ReactNode } from "react";
 
-export type ModelSelectorProps = ComponentProps<typeof Dialog>;
+export type ModelSelectorProps = ComponentProps<typeof Sheet>;
 
 export const ModelSelector = (props: ModelSelectorProps) => (
-  <Dialog {...props} />
+  <Sheet {...props} />
 );
 
-export type ModelSelectorTriggerProps = ComponentProps<typeof DialogTrigger>;
+export type ModelSelectorTriggerProps = ComponentProps<typeof SheetTrigger>;
 
 export const ModelSelectorTrigger = (props: ModelSelectorTriggerProps) => (
-  <DialogTrigger {...props} />
+  <SheetTrigger {...props} />
 );
 
-export type ModelSelectorContentProps = ComponentProps<typeof DialogContent> & {
+export type ModelSelectorContentProps = ComponentProps<typeof SheetContent> & {
   title?: ReactNode;
 };
 
@@ -40,19 +40,20 @@ export const ModelSelectorContent = ({
   title = "Model Selector",
   ...props
 }: ModelSelectorContentProps) => (
-  <DialogContent
+  <SheetContent
+    side="bottom"
     aria-describedby={undefined}
     className={cn(
-      "max-w-[22rem] rounded-3xl border border-[#e8e8e8] bg-white p-0 shadow-[0_10px_32px_rgba(0,0,0,0.07)] ring-0",
+      "mx-auto max-w-[26rem] rounded-t-3xl border-x-0 border-t border-[#e8e8e8] bg-white p-0 shadow-[0_-8px_32px_rgba(0,0,0,0.08)] ring-0 gap-0",
       className
     )}
     {...props}
   >
-    <DialogTitle className="sr-only">{title}</DialogTitle>
+    <SheetTitle className="sr-only">{title}</SheetTitle>
     <Command className="overflow-hidden bg-white **:data-[slot=command-input-wrapper]:h-auto">
       {children}
     </Command>
-  </DialogContent>
+  </SheetContent>
 );
 
 export type ModelSelectorDialogProps = ComponentProps<typeof CommandDialog>;
@@ -67,7 +68,7 @@ export const ModelSelectorInput = ({
   className,
   ...props
 }: ModelSelectorInputProps) => (
-  <CommandInput className={cn("h-9 shrink-0 border-b border-[#f0f0f0] px-3 text-sm", className)} {...props} />
+  <CommandInput className={cn("mx-3 mt-3 h-9 shrink-0 rounded-lg border-0 bg-[#f5f5f5] px-3 text-sm", className)} {...props} />
 );
 
 export type ModelSelectorListProps = ComponentProps<typeof CommandList>;
@@ -76,7 +77,7 @@ export const ModelSelectorList = ({
   className,
   ...props
 }: ModelSelectorListProps) => (
-  <CommandList className={cn("max-h-[16rem] overflow-y-auto p-1.5", className)} {...props} />
+  <CommandList className={cn("max-h-[20rem] overflow-y-auto p-2", className)} {...props} />
 );
 
 export type ModelSelectorEmptyProps = ComponentProps<typeof CommandEmpty>;
@@ -100,13 +101,31 @@ export const ModelSelectorItem = ({
 }: ModelSelectorItemProps) => (
   <CommandItem
     className={cn(
-      "flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-2 text-sm aria-selected:bg-[#f6f6f6]",
+      "flex cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-base aria-selected:bg-[#f6f6f6]",
       className
     )}
     {...props}
   >
     {children}
   </CommandItem>
+);
+
+export type ModelSelectorTitleProps = ComponentProps<"span">;
+
+export const ModelSelectorTitle = ({
+  className,
+  ...props
+}: ModelSelectorTitleProps) => (
+  <span className={cn("block truncate text-left text-base font-medium text-[#171717]", className)} {...props} />
+);
+
+export type ModelSelectorDescriptionProps = ComponentProps<"span">;
+
+export const ModelSelectorDescription = ({
+  className,
+  ...props
+}: ModelSelectorDescriptionProps) => (
+  <span className={cn("block truncate text-left text-sm text-[#8a8a8a]", className)} {...props} />
 );
 
 export type ModelSelectorShortcutProps = ComponentProps<typeof CommandShortcut>;

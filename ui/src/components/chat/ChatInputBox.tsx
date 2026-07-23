@@ -6,10 +6,12 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ModelSelector,
   ModelSelectorContent,
+  ModelSelectorDescription,
   ModelSelectorInput,
   ModelSelectorItem,
   ModelSelectorList,
   ModelSelectorName,
+  ModelSelectorTitle,
   ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector"
 import {
@@ -173,20 +175,14 @@ export function ChatInputBox({
                     onSelect={() => handleModelSelect(model.id)}
                   >
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <ModelSelectorName>{model.display_name ?? model.name}</ModelSelectorName>
-                      <span className="truncate text-[10px] text-muted-foreground">
+                      <ModelSelectorTitle>{model.display_name ?? model.name}</ModelSelectorTitle>
+                      <ModelSelectorDescription>
                         {model.provider} · {model.model}
-                      </span>
-                      {model.description && (
-                        <span className="truncate text-[10px] leading-4 text-muted-foreground/70">
-                          {model.description}
-                        </span>
-                      )}
+                        {model.description ? ` · ${model.description}` : ""}
+                      </ModelSelectorDescription>
                     </div>
-                    {model.id === selectedModel?.id ? (
-                      <CheckIcon className="ml-auto size-4" />
-                    ) : (
-                      <div className="ml-auto size-4" />
+                    {model.id === selectedModel?.id && (
+                      <CheckIcon className="ml-auto size-5 shrink-0 text-[#2d7fff]" />
                     )}
                   </ModelSelectorItem>
                 ))}
